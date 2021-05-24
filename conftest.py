@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """pytest fixtures for simplified testing."""
 import pytest
+from fastapi.testclient import TestClient
 from aiida import orm
+from aiida_restapi.routers.auth import get_current_user, UserInDB
+from aiida_restapi import config, app
+
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 
 
@@ -9,8 +13,14 @@ pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 def clear_database_auto(clear_database_before_test):  # pylint: disable=unused-argument
     """Automatically clear database in between tests."""
 
-    # todo: For some reason this does not seem to take effect  # pylint: disable=fixme
-    # (database is not cleared between tests)
+    # todo: Somehow this does not reset the user id counter, which causes the /users/id test to fail  # pylint: disable=fixme
+
+
+@pytest.fixture(scope='function')
+def client():
+    """Return fastapi test client.
+    """
+    yield TestClient(app)
 
 
 @pytest.fixture(scope='function')
@@ -22,3 +32,18 @@ def default_users():
     orm.User(email='stravinsky@symphony.org',
              first_name='Igor',
              last_name='Stravinsky').store()
+
+
+@pytest.fixture(scope='function')
+def authenticate():
+    """Authenticate user.
+
+    Since this goes via modifying the app, undo modifications afterwards.
+    """
+    async def logged_in_user(token=None):  # pylint: disable=unused-argument
+        """Fake active user."""
+        return UserInDB(**config.fake_users_db['johndoe@example.com'])
+
+    app.dependency_overrides[get_current_user] = logged_in_user
+    yield
+    app.dependency_overrides = {}

@@ -15,6 +15,10 @@ repos:
   rev: v0.812
   hooks:
   - id: mypy
+    exclude: &exclude_files >
+      (?x)^(
+          docs/.*|
+      )$
 
 # yapf = yet another python formatter
 - repo: https://github.com/pre-commit/mirrors-yapf
@@ -31,10 +35,7 @@ repos:
     types: [file, python]
     name: pylint
     description: "This hook runs the pylint static code analyzer"
-    exclude: &exclude_files >
-      (?x)^(
-          docs/.*|
-      )$
+    exclude: *exclude_files
     entry: pylint
 
   - id: version-number

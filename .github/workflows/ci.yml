@@ -42,7 +42,7 @@ jobs:
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
-        pip install -e .[testing]
+        pip install -e .[testing,auth]
         reentry scan -r aiida
 
     - name: Run test suite
@@ -52,22 +52,22 @@ jobs:
         PYTEST_ADDOPTS: "--durations=0"
       run: py.test --cov aiida_restapi --cov-append .
 
-  docs:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Install python dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -e .[docs]
-        reentry scan -r aiida
-    - name: Build docs
-      run: cd docs && make
+  #docs:
+  #  runs-on: ubuntu-latest
+  #  timeout-minutes: 15
+  #  steps:
+  #  - uses: actions/checkout@v2
+  #  - name: Set up Python 3.8
+  #    uses: actions/setup-python@v2
+  #    with:
+  #      python-version: 3.8
+  #  - name: Install python dependencies
+  #    run: |
+  #      pip install --upgrade pip
+  #      pip install -e .[docs,auth]
+  #      reentry scan -r aiida
+  #  - name: Build docs
+  #    run: cd docs && make
 
   pre-commit:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
-        pip install -e .[pre-commit,docs,testing]
+        pip install -e .[pre-commit,docs,testing,auth]
         reentry scan -r aiida
     - name: Run pre-commit
       run: |

@@ -7,15 +7,20 @@
 
 AiiDA REST API for data queries and workflow managment.
 
+Uses [`pydantic`](https://pydantic-docs.helpmanual.io/) for models/validation and [`fastapi`](https://fastapi.tiangolo.com/) for the ASGI application.
+Serve e.g. using [`uvicorn`](https://www.uvicorn.org/).
+
 ## Features
 
  * `/users` (GET/POST) and `/users/<id>` (GET) endpoints
- * `User` schema for validation
+ * Authentication via [JSON web tokens](https://jwt.io/introduction) (see `test_auth.py` for the flow; also works via interactive docs)
+ * `User` `pydantic` model for validation
  * Automatic documentation at `http://127.0.0.1:8000/docs`
+ * Full specification at `http://127.0.0.1:8000/openapi.json`
 ## Installation
 
 ```shell
-pip install aiida-restapi
+pip install aiida-restapi[auth]
 ```
 
 ## Usage
