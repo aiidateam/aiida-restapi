@@ -9,8 +9,9 @@ AiiDA REST API for data queries and workflow managment.
 
 ## Features
 
- * `/users` and `/users/<id>` endpoints
+ * `/users` (GET/POST) and `/users/<id>` (GET) endpoints
  * `User` schema for validation
+ * Automatic documentation at `http://127.0.0.1:8000/docs`
 ## Installation
 
 ```shell
@@ -24,7 +25,7 @@ pip install aiida-restapi
 uvicorn aiida_restapi:app
 
 # start rest api and reload for changes (for development)
-uvicorn aiida_restapi:app --reload-dir aiida_restapi
+uvicorn aiida_restapi:app --reload
 ```
 
 ## Development

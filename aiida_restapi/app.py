@@ -11,14 +11,14 @@ app = FastAPI()
 
 @app.get('/users', response_model=List[User])
 @with_dbenv()
-async def users():
+async def read_users():
     """Get list of all users"""
     return [User.from_orm(u) for u in orm.User.objects.find()]
 
 
-@app.get('/users/{user_id}')
+@app.get('/users/{user_id}', response_model=User)
 @with_dbenv()
-async def user(user_id: int):
+async def read_user(user_id: int):
     """Get user by id."""
     orm_user = orm.User.objects.get(id=user_id)
 
@@ -26,3 +26,10 @@ async def user(user_id: int):
         return User.from_orm(orm_user)
 
     return None
+
+
+@app.post('/users', response_model=User)
+async def create_user(user: User):
+    """Create new AiiDA user."""
+    orm_user = orm.User(**user.dict(exclude_unset=True)).store()
+    return User.from_orm(orm_user)

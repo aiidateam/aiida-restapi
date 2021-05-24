@@ -17,12 +17,6 @@
         "aiida.data": [
             "restapi = aiida_restapi.data:DiffParameters"
         ],
-        "aiida.calculations": [
-            "restapi = aiida_restapi.calculations:DiffCalculation"
-        ],
-        "aiida.parsers": [
-            "restapi = aiida_restapi.parsers:DiffParser"
-        ],
         "aiida.cmdline.data": [
             "restapi = aiida_restapi.cli:data_cli"
         ]
@@ -43,12 +37,12 @@
             "wheel~=0.31",
             "coverage",
             "pytest~=3.6,<5.0.0",
-            "pytest-cov"
+            "pytest-cov",
+            "requests"
         ],
         "pre-commit": [
-            "astroid<2.5",
             "pre-commit~=2.2",
-            "pylint~=2.5.0"
+            "pylint~=2.8.2"
         ],
         "docs": [
             "sphinx",

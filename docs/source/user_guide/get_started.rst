@@ -19,24 +19,3 @@ Use the following commands to install the plugin::
 
 Then use ``verdi code setup`` with the ``restapi`` input plugin
 to set up an AiiDA code for aiida-restapi.
-
-Usage
-+++++
-
-A quick demo of how to submit a calculation::
-
-    verdi daemon start         # make sure the daemon is running
-    cd examples
-    verdi run test_submit.py        # submit test calculation
-    verdi calculation list -a  # check status of calculation
-
-If you have already set up your own aiida_restapi code using
-``verdi code setup``, you may want to try the following command::
-
-    restapi-submit  # uses aiida_restapi.cli
-
-Available calculations
-++++++++++++++++++++++
-
-.. aiida-calcjob:: DiffCalculation
-    :module: aiida_restapi.calculations

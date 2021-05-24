@@ -14,7 +14,7 @@ def test_get_single_user(default_users):  # pylint: disable=unused-argument
 
 
 def test_get_users(default_users):  # pylint: disable=unused-argument
-    """Test users endpoint.
+    """Test listing existing users.
 
     Note: Besides the default users set up by the pytest fixture the test profile
     includes a default user.
@@ -22,3 +22,18 @@ def test_get_users(default_users):  # pylint: disable=unused-argument
     response = client.get('/users')
     assert response.status_code == 200
     assert len(response.json()) == 2 + 1
+
+
+def test_create_user():  # pylint: disable=unused-argument
+    """Test creating a new user.
+    """
+    response = client.post('/users',
+                           json={
+                               'first_name': 'New',
+                               'email': 'aiida@localhost'
+                           })
+    assert response.status_code == 200, response.content
+
+    response = client.get('/users')
+    first_names = [user['first_name'] for user in response.json()]
+    assert 'New' in first_names
