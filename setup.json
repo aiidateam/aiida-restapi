@@ -33,8 +33,7 @@
     "install_requires": [
         "aiida-core>=1.6,<2.0.0",
         "sqlalchemy<1.4",
-        "six",
-        "voluptuous"
+        "pydantic~=1.8.2"
     ],
     "extras_require": {
         "testing": [

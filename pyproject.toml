@@ -1,3 +1,6 @@
+[tool.pylint.master]
+extension-pkg-whitelist = [ "pydantic" ]
+
 [tool.pylint.format]
 max-line-length = 125
 
