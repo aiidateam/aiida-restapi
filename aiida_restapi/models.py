@@ -2,23 +2,25 @@
 """Schemas for AiiDA REST API"""
 # pylint: disable=too-few-public-methods
 
-import typing
+from typing import Optional
+
+from aiida.orm import User as AiidaUser
 from pydantic import BaseModel, Field
 
 
 class User(BaseModel):
     """AiiDA User model."""
-    id: typing.Optional[int] = Field(description='Unique user id (pk)')
-    first_name: typing.Optional[str] = Field(
-        description='First name of the user')
-    last_name: typing.Optional[str] = Field(
-        description='Last name of the user')
-    institution: typing.Optional[str] = Field(
-        description='Host institution or workplace of the user')
-    email: str = Field(description='Email address of the user')
+
+    id: Optional[int] = Field(description="Unique user id (pk)")
+    first_name: Optional[str] = Field(description="First name of the user")
+    last_name: Optional[str] = Field(description="Last name of the user")
+    institution: Optional[str] = Field(
+        description="Host institution or workplace of the user"
+    )
+    email: str = Field(description="Email address of the user")
 
     @staticmethod
-    def from_orm(ormobj):
+    def from_orm(ormobj: AiidaUser) -> "User":
         """Create AiiDA User instance from AiiDA orm."""
         return User(
             id=ormobj.id,

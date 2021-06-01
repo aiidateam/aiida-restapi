@@ -26,9 +26,7 @@ jobs:
         python -m pip install -e .
 
     - name: Assert package version
-      env:
-        TAG_VERSION: ${{ github.ref }}
-      run: python ./.github/check_version.py
+      run: python ./.github/check_version.py ./setup.json ./aiida_restapi/__init__.py "${{ github.ref }}"
 
     - name: Build source distribution
       run: python ./setup.py sdist

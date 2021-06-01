@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools>=46.4.0", "wheel", "reentry"]
+build-backend = "setuptools.build_meta"
+
+[tool.isort]
+profile = "black"
+
 [tool.pylint.master]
 extension-pkg-whitelist = [ "pydantic" ]
 
