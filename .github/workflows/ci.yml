@@ -65,6 +65,7 @@ jobs:
       run: pytest --cov aiida_restapi --cov-report=xml
 
     - name: Upload to Codecov
+      if: matrix.python-version == 3.8
       uses: codecov/codecov-action@v1
       with:
         name: pytests
