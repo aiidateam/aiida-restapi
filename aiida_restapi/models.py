@@ -4,7 +4,6 @@
 
 from typing import Optional
 
-from aiida.orm import User as AiidaUser
 from pydantic import BaseModel, Field
 
 
@@ -23,14 +22,3 @@ class User(BaseModel):
         """The models configuration."""
 
         orm_mode = True
-
-    @staticmethod
-    def from_orm(ormobj: AiidaUser) -> "User":
-        """Create AiiDA User instance from AiiDA orm."""
-        return User(
-            id=ormobj.id,
-            first_name=ormobj.first_name,
-            last_name=ormobj.last_name,
-            email=ormobj.email,
-            institution=ormobj.institution,
-        )
