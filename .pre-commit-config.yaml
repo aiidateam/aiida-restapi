@@ -1,45 +1,71 @@
 # Install pre-commit hooks via:
 # pre-commit install
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.4.0
-  hooks:
-    - id: double-quote-string-fixer
-    - id: end-of-file-fixer
-    - id: fix-encoding-pragma
-    - id: mixed-line-ending
-    - id: trailing-whitespace
-    - id: check-json
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: end-of-file-fixer
+      - id: fix-encoding-pragma
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: check-json
+      - id: check-yaml
 
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v0.812
-  hooks:
-  - id: mypy
-    exclude: &exclude_files >
-      (?x)^(
-          docs/.*|
-      )$
+  - repo: https://github.com/mgedmin/check-manifest
+    rev: "0.46"
+    hooks:
+    - id: check-manifest
+      args: [--no-build-isolation]
+      additional_dependencies: [setuptools>=46.4.0, "reentry"]
 
-# yapf = yet another python formatter
-- repo: https://github.com/pre-commit/mirrors-yapf
-  rev: v0.30.0
-  hooks:
-  - id: yapf
-    name: yapf
-    args: ["-i"]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.8.0
+    hooks:
+    - id: isort
 
-- repo: local
-  hooks:
-  - id: pylint
-    language: system
-    types: [file, python]
-    name: pylint
-    description: "This hook runs the pylint static code analyzer"
-    exclude: *exclude_files
-    entry: pylint
+  - repo: https://github.com/psf/black
+    rev: 21.5b2
+    hooks:
+    - id: black
 
-  - id: version-number
-    name: Check version numbers
-    entry: python ./.github/check_version.py
-    language: system
-    files: '^(setup.json)|(aiida_restapi/__init__.py)'
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.812
+    hooks:
+    - id: mypy
+      additional_dependencies:
+      - pydantic~=1.8.2
+      exclude: >
+        (?x)^(
+            docs/.*|
+            tests/.*|
+            conftest.py
+        )$
+
+  - repo: https://github.com/PyCQA/pylint
+    rev: v2.8.3
+    hooks:
+    - id: pylint
+      additional_dependencies:
+      - aiida-core>=1.6,<2.0.0
+      - sqlalchemy<1.4
+      - fastapi~=0.65.1
+      - uvicorn[standard]>=0.12.0,<0.14.0
+      - pydantic~=1.8.2
+      - python-jose
+      - python-multipart
+      - passlib
+      - pytest~=3.6,<5.0.0
+      exclude: >
+        (?x)^(
+            docs/.*|
+        )$
+
+  - repo: local
+    hooks:
+    - id: version-number
+      name: Check version numbers
+      entry: python ./.github/check_version.py ./setup.json ./aiida_restapi/__init__.py
+      language: python
+      language_version: python3
+      pass_filenames: false
+      files: "^(setup.json)|(aiida_restapi/__init__.py)"

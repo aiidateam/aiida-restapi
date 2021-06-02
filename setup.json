@@ -24,6 +24,7 @@
     "include_package_data": true,
     "setup_requires": ["reentry"],
     "reentry_register": true,
+    "python_requires": ">=3.7,<4",
     "install_requires": [
         "aiida-core>=1.6,<2.0.0",
         "sqlalchemy<1.4",
@@ -41,8 +42,7 @@
             "requests"
         ],
         "pre-commit": [
-            "pre-commit~=2.2",
-            "pylint~=2.8.2"
+            "pre-commit~=2.12"
         ],
         "docs": [
             "sphinx",

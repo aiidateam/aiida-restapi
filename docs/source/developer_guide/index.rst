@@ -10,6 +10,10 @@ The following will discover and run all unit test::
     pip install -e .[testing]
     pytest -v
 
+Or via `tox <https://tox.readthedocs.io>` in an automated virtual environment (see the tox.ini file):
+
+    tox
+
 Automatic coding style checks
 +++++++++++++++++++++++++++++
 
@@ -18,7 +22,7 @@ Enable enable automatic checks of code sanity and coding style::
     pip install -e .[pre-commit]
     pre-commit install
 
-After this, the `yapf <https://github.com/google/yapf>`_ formatter,
+After this, the `black <https://black.readthedocs.io>`_ formatter,
 the `pylint <https://www.pylint.org/>`_ linter
 and the `pylint <https://www.pylint.org/>`_ code analyzer will
 run at every commit.
