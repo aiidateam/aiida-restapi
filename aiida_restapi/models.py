@@ -19,6 +19,11 @@ class User(BaseModel):
     )
     email: str = Field(description="Email address of the user")
 
+    class Config:
+        """The models configuration."""
+
+        orm_mode = True
+
     @staticmethod
     def from_orm(ormobj: AiidaUser) -> "User":
         """Create AiiDA User instance from AiiDA orm."""
