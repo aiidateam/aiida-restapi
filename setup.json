@@ -38,6 +38,7 @@
             "wheel~=0.31",
             "coverage",
             "pytest~=3.6,<5.0.0",
+            "pytest-regressions",
             "pytest-cov",
             "requests"
         ],
