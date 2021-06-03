@@ -23,17 +23,13 @@ def EntityResponse(
     use_list: bool = False,
 ) -> Type[json_api.ResponseModel]:
     """Returns entity-specif pydantic response model."""
-    response_data_model = json_api.ResponseDataModel[
-        # Literal[type_string],
-        attributes_model,
-    ]
+    response_data_model = attributes_model
     type_string = (
         attributes_model._orm_entity.__name__.lower()  # pylint: disable=protected-access
     )
     if use_list:
-        response_data_model = List[response_data_model]
         response_data_model.__name__ = f"ListResponseData[{type_string}]"
-        response_model = json_api.ResponseModel[response_data_model]
+        response_model = json_api.ResponseModel[List[response_data_model]]
         response_model.__name__ = f"ListResponse[{type_string}]"
     else:
         response_data_model.__name__ = f"ResponseData[{type_string}]"

@@ -13,21 +13,21 @@ from pydantic_jsonapi.relationships import ResponseRelationshipsType
 from pydantic_jsonapi.resource_links import ResourceLinks
 
 # TypeT = TypeVar('TypeT', bound=str)
-AttributesT = TypeVar("AttributesT")
+# AttributesT = TypeVar("AttributesT")
 
 
-class ResponseDataModel(GenericModel, Generic[AttributesT]):
+# class ResponseDataModel(GenericModel):
 
-    id: str
-    relationships: Optional[ResponseRelationshipsType]
-    links: Optional[ResourceLinks]
+#     id: str
+#     relationships: Optional[ResponseRelationshipsType]
+#     links: Optional[ResourceLinks]
 
-    class Config:
-        validate_all = True
-        extra = "allow"  # added
+#     class Config:
+#         validate_all = True
+#         extra = "allow"  # added
 
 
-DataT = TypeVar("DataT", bound=ResponseDataModel)
+DataT = TypeVar("DataT")  # , bound=ResponseDataModel)
 
 
 class ResponseModel(GenericModel, Generic[DataT]):
@@ -51,7 +51,7 @@ class ResponseModel(GenericModel, Generic[DataT]):
         attributes: Optional[dict] = None,
         relationships: Optional[dict] = None,
         links: Optional[dict] = None,
-    ) -> ResponseDataModel:
+    ) -> DataT:
         data_type = get_type_hints(cls)["data"]
         if getattr(data_type, "__origin__", None) is list:
             data_type = data_type.__args__[0]
