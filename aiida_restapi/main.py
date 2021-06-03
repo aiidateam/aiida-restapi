@@ -2,7 +2,7 @@
 """Declaration of FastAPI application."""
 from fastapi import FastAPI
 
-from aiida_restapi.routers import auth, users, graphql
+from aiida_restapi.routers import auth, graphql, users
 
 app = FastAPI()
 app.include_router(auth.router)
