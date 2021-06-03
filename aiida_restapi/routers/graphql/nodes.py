@@ -4,14 +4,9 @@ from typing import Any, Dict, List, Optional
 
 import graphene as gr
 from aiida import orm
-from aiida.cmdline.utils.decorators import with_dbenv
-from graphene.types.generic import GenericScalar
-from graphql import GraphQLError
 
-from .utils import get_projection, parse_date
-
-NODES_LIMIT = 100
-"""The maximum query limit allowed for nodes."""
+from .comments import CommentsEntity
+from .utils import ENTITY_LIMIT, JSON, get_projection, make_entities_cls, parse_date
 
 nodes_filter_kwargs = dict(
     after=gr.String(description="Earliest modified time"),
@@ -26,7 +21,7 @@ def create_nodes_filter(kwargs) -> Dict[str, Any]:
     before = kwargs.get("before")
     created_after = kwargs.get("created_after")
     created_before = kwargs.get("created_before")
-    filters = {}
+    filters: Dict[str, Any] = {}
     if after is not None and before is not None:
         filters["mtime"] = {
             "and": [{">": parse_date(after)}, {"<": parse_date(before)}]
@@ -61,20 +56,30 @@ class NodeEntity(gr.ObjectType):
     mtime = gr.DateTime(description="Last modification time")
     user_id = gr.Int(description="Created by user id (pk)")
     dbcomputer_id = gr.Int(description="Associated computer id (pk)")
-    attributes = GenericScalar(
+    attributes = JSON(
         description="Variable attributes of the node",
         filter=gr.List(
             gr.String,
             description="return an exact set of attributes keys (non-existent will return null)",
         ),
     )
-    extras = GenericScalar(
+    extras = JSON(
         description="Variable extras (unsealed) of the node",
         filter=gr.List(
             gr.String,
             description="return an exact set of extras keys (non-existent will return null)",
         ),
     )
+    Comments = gr.Field(CommentsEntity)
+
+    @staticmethod
+    def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
+        # pass filter specification to CommentsEntity
+        filters = {}
+        filters["dbnode_id"] = parent["id"]
+        return {"filters": filters}
+
+    # TODO it would be ideal if the attributes/extras were filtered via the SQL query
 
     @staticmethod
     def resolve_attributes(
@@ -95,46 +100,5 @@ class NodeEntity(gr.ObjectType):
         return {key: extras.get(key) for key in filter}
 
 
-class NodesEntity(gr.ObjectType):
-    count = gr.Int(description="Total number of nodes")
-    rows = gr.List(
-        NodeEntity,
-        limit=gr.Int(
-            default_value=NODES_LIMIT,
-            description=f"Maximum number of rows to return (no more than {NODES_LIMIT}",
-        ),
-        offset=gr.Int(default_value=0, description="Skip the first n rows"),
-    )
-
-    @with_dbenv()
-    @staticmethod
-    def resolve_count(parent: Any, info: gr.ResolveInfo) -> int:
-        try:
-            filters = parent.get("filters")
-        except AttributeError:
-            filters = None
-        query = orm.QueryBuilder().append(orm.Node, filters=filters)
-        return query.count()
-
-    @with_dbenv()
-    @staticmethod
-    def resolve_rows(
-        parent: Any,
-        info: gr.ResolveInfo,
-        limit: int,
-        offset: int,
-    ) -> List[dict]:
-        if limit > NODES_LIMIT:
-            raise GraphQLError(f"nodes 'limit' must be no more than {NODES_LIMIT}")
-        project = get_projection(info)
-        try:
-            filters = parent.get("filters")
-        except AttributeError:
-            filters = None
-
-        query = orm.QueryBuilder().append(
-            orm.Node, tag="fields", filters=filters, project=project
-        )
-        query.offset(offset)
-        query.limit(limit)
-        return [d["fields"] for d in query.dict()]
+class NodesEntity(make_entities_cls(NodeEntity, orm.nodes.Node, "nodes")):
+    """A list of nodes"""
