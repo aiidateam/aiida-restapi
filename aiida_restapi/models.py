@@ -7,11 +7,10 @@ Models in this module mirror those in
 # pylint: disable=too-few-public-methods
 
 from datetime import datetime
-from typing import List, Optional, Type, TypeVar, ClassVar
-
-from pydantic import BaseModel, Field
+from typing import ClassVar, List, Optional, Type, TypeVar
 
 from aiida import orm
+from pydantic import BaseModel, Field
 
 ModelType = TypeVar("ModelType", bound="AiidaModel")
 
@@ -63,7 +62,9 @@ class AiidaModel(BaseModel):
                 order_by
             ), f"order_by not subset of projectable properties: {project!r}"
             query.order_by({"fields": order_by})
-        return [cls(**result["fields"]) for result in query.dict()]
+        return [
+            cls(**result["fields"]) for result in query.dict()  # type: ignore[call-arg]
+        ]
 
 
 class Comment(AiidaModel):
