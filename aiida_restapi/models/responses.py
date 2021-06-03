@@ -3,50 +3,40 @@
 
 Builds upon response schemas from `json_api` module.
 """
-# pylint: disable=too-few-public-methods
 
-from pydantic import Field
-from typing import TypeVar, List, Generic
+from typing import List, Type, TypeVar
 
-from pydantic.main import BaseModel
+from pydantic_jsonapi import ErrorResponse
 
-from .entities import AiidaModel
 from . import json_api
+from .entities import AiidaModel  # pylint: disable=unused-import
 
-__all__ = ('Response',)
+__all__ = ("EntityResponse", "ErrorResponse")
 
 ModelType = TypeVar("ModelType", bound="AiidaModel")
 
-class _Response(json_api.Response, Generic[ModelType]):
-    """Template model for successful REST API responses."""
-    data: ModelType = Field(description="List of requested data")
 
-def Response(resource_model: ModelType, use_list: bool = False):
-    """Returns response model for specific resource.
-
-    Use e.g. as follows::
-
-        Response(User)
-        Response(User, use_list=True)
-    
-    """
+def EntityResponse(
+    # type_string: str,
+    attributes_model: ModelType,
+    *,
+    use_list: bool = False,
+) -> Type[json_api.ResponseModel]:
+    """Returns entity-specif pydantic response model."""
+    response_data_model = json_api.ResponseDataModel[
+        # Literal[type_string],
+        attributes_model,
+    ]
+    type_string = (
+        attributes_model._orm_entity.__name__.lower()  # pylint: disable=protected-access
+    )
     if use_list:
-        resource_model = List[resource_model]
-
-    return _Response[resource_model]
-
-
-# class ResponseError(Response):
-#     """errors MUST be present and data MUST be skipped"""
-
-#     errors: List[json_api.Error] = Field(
-#         ...,
-#         description="A list of error objects.",
-#         uniqueItems=True,
-#     )
-
-#     @root_validator(pre=True)
-#     def data_must_be_skipped(cls, values):
-#         if values.get("data", None) is not None:
-#             raise ValueError("data MUST be skipped for failures reporting errors")
-#         return values
+        response_data_model = List[response_data_model]
+        response_data_model.__name__ = f"ListResponseData[{type_string}]"
+        response_model = json_api.ResponseModel[response_data_model]
+        response_model.__name__ = f"ListResponse[{type_string}]"
+    else:
+        response_data_model.__name__ = f"ResponseData[{type_string}]"
+        response_model = json_api.ResponseModel[response_data_model]
+        response_model.__name__ = f"Response[{type_string}]"
+    return response_model

@@ -8,7 +8,7 @@ def test_get_single_user(default_users, client):  # pylint: disable=unused-argum
     """Test retrieving a single user."""
     response = client.get("/users/1")
     assert response.status_code == 200
-    assert response.json()["first_name"] == "Giuseppe"
+    assert response.json()["data"]["first_name"] == "Giuseppe"
 
 
 def test_get_users(default_users, client):  # pylint: disable=unused-argument
@@ -19,7 +19,7 @@ def test_get_users(default_users, client):  # pylint: disable=unused-argument
     """
     response = client.get("/users")
     assert response.status_code == 200
-    assert len(response.json()) == 2 + 1
+    assert len(response.json()["data"]) == 2 + 1
 
 
 def test_create_user(client, authenticate):  # pylint: disable=unused-argument
@@ -30,5 +30,5 @@ def test_create_user(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
     response = client.get("/users")
-    first_names = [user["first_name"] for user in response.json()]
+    first_names = [user["first_name"] for user in response.json()["data"]]
     assert "New" in first_names

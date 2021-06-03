@@ -38,7 +38,8 @@ repos:
         (?x)^(
             docs/.*|
             tests/.*|
-            conftest.py
+            conftest.py|
+            aiida_restapi/models/json_api.py
         )$
 
   - repo: https://github.com/PyCQA/pylint
@@ -51,6 +52,7 @@ repos:
       - fastapi~=0.65.1
       - uvicorn[standard]>=0.12.0,<0.14.0
       - pydantic~=1.8.2
+      - pydantic-jsonapi==0.11.0
       - python-jose
       - python-multipart
       - passlib
