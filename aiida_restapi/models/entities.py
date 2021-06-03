@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Schemas for AiiDA REST API.
+"""ORM entity schemas for AiiDA REST API.
 
 Models in this module mirror those in
 `aiida.backends.djsite.db.models` and `aiida.backends.sqlalchemy.models`
@@ -11,6 +11,8 @@ from typing import ClassVar, List, Optional, Type, TypeVar
 
 from aiida import orm
 from pydantic import BaseModel, Field
+
+__all__ = ('AiidaModel', 'Comment', 'User')
 
 # Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
@@ -64,7 +66,7 @@ class AiidaModel(BaseModel):
             ), f"order_by not subset of projectable properties: {project!r}"
             query.order_by({"fields": order_by})
         return [
-            cls(**result["fields"]) for result in query.dict()  # type: ignore[call-arg]
+            result["fields"] for result in query.dict()  # type: ignore[call-arg]
         ]
 
 
@@ -94,3 +96,4 @@ class User(AiidaModel):
     institution: Optional[str] = Field(
         description="Host institution or workplace of the user"
     )
+

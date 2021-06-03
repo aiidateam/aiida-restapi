@@ -2,22 +2,30 @@
 """Declaration of FastAPI application."""
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, Request
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends
 
-from aiida_restapi.models import User
+from aiida_restapi.models import Response, User
 
 from .auth import get_current_active_user
 
 router = APIRouter()
 
+UserResponse = Response(User)
+UsersResponse = Response(User, use_list=True)
+UsersResponse.update_forward_refs()
 
-@router.get("/users", response_model=List[User])
+@router.get('/users', response_model=UsersResponse)
 @with_dbenv()
-async def read_users() -> List[User]:
+async def read_users() -> UsersResponse:
     """Get list of all users"""
-    return [User.from_orm(u) for u in orm.User.objects.find()]
+    #print(User.get_entities())
+    #print(UserResponse({'data':User.get_entities()}))
+    print(User.get_entities())
+    return {'data' : User.get_entities() }
+    #return UsersResponse(data=User.get_entities())
 
 
 @router.get("/users/{user_id}", response_model=User)
