@@ -12,6 +12,7 @@ from typing import ClassVar, List, Optional, Type, TypeVar
 from aiida import orm
 from pydantic import BaseModel, Field
 
+# Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
 
 
