@@ -2,7 +2,7 @@
 """Schemas for AiiDA REST API.
 
 Models in this module mirror those in
-`aiida/backends/djsite/db/models.py` and `aiida/backends/sqlalchemy/models`
+`aiida.backends.djsite.db.models` and `aiida.backends.sqlalchemy.models`
 """
 # pylint: disable=too-few-public-methods
 
