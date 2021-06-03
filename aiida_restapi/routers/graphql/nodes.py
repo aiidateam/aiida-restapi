@@ -6,8 +6,12 @@ import graphene as gr
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from graphene.types.generic import GenericScalar
+from graphql import GraphQLError
 
 from .utils import get_projection, parse_date
+
+NODES_LIMIT = 100
+"""The maximum query limit allowed for nodes."""
 
 nodes_filter_kwargs = dict(
     after=gr.String(description="Earliest modified time"),
@@ -95,7 +99,10 @@ class NodesEntity(gr.ObjectType):
     count = gr.Int(description="Total number of nodes")
     rows = gr.List(
         NodeEntity,
-        limit=gr.Int(default_value=100, description="Maximum number of rows to return"),
+        limit=gr.Int(
+            default_value=NODES_LIMIT,
+            description=f"Maximum number of rows to return (no more than {NODES_LIMIT}",
+        ),
         offset=gr.Int(default_value=0, description="Skip the first n rows"),
     )
 
@@ -117,6 +124,8 @@ class NodesEntity(gr.ObjectType):
         limit: int,
         offset: int,
     ) -> List[dict]:
+        if limit > NODES_LIMIT:
+            raise GraphQLError(f"nodes 'limit' must be no more than {NODES_LIMIT}")
         project = get_projection(info)
         try:
             filters = parent.get("filters")
