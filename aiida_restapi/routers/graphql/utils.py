@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-arguments
 
 import datetime
 from typing import Any, Dict, Iterator, List, Optional, Type

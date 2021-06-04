@@ -6,6 +6,7 @@ import graphene as gr
 from aiida import orm
 
 from .comments import CommentsEntity
+from .logs import LogsEntity
 from .utils import JSON, make_entities_cls, parse_date
 
 
@@ -38,6 +39,15 @@ class NodeEntity(gr.ObjectType):
 
     @staticmethod
     def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
+        # pass filter specification to CommentsEntity
+        filters = {}
+        filters["dbnode_id"] = parent["id"]
+        return {"filters": filters}
+
+    Logs = gr.Field(LogsEntity)
+
+    @staticmethod
+    def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
         # pass filter specification to CommentsEntity
         filters = {}
         filters["dbnode_id"] = parent["id"]

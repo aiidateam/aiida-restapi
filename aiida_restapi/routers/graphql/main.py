@@ -15,6 +15,7 @@ from starlette.graphql import GraphQLApp
 from .comments import CommentEntity, CommentsEntity
 from .computers import ComputerEntity, ComputersEntity
 from .groups import GroupEntity, GroupsEntity
+from .logs import LogEntity, LogsEntity
 from .nodes import NodeEntity, NodesEntity
 from .users import UserEntity, UsersEntity
 from .utils import ENTITY_LIMIT, get_projection
@@ -133,7 +134,20 @@ class Query(gr.ObjectType):
 
     @staticmethod
     def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to NodesEntity
+        # pass filter to CommentsEntity
+        return {}
+
+    Log = gr.Field(LogEntity, id=gr.Int(required=True))
+
+    @staticmethod
+    def resolve_Log(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+        return resolve_entity(orm.Log, info, id)
+
+    Logs = gr.Field(LogsEntity)
+
+    @staticmethod
+    def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
+        # pass filter to LogsEntity
         return {}
 
     Group = gr.Field(GroupEntity, id=gr.Int(required=True))
