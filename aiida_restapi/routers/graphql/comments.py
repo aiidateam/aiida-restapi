@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=too-few-public-methods
+
 import graphene as gr
 from aiida.orm import Comment
 

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=unused-argument
+
 from typing import Any
 
 import graphene as gr
