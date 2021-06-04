@@ -6,43 +6,7 @@ import graphene as gr
 from aiida import orm
 
 from .comments import CommentsEntity
-from .utils import ENTITY_LIMIT, JSON, get_projection, make_entities_cls, parse_date
-
-nodes_filter_kwargs = dict(
-    after=gr.String(description="Earliest modified time"),
-    before=gr.String(description="Latest modified time"),
-    created_after=gr.String(description="Earliest created time"),
-    created_before=gr.String(description="Latest created time"),
-)
-
-
-def create_nodes_filter(kwargs) -> Dict[str, Any]:
-    after = kwargs.get("after")
-    before = kwargs.get("before")
-    created_after = kwargs.get("created_after")
-    created_before = kwargs.get("created_before")
-    filters: Dict[str, Any] = {}
-    if after is not None and before is not None:
-        filters["mtime"] = {
-            "and": [{">": parse_date(after)}, {"<": parse_date(before)}]
-        }
-    elif after is not None:
-        filters["mtime"] = {">": parse_date(after)}
-    elif before is not None:
-        filters["mtime"] = {"<": parse_date(before)}
-
-    if created_after is not None and created_before is not None:
-        filters["ctime"] = {
-            "and": [
-                {">": parse_date(created_after)},
-                {"<": parse_date(created_before)},
-            ]
-        }
-    elif created_after is not None:
-        filters["ctime"] = {">": parse_date(created_after)}
-    elif created_before is not None:
-        filters["ctime"] = {"<": parse_date(created_before)}
-    return filters
+from .utils import JSON, make_entities_cls, parse_date
 
 
 class NodeEntity(gr.ObjectType):
@@ -102,3 +66,54 @@ class NodeEntity(gr.ObjectType):
 
 class NodesEntity(make_entities_cls(NodeEntity, orm.nodes.Node, "nodes")):
     """A list of nodes"""
+
+    @staticmethod
+    def get_filter_kwargs():
+        """Return a mapping of parameters to filter fields."""
+        return dict(
+            after=gr.String(
+                description="Earliest modified time (allows most known formats to represent a date and/or time)"
+            ),
+            before=gr.String(
+                description="Latest modified time (allows most known formats to represent a date and/or time)"
+            ),
+            created_after=gr.String(
+                description="Earliest created time (allows most known formats to represent a date and/or time)"
+            ),
+            created_before=gr.String(
+                description="Latest created time (allows most known formats to represent a date and/or time)"
+            ),
+        )
+
+    @staticmethod
+    def create_nodes_filter(kwargs) -> Dict[str, Any]:
+        """Given keyword arguments from the resolver,
+        create a filter dictionary to parse to the ``QueryBuilder``."""
+
+        after = kwargs.get("after")
+        before = kwargs.get("before")
+        created_after = kwargs.get("created_after")
+        created_before = kwargs.get("created_before")
+
+        filters: Dict[str, Any] = {}
+        if after is not None and before is not None:
+            filters["mtime"] = {
+                "and": [{">": parse_date(after)}, {"<": parse_date(before)}]
+            }
+        elif after is not None:
+            filters["mtime"] = {">": parse_date(after)}
+        elif before is not None:
+            filters["mtime"] = {"<": parse_date(before)}
+
+        if created_after is not None and created_before is not None:
+            filters["ctime"] = {
+                "and": [
+                    {">": parse_date(created_after)},
+                    {"<": parse_date(created_before)},
+                ]
+            }
+        elif created_after is not None:
+            filters["ctime"] = {">": parse_date(created_after)}
+        elif created_before is not None:
+            filters["ctime"] = {"<": parse_date(created_before)}
+        return filters

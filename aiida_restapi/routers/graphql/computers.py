@@ -4,7 +4,7 @@ from typing import Any
 import graphene as gr
 from aiida.orm import Computer
 
-from .nodes import NodesEntity, create_nodes_filter, nodes_filter_kwargs
+from .nodes import NodesEntity
 from .utils import JSON, make_entities_cls
 
 
@@ -17,12 +17,12 @@ class ComputerEntity(gr.ObjectType):
     scheduler_type = gr.String(description="Scheduler type")
     transport_type = gr.String(description="Transport type")
     metadata = JSON(description="Metadata of the computer")
-    Nodes = gr.Field(NodesEntity, **nodes_filter_kwargs)
+    Nodes = gr.Field(NodesEntity, **NodesEntity.get_filter_kwargs())
 
     @staticmethod
     def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs) -> dict:
         # pass filter specification to NodesEntity
-        filters = create_nodes_filter(kwargs)
+        filters = NodesEntity.create_nodes_filter(kwargs)
         filters["dbcomputer_id"] = parent["id"]
         return {"filters": filters}
 

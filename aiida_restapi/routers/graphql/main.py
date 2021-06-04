@@ -10,7 +10,7 @@ from starlette.graphql import GraphQLApp
 from .comments import CommentEntity, CommentsEntity
 from .computers import ComputerEntity, ComputersEntity
 from .groups import GroupEntity, GroupsEntity
-from .nodes import NodeEntity, NodesEntity, create_nodes_filter, nodes_filter_kwargs
+from .nodes import NodeEntity, NodesEntity
 from .users import UserEntity, UsersEntity
 from .utils import get_projection
 
@@ -72,12 +72,12 @@ class Query(gr.ObjectType):
     def resolve_Node(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.nodes.Node, info, id)
 
-    Nodes = gr.Field(NodesEntity, **nodes_filter_kwargs)
+    Nodes = gr.Field(NodesEntity, **NodesEntity.get_filter_kwargs())
 
     @staticmethod
     def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs) -> dict:
         # pass filter to NodesEntity
-        return {"filters": create_nodes_filter(kwargs)}
+        return {"filters": NodesEntity.create_nodes_filter(kwargs)}
 
     Comment = gr.Field(CommentEntity, id=gr.Int(required=True))
 
