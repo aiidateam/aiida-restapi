@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=redefined-builtin,unused-argument,too-few-public-methods,missing-function-docstring
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+import aiida
 import graphene as gr
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.plugins.entry_point import (
+    ENTRY_POINT_GROUP_TO_MODULE_PATH_MAP,
+    get_entry_point_names,
+)
 from starlette.graphql import GraphQLApp
 
 from .comments import CommentEntity, CommentsEntity
@@ -12,7 +17,7 @@ from .computers import ComputerEntity, ComputersEntity
 from .groups import GroupEntity, GroupsEntity
 from .nodes import NodeEntity, NodesEntity
 from .users import UserEntity, UsersEntity
-from .utils import get_projection
+from .utils import ENTITY_LIMIT, get_projection
 
 ENTITY_DICT_TYPE = Optional[Dict[str, Any]]
 
@@ -33,7 +38,46 @@ def resolve_entity(
     return entities[0]["result"]
 
 
+class EntryPoints(gr.ObjectType):
+    group = gr.String()
+    names = gr.List(gr.String)
+
+
 class Query(gr.ObjectType):
+
+    rowLimitMax = gr.Int(
+        description="Maximum amount of entity rows you are allowed to return from a query"
+    )
+
+    @staticmethod
+    def resolve_rowLimitMax(parent: Any, info: gr.ResolveInfo) -> int:
+        return ENTITY_LIMIT
+
+    aiidaVersion = gr.String(description="Version of aiida-core")
+
+    @staticmethod
+    def resolve_aiidaVersion(parent: Any, info: gr.ResolveInfo) -> str:
+        return aiida.__version__
+
+    aiidaEntryPointGroups = gr.List(
+        gr.String, description="List of the entrypoint groups"
+    )
+
+    @staticmethod
+    def resolve_aiidaEntryPointGroups(parent: Any, info: gr.ResolveInfo) -> List[str]:
+        return list(ENTRY_POINT_GROUP_TO_MODULE_PATH_MAP.keys())
+
+    aiidaEntryPoints = gr.Field(
+        EntryPoints,
+        description="List of the entrypoints in a groups",
+        group=gr.String(required=True),
+    )
+
+    @staticmethod
+    def resolve_aiidaEntryPoints(
+        parent: Any, info: gr.ResolveInfo, group: str
+    ) -> Dict[str, Any]:
+        return {"group": group, "names": get_entry_point_names(group)}
 
     User = gr.Field(UserEntity, id=gr.Int(required=True))
 

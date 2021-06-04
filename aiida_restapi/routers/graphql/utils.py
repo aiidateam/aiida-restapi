@@ -2,7 +2,7 @@
 # pylint: disable=unused-argument
 
 import datetime
-from typing import Any, Dict, Iterator, List, Type
+from typing import Any, Dict, Iterator, List, Optional, Type
 
 import graphene as gr
 from aiida import orm
@@ -42,6 +42,11 @@ def make_entities_cls(
                 description=f"Maximum number of rows to return (no more than {ENTITY_LIMIT}",
             ),
             offset=gr.Int(default_value=0, description="Skip the first n rows"),
+            orderBy=gr.String(description="Field to order rows by"),
+            orderAsc=gr.Boolean(
+                default_value=True,
+                description="Sort field in ascending order, else descending.",
+            ),
         )
 
         @with_dbenv()
@@ -62,11 +67,15 @@ def make_entities_cls(
             info: gr.ResolveInfo,
             limit: int,
             offset: int,
+            orderAsc: bool,
+            orderBy: Optional[str] = None,
         ) -> List[Dict[str, Any]]:
             """Return a list of field dicts, for the entity class to resolve.
 
             :param limit: Set the limit (nr of rows to return)
-            :param
+            :param offset: Skip the first n rows
+            :param orderBy: Field to order by
+            :param orderAsc: Sort field in ascending order, else descending
             """
             if limit > ENTITY_LIMIT:
                 raise GraphQLError(
@@ -83,6 +92,8 @@ def make_entities_cls(
             )
             query.offset(offset)
             query.limit(limit)
+            if orderBy:
+                query.order_by({"fields": {orderBy: "asc" if orderAsc else "desc"}})
             return [d["fields"] for d in query.dict()]
 
     return Entities
