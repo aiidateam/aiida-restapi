@@ -14,12 +14,6 @@ def replace_dynamic(data: dict) -> dict:
         "user_id",
         "mtime",
         "ctime",
-        "hostname",
-        "name",
-        "scheduler_type",
-        "transport_type",
-        "local",
-        "metadata",
     ]:
         if key in data:
             data[key] = type(data[key]).__name__

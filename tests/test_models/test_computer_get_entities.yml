@@ -1,7 +1,7 @@
-- hostname: str
+- hostname: localhost_1
   id: int
-  metadata: dict
-  name: str
-  scheduler_type: str
-  transport_type: str
+  metadata: {}
+  name: test_comp_1
+  scheduler_type: pbspro
+  transport_type: local
   uuid: str
