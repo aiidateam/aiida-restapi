@@ -35,8 +35,18 @@ def default_users():
 @pytest.fixture(scope="function")
 def default_computers():
     """Populate database with some computer"""
-    orm.Computer("test_comp_1", "localhost_1", "desc", "local", "direct").store()
-    orm.Computer("test_comp_2", "localhost_2", "desc", "local", "direct").store()
+    orm.Computer(
+        label="test_comp_1",
+        hostname="localhost_1",
+        transport_type="local",
+        scheduler_type="pbspro",
+    ).store()
+    orm.Computer(
+        label="test_comp_2",
+        hostname="localhost_2",
+        transport_type="local",
+        scheduler_type="pbspro",
+    ).store()
 
 
 @pytest.fixture(scope="function")

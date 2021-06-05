@@ -14,23 +14,23 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
-@router.get("/computers", response_model=List[Computer])
-@with_dbenv()
-async def read_computers() -> List[Computer]:
-    """Get list of all computers"""
-    qbobj = QueryBuilder().append(orm.Computer, project=["**"])
-    return [comp["computer_1"] for comp in qbobj.dict()]
-    # return [Computer(**result for result inlist(qbobj.dict()[0].values())
-
-
 @router.get("/computers/{comp_id}", response_model=Computer)
 @with_dbenv()
 async def read_computer(comp_id: int) -> Optional[Computer]:
     """Get computer by id."""
     qbobj = QueryBuilder()
     qbobj.append(orm.Computer, filters={"id": comp_id}, project=["**"]).limit(1)
-    print(qbobj.dict())
+
     return qbobj.dict()[0]["computer_1"]
+
+
+@router.get("/computers", response_model=List[Computer])
+@with_dbenv()
+async def read_computers() -> List[Computer]:
+    """Get list of all computers"""
+    qbobj = QueryBuilder().append(orm.Computer, project=["**"])
+
+    return [comp["computer_1"] for comp in qbobj.dict()]
 
 
 @router.post("/computers", response_model=Computer)
@@ -43,8 +43,5 @@ async def create_computer(
 ) -> Computer:
     """Create new AiiDA computer."""
     orm_computer = orm.Computer(**computer.dict(exclude_unset=True)).store()
-    # print(Computer.from_orm(orm_computer).__repr__())
-    # import pdb
 
-    # pdb.set_trace()
     return Computer.from_orm(orm_computer)
