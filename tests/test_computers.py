@@ -11,6 +11,22 @@ def test_get_computers(default_computers, client):  # pylint: disable=unused-arg
     assert len(response.json()) == 2
 
 
+def test_get_computers_projectable(client):
+    """Test get projectable properites."""
+    response = client.get("/computers/projectable_properties")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        "id",
+        "uuid",
+        "name",
+        "hostname",
+        "scheduler_type",
+        "transport_type",
+        "metadata",
+    ]
+
+
 @pytest.mark.xfail
 def test_get_single_computers(
     default_computers, client

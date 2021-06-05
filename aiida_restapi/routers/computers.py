@@ -14,6 +14,22 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
+@router.get("/computers", response_model=List[Computer])
+@with_dbenv()
+async def read_computers() -> List[Computer]:
+    """Get list of all computers"""
+    qbobj = QueryBuilder().append(orm.Computer, project=["**"])
+
+    return [comp["computer_1"] for comp in qbobj.dict()]
+
+
+@router.get("/computers/projectable_properties", response_model=List[str])
+async def get_computers_projectable_properties() -> List[str]:
+    """Get projectable properties for computers endpoint"""
+
+    return Computer.get_projectable_properties()
+
+
 @router.get("/computers/{comp_id}", response_model=Computer)
 @with_dbenv()
 async def read_computer(comp_id: int) -> Optional[Computer]:
@@ -22,15 +38,6 @@ async def read_computer(comp_id: int) -> Optional[Computer]:
     qbobj.append(orm.Computer, filters={"id": comp_id}, project=["**"]).limit(1)
 
     return qbobj.dict()[0]["computer_1"]
-
-
-@router.get("/computers", response_model=List[Computer])
-@with_dbenv()
-async def read_computers() -> List[Computer]:
-    """Get list of all computers"""
-    qbobj = QueryBuilder().append(orm.Computer, project=["**"])
-
-    return [comp["computer_1"] for comp in qbobj.dict()]
 
 
 @router.post("/computers", response_model=Computer)

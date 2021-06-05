@@ -1,0 +1,7 @@
+- hostname: str
+  id: int
+  metadata: dict
+  name: str
+  scheduler_type: str
+  transport_type: str
+  uuid: str

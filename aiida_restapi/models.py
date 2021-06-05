@@ -99,6 +99,8 @@ class User(AiidaModel):
 class Computer(AiidaModel):
     """AiiDA Computer Model."""
 
+    _orm_entity = orm.Computer
+
     id: Optional[int] = Field(description="Unique computer id (pk)")
     uuid: Optional[str] = Field(description="Unique id for computer")
     name: str = Field(description="Used to identify a computer. Must be unique")
