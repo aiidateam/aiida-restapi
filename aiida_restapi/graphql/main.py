@@ -5,38 +5,20 @@ from typing import Any, Dict, List, Optional
 import aiida
 import graphene as gr
 from aiida import orm
-from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins.entry_point import (
     ENTRY_POINT_GROUP_TO_MODULE_PATH_MAP,
     get_entry_point_names,
 )
 from starlette.graphql import GraphQLApp
 
-from .comments import CommentEntity, CommentsEntity
-from .computers import ComputerEntity, ComputersEntity
-from .groups import GroupEntity, GroupsEntity
-from .logs import LogEntity, LogsEntity
-from .nodes import NodeEntity, NodesEntity
-from .users import UserEntity, UsersEntity
-from .utils import ENTITY_LIMIT, get_projection
-
-ENTITY_DICT_TYPE = Optional[Dict[str, Any]]
-
-
-@with_dbenv()
-def resolve_entity(
-    entity: orm.Entity, info: gr.ResolveInfo, pk: int
-) -> ENTITY_DICT_TYPE:
-    """Query for a single entity, and project only the fields requested."""
-    project = get_projection(info)
-    entities = (
-        orm.QueryBuilder()
-        .append(entity, tag="result", filters={"id": pk}, project=project)
-        .dict()
-    )
-    if not entities:
-        return None
-    return entities[0]["result"]
+from .comments import CommentQuery, CommentsQuery
+from .computers import ComputerQuery, ComputersQuery
+from .config import ENTITY_LIMIT
+from .groups import GroupQuery, GroupsQuery
+from .logs import LogQuery, LogsQuery
+from .nodes import NodeQuery, NodesQuery
+from .orm_factories import ENTITY_DICT_TYPE, resolve_entity
+from .users import UserQuery, UsersQuery
 
 
 class EntryPoints(gr.ObjectType):
@@ -45,6 +27,7 @@ class EntryPoints(gr.ObjectType):
 
 
 class Query(gr.ObjectType):
+    """The top-level query."""
 
     rowLimitMax = gr.Int(
         description="Maximum amount of entity rows you are allowed to return from a query"
@@ -80,20 +63,20 @@ class Query(gr.ObjectType):
     ) -> Dict[str, Any]:
         return {"group": group, "names": get_entry_point_names(group)}
 
-    User = gr.Field(UserEntity, id=gr.Int(required=True))
+    User = gr.Field(UserQuery, id=gr.Int(required=True))
 
     @staticmethod
     def resolve_User(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.User, info, id)
 
-    Users = gr.Field(UsersEntity)
+    Users = gr.Field(UsersQuery)
 
     @staticmethod
     def resolve_Users(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to UsersEntity
+        # pass filter to UsersQuery
         return {}
 
-    Computer = gr.Field(ComputerEntity, id=gr.Int(required=True))
+    Computer = gr.Field(ComputerQuery, id=gr.Int(required=True))
 
     @staticmethod
     def resolve_Computer(
@@ -101,15 +84,15 @@ class Query(gr.ObjectType):
     ) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.Computer, info, id)
 
-    Computers = gr.Field(ComputersEntity)
+    Computers = gr.Field(ComputersQuery)
 
     @staticmethod
     def resolve_Computers(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to ComputersEntity
+        # pass filter to ComputersQuery
         return {}
 
     Node = gr.Field(
-        NodeEntity,
+        NodeQuery,
         id=gr.Int(required=True),
     )
 
@@ -117,50 +100,50 @@ class Query(gr.ObjectType):
     def resolve_Node(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.nodes.Node, info, id)
 
-    Nodes = gr.Field(NodesEntity, **NodesEntity.get_filter_kwargs())
+    Nodes = gr.Field(NodesQuery, **NodesQuery.get_filter_kwargs())
 
     @staticmethod
     def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs) -> dict:
-        # pass filter to NodesEntity
-        return {"filters": NodesEntity.create_nodes_filter(kwargs)}
+        # pass filter to NodesQuery
+        return {"filters": NodesQuery.create_nodes_filter(kwargs)}
 
-    Comment = gr.Field(CommentEntity, id=gr.Int(required=True))
+    Comment = gr.Field(CommentQuery, id=gr.Int(required=True))
 
     @staticmethod
     def resolve_Comment(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.Comment, info, id)
 
-    Comments = gr.Field(CommentsEntity)
+    Comments = gr.Field(CommentsQuery)
 
     @staticmethod
     def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to CommentsEntity
+        # pass filter to CommentsQuery
         return {}
 
-    Log = gr.Field(LogEntity, id=gr.Int(required=True))
+    Log = gr.Field(LogQuery, id=gr.Int(required=True))
 
     @staticmethod
     def resolve_Log(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.Log, info, id)
 
-    Logs = gr.Field(LogsEntity)
+    Logs = gr.Field(LogsQuery)
 
     @staticmethod
     def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to LogsEntity
+        # pass filter to LogsQuery
         return {}
 
-    Group = gr.Field(GroupEntity, id=gr.Int(required=True))
+    Group = gr.Field(GroupQuery, id=gr.Int(required=True))
 
     @staticmethod
     def resolve_Group(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
         return resolve_entity(orm.Group, info, id)
 
-    Groups = gr.Field(GroupsEntity)
+    Groups = gr.Field(GroupsQuery)
 
     @staticmethod
     def resolve_Groups(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter to GroupsEntity
+        # pass filter to GroupsQuery
         return {}
 
 

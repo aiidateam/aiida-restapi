@@ -5,22 +5,17 @@ from typing import Any, Dict, List, Optional
 import graphene as gr
 from aiida import orm
 
-from .comments import CommentsEntity
-from .logs import LogsEntity
-from .utils import JSON, make_entities_cls, parse_date
+from .comments import CommentsQuery
+from .logs import LogsQuery
+from .orm_factories import multirow_cls_factory, single_cls_factory
+from .utils import JSON, parse_date
 
 
-class NodeEntity(gr.ObjectType):
-    id = gr.Int(description="Unique id (pk)")
-    uuid = gr.ID(description="Unique uuid")
-    node_type = gr.String(description="Node type")
-    process_type = gr.String(description="Process type")
-    label = gr.String(description="Label of node")
-    description = gr.String(description="Description of node")
-    ctime = gr.DateTime(description="Creation time")
-    mtime = gr.DateTime(description="Last modification time")
-    user_id = gr.Int(description="Created by user id (pk)")
-    dbcomputer_id = gr.Int(description="Associated computer id (pk)")
+class NodeQuery(
+    single_cls_factory(orm.nodes.Node, exclude_fields=("attributes", "extras"))
+):
+    """An AiiDA Node"""
+
     attributes = JSON(
         description="Variable attributes of the node",
         filter=gr.List(
@@ -35,20 +30,20 @@ class NodeEntity(gr.ObjectType):
             description="return an exact set of extras keys (non-existent will return null)",
         ),
     )
-    Comments = gr.Field(CommentsEntity)
+    Comments = gr.Field(CommentsQuery)
 
     @staticmethod
     def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter specification to CommentsEntity
+        # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
         return {"filters": filters}
 
-    Logs = gr.Field(LogsEntity)
+    Logs = gr.Field(LogsQuery)
 
     @staticmethod
     def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
-        # pass filter specification to CommentsEntity
+        # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
         return {"filters": filters}
@@ -74,8 +69,8 @@ class NodeEntity(gr.ObjectType):
         return {key: extras.get(key) for key in filter}
 
 
-class NodesEntity(make_entities_cls(NodeEntity, orm.nodes.Node, "nodes")):
-    """A list of nodes"""
+class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):
+    """All AiiDA Nodes"""
 
     @staticmethod
     def get_filter_kwargs():
