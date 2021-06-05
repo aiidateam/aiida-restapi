@@ -33,6 +33,13 @@ def default_users():
 
 
 @pytest.fixture(scope="function")
+def default_computers():
+    """Populate database with some computer"""
+    orm.Computer("test_comp_1", "localhost_1", "desc", "local", "direct").store()
+    orm.Computer("test_comp_2", "localhost_2", "desc", "local", "direct").store()
+
+
+@pytest.fixture(scope="function")
 def authenticate():
     """Authenticate user.
 
