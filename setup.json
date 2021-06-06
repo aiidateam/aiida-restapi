@@ -46,6 +46,10 @@
       "sphinxcontrib-details-directive; python_version>='3.0'",
       "sphinx-rtd-theme"
     ],
-    "auth": ["python-jose", "python-multipart", "passlib"]
+    "auth": [
+      "python-jose",
+      "python-multipart",
+      "passlib"
+    ]
   }
 }
