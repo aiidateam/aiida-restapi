@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Classes and functions to auto-generate base ObjectTypes for aiida orm entities."""
+# pylint: disable=unused-argument
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Type
 from uuid import UUID
@@ -9,7 +10,7 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from graphql import GraphQLError
 
-from aiida_restapi.orm_mappings import ORM_MAPPING, Json
+from aiida_restapi.orm_mappings import ORM_MAPPING
 
 from .config import ENTITY_LIMIT
 from .utils import JSON, get_projection
@@ -27,7 +28,8 @@ _type_mapping = {
 
 def fields_from_orm(
     cls: Type[orm.Entity], exclude_fields: Sequence[str] = ()
-) -> Dict[str, Any]:
+) -> Dict[str, gr.Scalar]:
+    """Extract the fields from an AIIDA ORM class and convert them to graphene objects."""
     output = {}
     for name, field in ORM_MAPPING[cls].__fields__.items():
         if name in exclude_fields:
@@ -40,6 +42,7 @@ def fields_from_orm(
 def single_cls_factory(
     orm_cls: Type[orm.Entity], exclude_fields: Sequence[str] = ()
 ) -> Type[gr.ObjectType]:
+    """Create a graphene class with standard fields/resolvers for querying a single AiiDA ORM entity."""
     return type(
         "AiidaOrmObjectType", (gr.ObjectType,), fields_from_orm(orm_cls, exclude_fields)
     )
@@ -48,9 +51,10 @@ def single_cls_factory(
 def multirow_cls_factory(
     entity_cls: Type[gr.ObjectType], orm_cls: Type[orm.Entity], name: str
 ) -> Type[gr.ObjectType]:
-    """Return a class with standard fields/resolvers for querying multiple rows of the same entity."""
+    """Create a graphene class with standard fields/resolvers for querying multiple rows of the same AiiDA ORM entity."""
 
     class AiidaOrmRowsType(gr.ObjectType):
+        """A class for querying multiple rows of the same AiiDA ORM entity."""
 
         count = gr.Int(description=f"Total number of rows of {name}")
         rows = gr.List(
@@ -80,7 +84,7 @@ def multirow_cls_factory(
 
         @with_dbenv()
         @staticmethod
-        def resolve_rows(
+        def resolve_rows(  # pylint: disable=too-many-arguments
             parent: Any,
             info: gr.ResolveInfo,
             limit: int,

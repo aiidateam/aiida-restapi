@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Utility functions for graphql."""
 # pylint: disable=unused-argument,too-many-arguments
 
 import datetime

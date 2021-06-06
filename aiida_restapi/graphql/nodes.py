@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=redefined-builtin,unused-argument,too-few-public-methods,missing-function-docstring
+"""Defines plugins for AiiDA nodes."""
+# pylint: disable=redefined-builtin,too-few-public-methods,unused-argument
 from typing import Any, Dict, List, Optional
 
 import graphene as gr
 from aiida import orm
 
+from aiida_restapi.graphql.plugins import QueryPlugin
+
 from .comments import CommentsQuery
 from .logs import LogsQuery
-from .orm_factories import multirow_cls_factory, single_cls_factory
+from .orm_factories import (
+    ENTITY_DICT_TYPE,
+    multirow_cls_factory,
+    resolve_entity,
+    single_cls_factory,
+)
 from .utils import JSON, parse_date
 
 
 class NodeQuery(
-    single_cls_factory(orm.nodes.Node, exclude_fields=("attributes", "extras"))
+    single_cls_factory(orm.nodes.Node, exclude_fields=("attributes", "extras"))  # type: ignore[misc]
 ):
-    """An AiiDA Node"""
+    """Query an AiiDA Node"""
 
     attributes = JSON(
         description="Variable attributes of the node",
@@ -34,6 +42,7 @@ class NodeQuery(
 
     @staticmethod
     def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
         # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
@@ -43,6 +52,7 @@ class NodeQuery(
 
     @staticmethod
     def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
         # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
@@ -52,8 +62,9 @@ class NodeQuery(
 
     @staticmethod
     def resolve_attributes(
-        parent, info: gr.ResolveInfo, filter: Optional[List[str]] = None
-    ):
+        parent: Any, info: gr.ResolveInfo, filter: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Resolution function."""
         attributes = parent.get("attributes")
         if filter is None or attributes is None:
             return attributes
@@ -61,19 +72,20 @@ class NodeQuery(
 
     @staticmethod
     def resolve_extras(
-        parent, info: gr.ResolveInfo, filter: Optional[List[str]] = None
-    ):
+        parent: Any, info: gr.ResolveInfo, filter: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Resolution function."""
         extras = parent.get("extras")
         if filter is None or extras is None:
             return extras
         return {key: extras.get(key) for key in filter}
 
 
-class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):
-    """All AiiDA Nodes"""
+class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):  # type: ignore[misc]
+    """Query all AiiDA Nodes"""
 
     @staticmethod
-    def get_filter_kwargs():
+    def get_filter_kwargs() -> Dict[str, gr.Scalar]:
         """Return a mapping of parameters to filter fields."""
         return dict(
             after=gr.String(
@@ -91,7 +103,7 @@ class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):
         )
 
     @staticmethod
-    def create_nodes_filter(kwargs) -> Dict[str, Any]:
+    def create_nodes_filter(kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """Given keyword arguments from the resolver,
         create a filter dictionary to parse to the ``QueryBuilder``."""
 
@@ -122,3 +134,22 @@ class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):
         elif created_before is not None:
             filters["ctime"] = {"<": parse_date(created_before)}
         return filters
+
+
+def resolve_Node(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+    """Resolution function."""
+    return resolve_entity(orm.nodes.Node, info, id)
+
+
+def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs: Any) -> dict:
+    """Resolution function."""
+    # pass filter to NodesQuery
+    return {"filters": NodesQuery.create_nodes_filter(kwargs)}
+
+
+NodeQueryPlugin = QueryPlugin(
+    "Node", gr.Field(NodeQuery, id=gr.Int(required=True)), resolve_Node
+)
+NodesQueryPlugin = QueryPlugin(
+    "Nodes", gr.Field(NodesQuery, **NodesQuery.get_filter_kwargs()), resolve_Nodes
+)
