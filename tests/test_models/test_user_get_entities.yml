@@ -1,0 +1,10 @@
+- email: tests@aiida.mail
+  first_name: AiiDA
+  id: int
+  institution: aiidateam
+  last_name: Plugintest
+- email: verdi@opera.net
+  first_name: Giuseppe
+  id: int
+  institution: ''
+  last_name: Verdi

@@ -1,0 +1,7 @@
+- content: content
+  ctime: datetime
+  dbnode_id: int
+  id: int
+  mtime: datetime
+  user_id: int
+  uuid: str
