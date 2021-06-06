@@ -39,7 +39,9 @@
       "pytest-cov",
       "requests"
     ],
-    "pre-commit": ["pre-commit~=2.12"],
+    "pre-commit": [
+      "pre-commit~=2.12"
+    ],
     "docs": [
       "sphinx",
       "sphinxcontrib-contentui",
