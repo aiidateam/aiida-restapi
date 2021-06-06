@@ -54,8 +54,8 @@
             "sphinx-rtd-theme"
         ],
         "auth": [
-            "python-jose", 
-            "python-multipart", 
+            "python-jose",
+            "python-multipart",
             "passlib"
         ]
     }
