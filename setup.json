@@ -14,8 +14,12 @@
     ],
     "version": "0.1.0a0",
     "entry_points": {
-        "aiida.data": ["restapi = aiida_restapi.data:DiffParameters"],
-        "aiida.cmdline.data": ["restapi = aiida_restapi.cli:data_cli"]
+        "aiida.data": [
+            "restapi = aiida_restapi.data:DiffParameters"
+        ],
+        "aiida.cmdline.data": [
+            "restapi = aiida_restapi.cli:data_cli"
+        ]
     },
     "include_package_data": true,
     "setup_requires": ["reentry"],
@@ -52,6 +56,7 @@
         "auth": [
             "python-jose", 
             "python-multipart", 
-            "passlib"]
+            "passlib"
+        ]
     }
 }
