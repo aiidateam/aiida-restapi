@@ -2,7 +2,7 @@
 """Classes and functions to auto-generate base ObjectTypes for aiida orm entities."""
 # pylint: disable=unused-argument
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Type
+from typing import Any, Dict, List, Optional, Sequence, Set, Type
 from uuid import UUID
 
 import graphene as gr
@@ -13,7 +13,7 @@ from graphql import GraphQLError
 from aiida_restapi.orm_mappings import ORM_MAPPING
 
 from .config import ENTITY_LIMIT
-from .utils import JSON, get_projection
+from .utils import JSON, selected_field_names_naive
 
 _type_mapping = {
     int: gr.Int,
@@ -39,6 +39,30 @@ def fields_from_orm(
     return output
 
 
+def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
+    """Extract the field names from an AIIDA ORM class."""
+    return set(ORM_MAPPING[cls].__fields__.keys())
+
+
+def get_projection(db_fields: Set[str], info: gr.ResolveInfo) -> List[str]:
+    """Traverse the child AST, to work out what fields we should project.
+
+    Any fields found that are not database fields, are assumed to be joins.
+    If any joins are present, we always include "id", so they can be linked.
+
+    We fallback to "**" (all fields) if the selection set cannot be identified.
+    """
+    try:
+        selected = set(selected_field_names_naive(info.field_asts[0].selection_set))
+        fields = db_fields.intersection(selected)
+        joins = db_fields.difference(selected)
+        if joins:
+            fields.add("id")
+        return list(fields)
+    except NotImplementedError:
+        return ["**"]
+
+
 def single_cls_factory(
     orm_cls: Type[orm.Entity], exclude_fields: Sequence[str] = ()
 ) -> Type[gr.ObjectType]:
@@ -52,6 +76,8 @@ def multirow_cls_factory(
     entity_cls: Type[gr.ObjectType], orm_cls: Type[orm.Entity], name: str
 ) -> Type[gr.ObjectType]:
     """Create a graphene class with standard fields/resolvers for querying multiple rows of the same AiiDA ORM entity."""
+
+    db_fields = field_names_from_orm(orm_cls)
 
     class AiidaOrmRowsType(gr.ObjectType):
         """A class for querying multiple rows of the same AiiDA ORM entity."""
@@ -103,7 +129,7 @@ def multirow_cls_factory(
                 raise GraphQLError(
                     f"{name} 'limit' must be no more than {ENTITY_LIMIT}"
                 )
-            project = get_projection(info)
+            project = get_projection(db_fields, info)
             try:
                 filters = parent.get("filters")
             except AttributeError:
@@ -126,13 +152,14 @@ ENTITY_DICT_TYPE = Optional[Dict[str, Any]]
 
 @with_dbenv()
 def resolve_entity(
-    entity: orm.Entity, info: gr.ResolveInfo, pk: int
+    orm_cls: orm.Entity, info: gr.ResolveInfo, pk: int
 ) -> ENTITY_DICT_TYPE:
     """Query for a single entity, and project only the fields requested."""
-    project = get_projection(info)
+    db_fields = field_names_from_orm(orm_cls)
+    project = get_projection(db_fields, info)
     entities = (
         orm.QueryBuilder()
-        .append(entity, tag="result", filters={"id": pk}, project=project)
+        .append(orm_cls, tag="result", filters={"id": pk}, project=project)
         .dict()
     )
     if not entities:
