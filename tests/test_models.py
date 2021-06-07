@@ -29,3 +29,10 @@ def test_user_get_entities(data_regression):
     orm.User(email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi").store()
     py_users = models.User.get_entities(order_by=["id"])
     data_regression.check([replace_dynamic(c.dict()) for c in py_users])
+
+
+def test_group_get_entities(data_regression):
+    """Test ``Group.get_entities``"""
+    orm.Group(label="regression_label_1", description="regrerssion_test").store()
+    py_group = models.Group.get_entities(order_by=["id"])
+    data_regression.check([replace_dynamic(c.dict()) for c in py_group])
