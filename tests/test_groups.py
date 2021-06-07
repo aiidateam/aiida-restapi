@@ -18,16 +18,12 @@ def test_get_group_projectable(client):
     assert response.json() == ["id", "label", "type_string", "user_id", "description"]
 
 
-def test_get_single_group(
-    default_groups, client, authenticate
-):  # pylint: disable=unused-argument
+def test_get_single_group(default_groups, client):  # pylint: disable=unused-argument
     """Test retrieving a single group."""
 
-    response_post = client.post("/groups", json={"label": "test_label_post"})
-
-    response = client.get("/groups/{}".format(response_post.json()["id"]))
-    assert response.status_code == 200
-    assert response.json()["label"] == "test_label_post"
+    for group_id in default_groups:
+        response = client.get("/groups/{}".format(group_id))
+        assert response.status_code == 200
 
 
 def test_create_group(client, authenticate):  # pylint: disable=unused-argument
