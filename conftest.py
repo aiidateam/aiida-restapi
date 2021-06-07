@@ -33,6 +33,19 @@ def default_users():
 
 
 @pytest.fixture(scope="function")
+def default_groups():
+    """Populate database with some groups."""
+    test_user_1 = orm.User(
+        email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi"
+    ).store()
+    test_user_2 = orm.User(
+        email="stravinsky@symphony.org", first_name="Igor", last_name="Stravinsky"
+    ).store()
+    orm.Group(label="test_label_1", user=test_user_1).store()
+    orm.Group(label="test_label_2", user=test_user_2).store()
+
+
+@pytest.fixture(scope="function")
 def authenticate():
     """Authenticate user.
 

@@ -94,3 +94,15 @@ class User(AiidaModel):
     institution: Optional[str] = Field(
         description="Host institution or workplace of the user"
     )
+
+
+class Group(AiidaModel):
+    """AiiDA Group model."""
+
+    _orm_entity = orm.Group
+
+    id: Optional[int] = Field(description="Id of the object")
+    label: str = Field(description="Used to access the group. Must be unique.")
+    type_string: Optional[str] = Field(description="Type of the group")
+    user_id: Optional[str] = Field(description="Id of the user that created the node.")
+    description: Optional[str] = Field(description="Short description of the group.")
