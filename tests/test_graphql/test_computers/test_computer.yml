@@ -1,0 +1,10 @@
+data:
+  Computer:
+    description: ''
+    hostname: localhost
+    id: int
+    metadata: {}
+    name: localhost
+    scheduler_type: direct
+    transport_type: local
+    uuid: str

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Main module that generates the full Graphql App."""
-import graphene as gr
 from starlette.graphql import GraphQLApp
 
 from .basic import aiidaVersionPlugin, rowLimitMaxPlugin
@@ -10,10 +9,10 @@ from .entry_points import aiidaEntryPointGroupsPlugin, aiidaEntryPointsPlugin
 from .groups import GroupQueryPlugin, GroupsQueryPlugin
 from .logs import LogQueryPlugin, LogsQueryPlugin
 from .nodes import NodeQueryPlugin, NodesQueryPlugin
-from .plugins import create_query
+from .plugins import create_schema
 from .users import UserQueryPlugin, UsersQueryPlugin
 
-Query = create_query(
+schema = create_schema(
     [
         rowLimitMaxPlugin,
         aiidaVersionPlugin,
@@ -35,4 +34,4 @@ Query = create_query(
 )
 
 
-app = GraphQLApp(schema=gr.Schema(query=Query, auto_camelcase=False))
+app = GraphQLApp(schema=schema)

@@ -1,0 +1,9 @@
+data:
+  Comment:
+    content: content
+    ctime: str
+    dbnode_id: int
+    id: int
+    mtime: str
+    user_id: int
+    uuid: str
