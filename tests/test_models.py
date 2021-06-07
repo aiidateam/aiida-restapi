@@ -48,3 +48,10 @@ def test_computer_get_entities(data_regression):
     ).store()
     py_computer = models.Computer.get_entities()
     data_regression.check([replace_dynamic(c.dict()) for c in py_computer])
+
+
+def test_group_get_entities(data_regression):
+    """Test ``Group.get_entities``"""
+    orm.Group(label="regression_label_1", description="regrerssion_test").store()
+    py_group = models.Group.get_entities(order_by=["id"])
+    data_regression.check([replace_dynamic(c.dict()) for c in py_group])

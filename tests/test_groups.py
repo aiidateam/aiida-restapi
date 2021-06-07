@@ -1,22 +1,33 @@
 # -*- coding: utf-8 -*-
 """Test the /groups endpoint"""
-import pytest
 
 
-def test_get_users(default_groups, client):  # pylint: disable=unused-argument
+def test_get_group(default_groups, client):  # pylint: disable=unused-argument
     """Test listing existing groups."""
     response = client.get("/groups")
     assert response.status_code == 200
     assert len(response.json()) == 2
 
 
-@pytest.mark.xfail
-def test_get_single_user(default_groups, client):  # pylint: disable=unused-argument
-    """Test retrieving a single group."""
-    response = client.get("/groups/1")
-    print(response.json())
+def test_get_group_projectable(client):
+    """Test get projectable properites for group."""
+    response = client.get("/groups/projectable_properties")
+
     assert response.status_code == 200
-    assert response.json()["label"] == "test_label_1"
+
+    assert response.json() == ["id", "label", "type_string", "user_id", "description"]
+
+
+def test_get_single_group(
+    default_groups, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test retrieving a single group."""
+
+    response_post = client.post("/groups", json={"label": "test_label_post"})
+
+    response = client.get("/groups/{}".format(response_post.json()["id"]))
+    assert response.status_code == 200
+    assert response.json()["label"] == "test_label_post"
 
 
 def test_create_group(client, authenticate):  # pylint: disable=unused-argument

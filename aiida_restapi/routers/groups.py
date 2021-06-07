@@ -17,9 +17,16 @@ router = APIRouter()
 @with_dbenv()
 async def read_groups() -> List[Group]:
     """Get list of all groups"""
-    qbobj = orm.QueryBuilder().append(orm.Group, project=["**"])
+    qbobj = orm.QueryBuilder().append(orm.Group, project=["**"], tag="group")
 
-    return [group["core_1"] for group in qbobj.dict()]
+    return [group["group"] for group in qbobj.dict()]
+
+
+@router.get("/groups/projectable_properties", response_model=List[str])
+async def get_groups_projectable_properties() -> List[str]:
+    """Get projectable properties for groups endpoint"""
+
+    return Group.get_projectable_properties()
 
 
 @router.get("/groups/{group_id}", response_model=Group)
@@ -28,8 +35,10 @@ async def read_group(group_id: int) -> Optional[Group]:
     """Get group by id."""
     qbobj = orm.QueryBuilder()
 
-    qbobj.append(orm.Group, filters={"id": group_id}, project=["**"]).limit(1)
-    return qbobj.dict()[0]["core_1"]
+    qbobj.append(
+        orm.Group, filters={"id": group_id}, project=["**"], tag="group"
+    ).limit(1)
+    return qbobj.dict()[0]["group"]
 
 
 @router.post("/groups", response_model=Group)
