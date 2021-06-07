@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Test the /computers endpoint"""
-import pytest
 
 
 def test_get_computers(default_computers, client):  # pylint: disable=unused-argument
@@ -12,7 +11,7 @@ def test_get_computers(default_computers, client):  # pylint: disable=unused-arg
 
 
 def test_get_computers_projectable(client):
-    """Test get projectable properites."""
+    """Test get projectable properites for computer."""
     response = client.get("/computers/projectable_properties")
 
     assert response.status_code == 200
@@ -27,12 +26,21 @@ def test_get_computers_projectable(client):
     ]
 
 
-@pytest.mark.xfail
 def test_get_single_computers(
-    default_computers, client
+    default_computers, client, authenticate
 ):  # pylint: disable=unused-argument
-    """Test listing existing computers."""
-    response = client.get("/computers/1")
+    """Test retrieving a single computer."""
+    response_post = client.post(
+        "/computers",
+        json={
+            "name": "test_comp",
+            "hostname": "fake_host",
+            "transport_type": "local",
+            "scheduler_type": "pbspro",
+        },
+    )
+
+    response = client.get("/computers/{}".format(response_post.json()["id"]))
 
     assert response.status_code == 200
 

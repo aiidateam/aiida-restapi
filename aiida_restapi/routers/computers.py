@@ -18,9 +18,9 @@ router = APIRouter()
 @with_dbenv()
 async def read_computers() -> List[Computer]:
     """Get list of all computers"""
-    qbobj = QueryBuilder().append(orm.Computer, project=["**"])
+    qbobj = QueryBuilder().append(orm.Computer, project=["**"], tag="computer")
 
-    return [comp["computer_1"] for comp in qbobj.dict()]
+    return [comp["computer"] for comp in qbobj.dict()]
 
 
 @router.get("/computers/projectable_properties", response_model=List[str])
@@ -35,9 +35,11 @@ async def get_computers_projectable_properties() -> List[str]:
 async def read_computer(comp_id: int) -> Optional[Computer]:
     """Get computer by id."""
     qbobj = QueryBuilder()
-    qbobj.append(orm.Computer, filters={"id": comp_id}, project=["**"]).limit(1)
+    qbobj.append(
+        orm.Computer, filters={"id": comp_id}, project=["**"], tag="computer"
+    ).limit(1)
 
-    return qbobj.dict()[0]["computer_1"]
+    return qbobj.dict()[0]["computer"]
 
 
 @router.post("/computers", response_model=Computer)
