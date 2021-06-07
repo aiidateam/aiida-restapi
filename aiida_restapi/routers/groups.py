@@ -17,9 +17,8 @@ router = APIRouter()
 @with_dbenv()
 async def read_groups() -> List[Group]:
     """Get list of all groups"""
-    qbobj = orm.QueryBuilder().append(orm.Group, project=["**"], tag="group")
 
-    return [group["group"] for group in qbobj.dict()]
+    return Group.get_entities()
 
 
 @router.get("/groups/projectable_properties", response_model=List[str])
