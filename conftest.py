@@ -64,8 +64,9 @@ def default_groups():
     test_user_2 = orm.User(
         email="stravinsky@symphony.org", first_name="Igor", last_name="Stravinsky"
     ).store()
-    orm.Group(label="test_label_1", user=test_user_1).store()
-    orm.Group(label="test_label_2", user=test_user_2).store()
+    group_1 = orm.Group(label="test_label_1", user=test_user_1).store()
+    group_2 = orm.Group(label="test_label_2", user=test_user_2).store()
+    return [group_1.id, group_2.id]
 
 
 @pytest.fixture(scope="function")
