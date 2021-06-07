@@ -18,9 +18,8 @@ router = APIRouter()
 @with_dbenv()
 async def read_computers() -> List[Computer]:
     """Get list of all computers"""
-    qbobj = QueryBuilder().append(orm.Computer, project=["**"], tag="computer")
 
-    return [comp["computer"] for comp in qbobj.dict()]
+    return Computer.get_entities()
 
 
 @router.get("/computers/projectable_properties", response_model=List[str])

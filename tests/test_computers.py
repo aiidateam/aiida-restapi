@@ -27,22 +27,13 @@ def test_get_computers_projectable(client):
 
 
 def test_get_single_computers(
-    default_computers, client, authenticate
+    default_computers, client
 ):  # pylint: disable=unused-argument
     """Test retrieving a single computer."""
-    response_post = client.post(
-        "/computers",
-        json={
-            "name": "test_comp",
-            "hostname": "fake_host",
-            "transport_type": "local",
-            "scheduler_type": "pbspro",
-        },
-    )
 
-    response = client.get("/computers/{}".format(response_post.json()["id"]))
-
-    assert response.status_code == 200
+    for comp_id in default_computers:
+        response = client.get("/computers/{}".format(comp_id))
+        assert response.status_code == 200
 
 
 def test_create_computer(client, authenticate):  # pylint: disable=unused-argument
