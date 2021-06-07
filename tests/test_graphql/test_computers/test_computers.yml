@@ -1,0 +1,20 @@
+data:
+  Computers:
+    count: 2
+    rows:
+    - description: ''
+      hostname: localhost
+      id: int
+      metadata: {}
+      name: computer 1
+      scheduler_type: direct
+      transport_type: local
+      uuid: str
+    - description: ''
+      hostname: localhost
+      id: int
+      metadata: {}
+      name: computer 2
+      scheduler_type: direct
+      transport_type: local
+      uuid: str

@@ -1,0 +1,7 @@
+data:
+  User:
+    email: a@b.com
+    first_name: ''
+    id: int
+    institution: ''
+    last_name: ''

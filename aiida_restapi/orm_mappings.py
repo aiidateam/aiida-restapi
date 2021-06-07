@@ -77,8 +77,8 @@ class Node(BaseModel):
     uuid: UUID = Field(description="Unique uuid")
     node_type: str = Field(description="Node type")
     process_type: str = Field(description="Process type")
-    label: Optional[str] = Field(description="Label of node")
-    description: Optional[str] = Field(description="Description of node")
+    label: str = Field(description="Label of node")
+    description: str = Field(description="Description of node")
     ctime: datetime = Field(description="Creation time")
     mtime: datetime = Field(description="Last modification time")
     user_id: int = Field(description="Created by user id (pk)")
@@ -112,3 +112,19 @@ ORM_MAPPING: Dict[Type[orm.Entity], Type[BaseModel]] = {
     orm.nodes.Node: Node,
     orm.User: User,
 }
+
+
+def get_model_from_orm(
+    orm_cls: Type[orm.Entity], allow_subclasses: bool = True
+) -> Type[BaseModel]:
+    """Return the pydantic model related to the orm class.
+
+    :param allow_subclasses: Return the base class mapping for subclasses
+    """
+    if orm_cls in ORM_MAPPING:
+        return ORM_MAPPING[orm_cls]
+    if allow_subclasses and issubclass(orm_cls, orm.nodes.Node):
+        return Node
+    if allow_subclasses and issubclass(orm_cls, orm.Group):
+        return Group
+    raise KeyError(f"{orm_cls}")

@@ -10,7 +10,7 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from graphql import GraphQLError
 
-from aiida_restapi.orm_mappings import ORM_MAPPING
+from aiida_restapi.orm_mappings import get_model_from_orm
 
 from .config import ENTITY_LIMIT
 from .utils import JSON, selected_field_names_naive
@@ -31,7 +31,7 @@ def fields_from_orm(
 ) -> Dict[str, gr.Scalar]:
     """Extract the fields from an AIIDA ORM class and convert them to graphene objects."""
     output = {}
-    for name, field in ORM_MAPPING[cls].__fields__.items():
+    for name, field in get_model_from_orm(cls).__fields__.items():
         if name in exclude_fields:
             continue
         gr_type = _type_mapping[field.type_]
@@ -41,7 +41,7 @@ def fields_from_orm(
 
 def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
     """Extract the field names from an AIIDA ORM class."""
-    return set(ORM_MAPPING[cls].__fields__.keys())
+    return set(get_model_from_orm(cls).__fields__.keys())
 
 
 def get_projection(db_fields: Set[str], info: gr.ResolveInfo) -> List[str]:
@@ -90,7 +90,7 @@ def multirow_cls_factory(
                 description=f"Maximum number of rows to return (no more than {ENTITY_LIMIT}",
             ),
             offset=gr.Int(default_value=0, description="Skip the first n rows"),
-            orderBy=gr.String(description="Field to order rows by"),
+            orderBy=gr.String(description="Field to order rows by", default_value="id"),
             orderAsc=gr.Boolean(
                 default_value=True,
                 description="Sort field in ascending order, else descending.",

@@ -1,0 +1,20 @@
+data:
+  Groups:
+    count: 2
+    rows:
+    - description: ''
+      extras: {}
+      id: int
+      label: group1
+      time: str
+      type_string: core
+      user_id: int
+      uuid: str
+    - description: ''
+      extras: {}
+      id: int
+      label: group2
+      time: str
+      type_string: core
+      user_id: int
+      uuid: str

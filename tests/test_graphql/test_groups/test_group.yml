@@ -1,0 +1,10 @@
+data:
+  Group:
+    description: ''
+    extras: {}
+    id: int
+    label: group
+    time: str
+    type_string: core
+    user_id: int
+    uuid: str

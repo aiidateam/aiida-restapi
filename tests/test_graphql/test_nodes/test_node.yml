@@ -1,0 +1,15 @@
+data:
+  Node:
+    attributes: {}
+    ctime: str
+    dbcomputer_id: null
+    description: ''
+    extras:
+      _aiida_hash: str
+    id: int
+    label: ''
+    mtime: str
+    node_type: data.Data.
+    process_type: my_process
+    user_id: int
+    uuid: str

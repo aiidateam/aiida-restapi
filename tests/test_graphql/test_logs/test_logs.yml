@@ -1,0 +1,20 @@
+data:
+  Logs:
+    count: 2
+    rows:
+    - dbnode_id: int
+      id: int
+      levelname: level 1
+      loggername: name
+      message: log 1
+      metadata: {}
+      time: str
+      uuid: str
+    - dbnode_id: int
+      id: int
+      levelname: level 1
+      loggername: name
+      message: log 2
+      metadata: {}
+      time: str
+      uuid: str

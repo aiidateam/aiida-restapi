@@ -1,0 +1,7 @@
+data:
+  Node:
+    Logs:
+      count: 2
+      rows:
+      - message: log 1
+      - message: log 2
