@@ -1,6 +1,6 @@
 root: intro
 defaults:
-  maxdepth: 3
+  maxdepth: 2
 entries:
 - file: user_guide/index
   entries:
