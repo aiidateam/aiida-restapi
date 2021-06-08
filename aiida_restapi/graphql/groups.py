@@ -7,6 +7,7 @@ from typing import Any, Optional
 import graphene as gr
 from aiida.orm import Group
 
+from aiida_restapi.graphql.nodes import NodesQuery
 from aiida_restapi.graphql.plugins import QueryPlugin
 
 from .orm_factories import (
@@ -19,6 +20,15 @@ from .orm_factories import (
 
 class GroupQuery(single_cls_factory(Group)):  # type: ignore[misc]
     """Query an AiiDA Group"""
+
+    Nodes = gr.Field(NodesQuery)
+
+    @staticmethod
+    def resolve_Nodes(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        print("heya")
+        # pass group specification to NodesQuery
+        return {"group_id": parent["id"]}
 
 
 class GroupsQuery(multirow_cls_factory(GroupQuery, Group, "groups")):  # type: ignore[misc]

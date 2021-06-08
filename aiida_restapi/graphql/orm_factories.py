@@ -72,6 +72,9 @@ def single_cls_factory(
     )
 
 
+EntitiesParentType = Optional[Dict[str, Any]]
+
+
 def multirow_cls_factory(
     entity_cls: Type[gr.ObjectType], orm_cls: Type[orm.Entity], name: str
 ) -> Type[gr.ObjectType]:
@@ -97,21 +100,36 @@ def multirow_cls_factory(
             ),
         )
 
+        @staticmethod
+        def create_query_path(
+            query: orm.QueryBuilder, parent: Dict[str, Any]
+        ) -> Dict[str, Any]:
+            """Append parents to the query path, e.g. containing groups and incoming/outgoing nodes.
+
+            :param parent: data from the parent resolver
+            :returns: key-word arguments for the "leaf" path
+            """
+            leaf_kwargs = {}
+            if "group_id" in parent:
+                query.append(orm.Group, filters={"id": parent["group_id"]}, tag="group")
+                leaf_kwargs["with_group"] = "group"
+            return leaf_kwargs
+
         @with_dbenv()
         @staticmethod
-        def resolve_count(parent: Any, info: gr.ResolveInfo) -> int:
+        def resolve_count(parent: EntitiesParentType, info: gr.ResolveInfo) -> int:
             """Count the number of rows, after applying filters parsed down from the parent."""
-            try:
-                filters = parent.get("filters")
-            except AttributeError:
-                filters = None
-            query = orm.QueryBuilder().append(orm_cls, filters=filters)
+            parent = parent or {}
+            query = orm.QueryBuilder()
+            leaf_kwargs = AiidaOrmRowsType.create_query_path(query, parent)
+            leaf_kwargs["filters"] = parent.get("filters", None)
+            query.append(orm_cls, **leaf_kwargs)
             return query.count()
 
         @with_dbenv()
         @staticmethod
         def resolve_rows(  # pylint: disable=too-many-arguments
-            parent: Any,
+            parent: EntitiesParentType,
             info: gr.ResolveInfo,
             limit: int,
             offset: int,
@@ -120,6 +138,7 @@ def multirow_cls_factory(
         ) -> List[Dict[str, Any]]:
             """Return a list of field dicts, for the entity class to resolve.
 
+            :param parent: The parent fill dictate the query to perform
             :param limit: Set the limit (nr of rows to return)
             :param offset: Skip the first n rows
             :param orderBy: Field to order by
@@ -129,27 +148,29 @@ def multirow_cls_factory(
                 raise GraphQLError(
                     f"{name} 'limit' must be no more than {ENTITY_LIMIT}"
                 )
-            project = get_projection(db_fields, info)
-            try:
-                filters = parent.get("filters")
-            except AttributeError:
-                filters = None
+            parent = parent or {}
 
-            query = orm.QueryBuilder().append(
-                orm_cls, tag="fields", filters=filters, project=project
-            )
+            # setup the query
+            query = orm.QueryBuilder()
+            leaf_kwargs = AiidaOrmRowsType.create_query_path(query, parent)
+            leaf_kwargs["filters"] = parent.get("filters", None)
+            leaf_kwargs["project"] = get_projection(db_fields, info)
+            leaf_kwargs["tag"] = "fields"
+            query.append(orm_cls, **leaf_kwargs)
+
+            # setup returned rows configuration of the query
             query.offset(offset)
             query.limit(limit)
             if orderBy:
                 query.order_by({"fields": {orderBy: "asc" if orderAsc else "desc"}})
+
+            # run query
             return [d["fields"] for d in query.dict()]
 
     return AiidaOrmRowsType
 
 
 ENTITY_DICT_TYPE = Optional[Dict[str, Any]]
-
-# ENTITY_KWARGS = {"id": gr.Int(), "uuid": gr.String()}
 
 
 @with_dbenv()

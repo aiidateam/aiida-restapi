@@ -17,6 +17,19 @@ def test_group(create_group, orm_regression):
     orm_regression(executed)
 
 
+def test_group_nodes(create_group, create_node, orm_regression):
+    """Test querying Nodes inside Group."""
+    create_node(label="not in group")
+    group = create_group()
+    group.add_nodes([create_node(label="node 1"), create_node(label="node 2")])
+    schema = create_schema([GroupQueryPlugin])
+    client = Client(schema)
+    executed = client.execute(
+        "{ Group(id: %r) { Nodes { count rows{ label } } } }" % (group.id)
+    )
+    orm_regression(executed)
+
+
 def test_groups(create_group, orm_regression):
     """Test Groups query, for all fields."""
     create_group(label="group1")

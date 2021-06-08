@@ -23,8 +23,6 @@ class CommentQuery(single_cls_factory(Comment)):  # type: ignore[misc]
 class CommentsQuery(multirow_cls_factory(CommentQuery, Comment, "comments")):  # type: ignore[misc]
     """Query all AiiDA Comments."""
 
-    Comment = gr.Field(CommentQuery, id=gr.Int(), uuid=gr.String())
-
 
 def resolve_Comment(
     parent: Any,
