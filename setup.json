@@ -49,9 +49,10 @@
         ],
         "docs": [
             "sphinx",
-            "sphinxcontrib-contentui",
-            "sphinxcontrib-details-directive; python_version>='3.0'",
-            "sphinx-rtd-theme"
+            "myst-parser[linkify]>=0.13.7",
+            "sphinx-external-toc",
+            "sphinx-book-theme",
+            "sphinx-panels"
         ],
         "auth": [
             "python-jose",

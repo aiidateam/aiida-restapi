@@ -36,7 +36,7 @@ def create_query(
         attr_map[query.name] = query.field
         attr_map[f"resolve_{query.name}"] = query.resolver
     attr_map["__doc__"] = docstring
-    return type("Query", (gr.ObjectType,), attr_map)
+    return type("RootQuery", (gr.ObjectType,), attr_map)
 
 
 def create_schema(

@@ -1,0 +1,14 @@
+root: intro
+defaults:
+  maxdepth: 3
+entries:
+- file: user_guide/index
+  entries:
+  - file: user_guide/get_started
+  - file: user_guide/tutorial
+  - file: user_guide/graphql
+- file: developer_guide/index
+- file: apidoc/aiida_restapi
+  title: API documentation
+- url: https://aiida.readthedocs.io/projects/aiida-core
+  title: AiiDA Documentation

@@ -12,7 +12,7 @@ from .nodes import NodeQueryPlugin, NodesQueryPlugin
 from .plugins import create_schema
 from .users import UserQueryPlugin, UsersQueryPlugin
 
-schema = create_schema(
+SCHEMA = create_schema(
     [
         rowLimitMaxPlugin,
         aiidaVersionPlugin,
@@ -34,4 +34,4 @@ schema = create_schema(
 )
 
 
-app = GraphQLApp(schema=schema)
+app = GraphQLApp(schema=SCHEMA)
