@@ -16,14 +16,15 @@ import sys
 import time
 
 import reentry
+
+# run reentry before importing aiida
+reentry.manager.scan()
+
 from aiida.manage.configuration import load_documentation_profile
 
 import aiida_restapi
 
 # -- AiiDA-related setup --------------------------------------------------
-
-# run reentry
-reentry.manager.scan()
 
 # Load the dummy profile even if we are running locally, this way the documentation will succeed even if the current
 # default profile of the AiiDA installation does not use a Django backend.
