@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Classes and functions to auto-generate base ObjectTypes for aiida orm entities."""
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,redefined-builtin
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Set, Type
+from typing import Any, Dict, List, Optional, Sequence, Set, Type, Union
 from uuid import UUID
 
 import graphene as gr
@@ -149,17 +149,35 @@ def multirow_cls_factory(
 
 ENTITY_DICT_TYPE = Optional[Dict[str, Any]]
 
+# ENTITY_KWARGS = {"id": gr.Int(), "uuid": gr.String()}
+
 
 @with_dbenv()
 def resolve_entity(
-    orm_cls: orm.Entity, info: gr.ResolveInfo, pk: int
+    orm_cls: orm.Entity,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    uuid: Optional[str] = None,
+    uuid_name: str = "uuid",
 ) -> ENTITY_DICT_TYPE:
-    """Query for a single entity, and project only the fields requested."""
+    """Query for a single entity, and project only the fields requested.
+
+    :param uuid_name: This is used for User, where we set it to "email"
+    """
+    filters: Dict[str, Union[str, int]]
+    if id is not None:
+        assert uuid is None, f"Only one of id or {uuid_name} can be specified"
+        filters = {"id": id}
+    elif uuid is not None:
+        filters = {uuid_name: uuid}
+    else:
+        raise AssertionError(f"One of id or {uuid_name} must be specified")
+
     db_fields = field_names_from_orm(orm_cls)
     project = get_projection(db_fields, info)
     entities = (
         orm.QueryBuilder()
-        .append(orm_cls, tag="result", filters={"id": pk}, project=project)
+        .append(orm_cls, tag="result", filters=filters, project=project)
         .dict()
     )
     if not entities:

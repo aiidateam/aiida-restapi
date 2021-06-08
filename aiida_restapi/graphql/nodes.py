@@ -136,9 +136,14 @@ class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):  # t
         return filters
 
 
-def resolve_Node(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+def resolve_Node(
+    parent: Any,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    uuid: Optional[str] = None,
+) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(orm.nodes.Node, info, id)
+    return resolve_entity(orm.nodes.Node, info, id, uuid)
 
 
 def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs: Any) -> dict:
@@ -148,8 +153,18 @@ def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs: Any) -> dict:
 
 
 NodeQueryPlugin = QueryPlugin(
-    "Node", gr.Field(NodeQuery, id=gr.Int(required=True)), resolve_Node
+    "Node",
+    gr.Field(
+        NodeQuery, id=gr.Int(), uuid=gr.String(), description="Query for a single Node"
+    ),
+    resolve_Node,
 )
 NodesQueryPlugin = QueryPlugin(
-    "Nodes", gr.Field(NodesQuery, **NodesQuery.get_filter_kwargs()), resolve_Nodes
+    "Nodes",
+    gr.Field(
+        NodesQuery,
+        description="Query for multiple Nodes",
+        **NodesQuery.get_filter_kwargs()
+    ),
+    resolve_Nodes,
 )

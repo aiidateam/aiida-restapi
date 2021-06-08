@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Defines plugins for AiiDA users."""
 # pylint: disable=too-few-public-methods,redefined-builtin,unused-argument
-from typing import Any
+from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import User
@@ -30,9 +30,14 @@ class UserQuery(single_cls_factory(User)):  # type: ignore[misc]
         return {"filters": filters}
 
 
-def resolve_User(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+def resolve_User(
+    parent: Any,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    email: Optional[str] = None,
+) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(User, info, id)
+    return resolve_entity(User, info, id, email, uuid_name="email")
 
 
 class UsersQuery(multirow_cls_factory(UserQuery, User, "users")):  # type: ignore[misc]
@@ -46,6 +51,12 @@ def resolve_Users(parent: Any, info: gr.ResolveInfo) -> dict:
 
 
 UserQueryPlugin = QueryPlugin(
-    "User", gr.Field(UserQuery, id=gr.Int(required=True)), resolve_User
+    "User",
+    gr.Field(
+        UserQuery, id=gr.Int(), email=gr.String(), description="Query for a single User"
+    ),
+    resolve_User,
 )
-UsersQueryPlugin = QueryPlugin("Users", gr.Field(UsersQuery), resolve_Users)
+UsersQueryPlugin = QueryPlugin(
+    "Users", gr.Field(UsersQuery, description="Query for multiple Users"), resolve_Users
+)

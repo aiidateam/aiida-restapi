@@ -2,7 +2,7 @@
 """Defines plugins for AiiDA groups."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
-from typing import Any
+from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import Group
@@ -25,9 +25,14 @@ class GroupsQuery(multirow_cls_factory(GroupQuery, Group, "groups")):  # type: i
     """Query all AiiDA Groups"""
 
 
-def resolve_Group(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+def resolve_Group(
+    parent: Any,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    uuid: Optional[str] = None,
+) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(Group, info, id)
+    return resolve_entity(Group, info, id, uuid)
 
 
 def resolve_Groups(parent: Any, info: gr.ResolveInfo) -> dict:
@@ -37,6 +42,17 @@ def resolve_Groups(parent: Any, info: gr.ResolveInfo) -> dict:
 
 
 GroupQueryPlugin = QueryPlugin(
-    "Group", gr.Field(GroupQuery, id=gr.Int(required=True)), resolve_Group
+    "Group",
+    gr.Field(
+        GroupQuery,
+        id=gr.Int(),
+        uuid=gr.String(),
+        description="Query for a single Group",
+    ),
+    resolve_Group,
 )
-GroupsQueryPlugin = QueryPlugin("Groups", gr.Field(GroupsQuery), resolve_Groups)
+GroupsQueryPlugin = QueryPlugin(
+    "Groups",
+    gr.Field(GroupsQuery, description="Query for multiple Groups"),
+    resolve_Groups,
+)

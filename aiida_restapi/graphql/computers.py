@@ -2,7 +2,7 @@
 """Defines plugins for AiiDA computers."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
-from typing import Any
+from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import Computer
@@ -36,9 +36,14 @@ class ComputersQuery(multirow_cls_factory(ComputerQuery, Computer, "computers"))
     """Query all AiiDA Computers"""
 
 
-def resolve_Computer(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+def resolve_Computer(
+    parent: Any,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    uuid: Optional[str] = None,
+) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(Computer, info, id)
+    return resolve_entity(Computer, info, id, uuid)
 
 
 def resolve_Computers(parent: Any, info: gr.ResolveInfo) -> dict:
@@ -48,8 +53,17 @@ def resolve_Computers(parent: Any, info: gr.ResolveInfo) -> dict:
 
 
 ComputerQueryPlugin = QueryPlugin(
-    "Computer", gr.Field(ComputerQuery, id=gr.Int(required=True)), resolve_Computer
+    "Computer",
+    gr.Field(
+        ComputerQuery,
+        id=gr.Int(),
+        uuid=gr.String(),
+        description="Query for a single Computer",
+    ),
+    resolve_Computer,
 )
 ComputersQueryPlugin = QueryPlugin(
-    "Computers", gr.Field(ComputersQuery), resolve_Computers
+    "Computers",
+    gr.Field(ComputersQuery, description="Query for multiple Computers"),
+    resolve_Computers,
 )

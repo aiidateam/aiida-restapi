@@ -2,7 +2,7 @@
 """Defines plugins for AiiDA process node logs."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
-from typing import Any
+from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import Log
@@ -24,9 +24,14 @@ class LogsQuery(multirow_cls_factory(LogQuery, Log, "logs")):  # type: ignore[mi
     """Query all AiiDA Logs."""
 
 
-def resolve_Log(parent: Any, info: gr.ResolveInfo, id: int) -> ENTITY_DICT_TYPE:
+def resolve_Log(
+    parent: Any,
+    info: gr.ResolveInfo,
+    id: Optional[int] = None,
+    uuid: Optional[str] = None,
+) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(Log, info, id)
+    return resolve_entity(Log, info, id, uuid)
 
 
 def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
@@ -36,6 +41,12 @@ def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
 
 
 LogQueryPlugin = QueryPlugin(
-    "Log", gr.Field(LogQuery, id=gr.Int(required=True)), resolve_Log
+    "Log",
+    gr.Field(
+        LogQuery, id=gr.Int(), uuid=gr.String(), description="Query for a single Log"
+    ),
+    resolve_Log,
 )
-LogsQueryPlugin = QueryPlugin("Logs", gr.Field(LogsQuery), resolve_Logs)
+LogsQueryPlugin = QueryPlugin(
+    "Logs", gr.Field(LogsQuery, description="Query for multiple Logs"), resolve_Logs
+)
