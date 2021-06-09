@@ -124,15 +124,15 @@ def _parse_valuelist(valuelist: Tree) -> List[Union[int, float, str]]:
     return output
 
 
-def parse_filter_str(string: Optional[str]) -> List[Dict[str, Any]]:
+def parse_filter_str(string: Optional[str]) -> Dict[str, Any]:
     """Parse a filter string to a list of ``QueryBuilder`` compliant operators."""
-    filters = {}
+    filters: Dict[str, Any] = {}
     if not string:
         return filters
     try:
         tree = FILTER_PARSER.parse(string)
     except Exception as err:
-        raise ValueError(f"Malformed filter string: {err}")
+        raise ValueError(f"Malformed filter string: {err}") from err
 
     for child in tree.children:
         try:
@@ -166,6 +166,6 @@ def parse_filter_str(string: Optional[str]) -> List[Dict[str, Any]]:
             value = _parse_value(rhs_compare.children[-1])
         else:
             raise ValueError(f"Unknown comparison: {rhs_compare.data}")
-        # TODO if prop_token.value in filters
+        # TODO if prop_token.value in filters, turn int "and"
         filters[prop_token.value] = {operator: value}
     return filters

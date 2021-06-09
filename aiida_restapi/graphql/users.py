@@ -6,6 +6,8 @@ from typing import Any, Optional
 import graphene as gr
 from aiida.orm import User
 
+from aiida_restapi.filter_syntax import parse_filter_str
+
 from .nodes import NodesQuery
 from .orm_factories import (
     ENTITY_DICT_TYPE,
@@ -14,7 +16,6 @@ from .orm_factories import (
     single_cls_factory,
 )
 from .plugins import QueryPlugin
-from aiida_restapi.filter_syntax import parse_filter_str
 from .utils import FilterString
 
 
@@ -24,12 +25,14 @@ class UserQuery(single_cls_factory(User)):  # type: ignore[misc]
     Nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_Nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
+    def resolve_Nodes(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass filter specification to NodesQuery
-        filters = parse_filter_str(filters)
-        filters["user_id"] = parent["id"]
-        return {"filters": filters}
+        parsed_filters = parse_filter_str(filters)
+        parsed_filters["user_id"] = parent["id"]
+        return {"filters": parsed_filters}
 
 
 def resolve_User(

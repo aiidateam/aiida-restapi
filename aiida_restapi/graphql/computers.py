@@ -7,6 +7,7 @@ from typing import Any, Optional
 import graphene as gr
 from aiida.orm import Computer
 
+from aiida_restapi.filter_syntax import parse_filter_str
 from aiida_restapi.graphql.plugins import QueryPlugin
 
 from .nodes import NodesQuery
@@ -16,7 +17,6 @@ from .orm_factories import (
     resolve_entity,
     single_cls_factory,
 )
-from aiida_restapi.filter_syntax import parse_filter_str
 from .utils import FilterString
 
 
@@ -26,12 +26,14 @@ class ComputerQuery(single_cls_factory(Computer)):  # type: ignore[misc]
     Nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_Nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
+    def resolve_Nodes(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass filter specification to NodesQuery
-        filters = parse_filter_str(filters)
-        filters["dbcomputer_id"] = parent["id"]
-        return {"filters": filters}
+        parsed_filters = parse_filter_str(filters)
+        parsed_filters["dbcomputer_id"] = parent["id"]
+        return {"filters": parsed_filters}
 
 
 class ComputersQuery(multirow_cls_factory(ComputerQuery, Computer, "computers")):  # type: ignore[misc]

@@ -6,8 +6,9 @@ from typing import Any, Dict, List, Optional
 import graphene as gr
 from aiida import orm
 
-from aiida_restapi.graphql.plugins import QueryPlugin
 from aiida_restapi.filter_syntax import parse_filter_str
+from aiida_restapi.graphql.plugins import QueryPlugin
+
 from .comments import CommentsQuery
 from .logs import LogsQuery
 from .orm_factories import (
@@ -156,7 +157,9 @@ def resolve_Node(
     return resolve_entity(orm.nodes.Node, info, id, uuid)
 
 
-def resolve_Nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
+def resolve_Nodes(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to NodesQuery
     return {"filters": parse_filter_str(filters)}
@@ -172,9 +175,7 @@ NodeQueryPlugin = QueryPlugin(
 NodesQueryPlugin = QueryPlugin(
     "Nodes",
     gr.Field(
-        NodesQuery,
-        description="Query for multiple Nodes",
-        filters=FilterString()
+        NodesQuery, description="Query for multiple Nodes", filters=FilterString()
     ),
     resolve_Nodes,
 )
