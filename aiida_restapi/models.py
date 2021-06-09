@@ -94,3 +94,26 @@ class User(AiidaModel):
     institution: Optional[str] = Field(
         description="Host institution or workplace of the user"
     )
+
+
+class Computer(AiidaModel):
+    """AiiDA Computer Model."""
+
+    _orm_entity = orm.Computer
+
+    id: Optional[int] = Field(description="Unique computer id (pk)")
+    uuid: Optional[str] = Field(description="Unique id for computer")
+    name: str = Field(description="Used to identify a computer. Must be unique")
+    hostname: Optional[str] = Field(
+        description="Label that identifies the computer within the network"
+    )
+    scheduler_type: Optional[str] = Field(
+        description="The scheduler (and plugin) that the computer uses to manage jobs"
+    )
+    transport_type: Optional[str] = Field(
+        description="The transport (and plugin) \
+                    required to copy files and communicate to and from the computer"
+    )
+    metadata: Optional[dict] = Field(
+        description="General settings for these communication and management protocols"
+    )
