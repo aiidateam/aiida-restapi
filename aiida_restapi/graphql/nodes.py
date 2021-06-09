@@ -8,6 +8,7 @@ from aiida import orm
 
 from aiida_restapi.graphql.plugins import QueryPlugin
 
+from ..utils import parse_date
 from .comments import CommentsQuery
 from .logs import LogsQuery
 from .orm_factories import (
@@ -17,7 +18,7 @@ from .orm_factories import (
     resolve_entity,
     single_cls_factory,
 )
-from .utils import JSON, parse_date
+from .utils import JSON
 
 Link = type("LinkObjectType", (gr.ObjectType,), fields_from_name("Link"))
 

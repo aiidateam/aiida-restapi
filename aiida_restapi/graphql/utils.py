@@ -2,10 +2,9 @@
 """Utility functions for graphql."""
 # pylint: disable=unused-argument,too-many-arguments
 
-import datetime
+
 from typing import Iterator
 
-from dateutil.parser import parser as date_parser
 from graphene.types.generic import GenericScalar
 from graphql.language import ast
 
@@ -16,11 +15,6 @@ class JSON(GenericScalar):
     GraphQL scalar value that could be:
     String, Boolean, Int, Float, List or Object.
     """
-
-
-def parse_date(string: str) -> datetime.datetime:
-    """Parse any date/time stamp string."""
-    return date_parser().parse(string)
 
 
 def selected_field_names_naive(selection_set: ast.SelectionSet) -> Iterator[str]:

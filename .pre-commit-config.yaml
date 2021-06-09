@@ -52,6 +52,7 @@ repos:
       - uvicorn[standard]>=0.12.0,<0.14.0
       - pydantic~=1.8.2
       - graphene
+      - lark
       - python-jose
       - python-multipart
       - passlib
