@@ -97,50 +97,75 @@ class NodeQuery(
         filters["dbnode_id"] = parent["id"]
         return {"filters": filters}
 
-    Incoming = gr.Field(LinksQuery, description="Query for incoming nodes")
+    Incoming = gr.Field(
+        LinksQuery, description="Query for incoming nodes", filters=FilterString()
+    )
 
     @staticmethod
-    def resolve_Incoming(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_Incoming(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
             "edge_type": "outgoing",
             "project_edge": True,
+            "filters": parse_filter_str(filters),
         }
 
-    Outgoing = gr.Field(LinksQuery, description="Query for outgoing nodes")
+    Outgoing = gr.Field(
+        LinksQuery, description="Query for outgoing nodes", filters=FilterString()
+    )
 
     @staticmethod
-    def resolve_Outgoing(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_Outgoing(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
             "edge_type": "incoming",
             "project_edge": True,
+            "filters": parse_filter_str(filters),
         }
 
     Ancestors = gr.Field(
-        "aiida_restapi.graphql.nodes.NodesQuery", description="Query for ancestor nodes"
+        "aiida_restapi.graphql.nodes.NodesQuery",
+        description="Query for ancestor nodes",
+        filters=FilterString(),
     )
 
     @staticmethod
-    def resolve_Ancestors(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_Ancestors(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass edge specification to LinksQuery
-        return {"parent_id": parent["id"], "edge_type": "descendants"}
+        return {
+            "parent_id": parent["id"],
+            "edge_type": "descendants",
+            "filters": parse_filter_str(filters),
+        }
 
     Descendants = gr.Field(
         "aiida_restapi.graphql.nodes.NodesQuery",
         description="Query for descendant nodes",
+        filters=FilterString(),
     )
 
     @staticmethod
-    def resolve_Descendants(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_Descendants(
+        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+    ) -> dict:
         """Resolution function."""
         # pass edge specification to LinksQuery
-        return {"parent_id": parent["id"], "edge_type": "ancestors"}
+        return {
+            "parent_id": parent["id"],
+            "edge_type": "ancestors",
+            "filters": parse_filter_str(filters),
+        }
 
 
 class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):  # type: ignore[misc]

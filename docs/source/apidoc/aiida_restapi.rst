@@ -33,6 +33,16 @@ aiida\_restapi.config module
    :undoc-members:
    :show-inheritance:
 
+aiida\_restapi.filter\_syntax module
+------------------------------------
+
+.. automodule:: aiida_restapi.filter_syntax
+   :members:
+   :special-members:
+   :private-members:
+   :undoc-members:
+   :show-inheritance:
+
 aiida\_restapi.main module
 --------------------------
 
@@ -47,6 +57,16 @@ aiida\_restapi.models module
 ----------------------------
 
 .. automodule:: aiida_restapi.models
+   :members:
+   :special-members:
+   :private-members:
+   :undoc-members:
+   :show-inheritance:
+
+aiida\_restapi.utils module
+---------------------------
+
+.. automodule:: aiida_restapi.utils
    :members:
    :special-members:
    :private-members:

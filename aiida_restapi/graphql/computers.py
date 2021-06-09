@@ -50,10 +50,12 @@ def resolve_Computer(
     return resolve_entity(Computer, info, id, uuid)
 
 
-def resolve_Computers(parent: Any, info: gr.ResolveInfo) -> dict:
+def resolve_Computers(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to ComputersQuery
-    return {}
+    return {"filters": parse_filter_str(filters)}
 
 
 ComputerQueryPlugin = QueryPlugin(
@@ -68,6 +70,10 @@ ComputerQueryPlugin = QueryPlugin(
 )
 ComputersQueryPlugin = QueryPlugin(
     "Computers",
-    gr.Field(ComputersQuery, description="Query for multiple Computers"),
+    gr.Field(
+        ComputersQuery,
+        description="Query for multiple Computers",
+        filters=FilterString(),
+    ),
     resolve_Computers,
 )

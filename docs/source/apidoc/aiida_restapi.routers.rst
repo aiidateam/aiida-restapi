@@ -24,6 +24,16 @@ aiida\_restapi.routers.comments module
    :undoc-members:
    :show-inheritance:
 
+aiida\_restapi.routers.computers module
+---------------------------------------
+
+.. automodule:: aiida_restapi.routers.computers
+   :members:
+   :special-members:
+   :private-members:
+   :undoc-members:
+   :show-inheritance:
+
 aiida\_restapi.routers.users module
 -----------------------------------
 

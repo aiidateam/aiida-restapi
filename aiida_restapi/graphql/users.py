@@ -49,10 +49,12 @@ class UsersQuery(multirow_cls_factory(UserQuery, User, "users")):  # type: ignor
     """Query all AiiDA Users"""
 
 
-def resolve_Users(parent: Any, info: gr.ResolveInfo) -> dict:
+def resolve_Users(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to UsersQuery
-    return {}
+    return {"filters": parse_filter_str(filters)}
 
 
 UserQueryPlugin = QueryPlugin(
@@ -63,5 +65,9 @@ UserQueryPlugin = QueryPlugin(
     resolve_User,
 )
 UsersQueryPlugin = QueryPlugin(
-    "Users", gr.Field(UsersQuery, description="Query for multiple Users"), resolve_Users
+    "Users",
+    gr.Field(
+        UsersQuery, description="Query for multiple Users", filters=FilterString()
+    ),
+    resolve_Users,
 )

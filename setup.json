@@ -53,7 +53,8 @@
             "myst-parser[linkify]>=0.13.7",
             "sphinx-external-toc",
             "sphinx-book-theme",
-            "sphinx-panels"
+            "sphinx-panels",
+            "pygments-graphql"
         ],
         "auth": [
             "python-jose",

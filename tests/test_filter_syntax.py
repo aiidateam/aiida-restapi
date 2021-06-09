@@ -11,7 +11,7 @@ from aiida_restapi.filter_syntax import parse_filter_str
     "input_str,output",
     [
         ("a==1", {"a": {"==": 1}}),
-        ('a_bc>="d"', {"a_bc": {">=": "d"}}),
+        ("a_bc>='d'", {"a_bc": {">=": "d"}}),
         ("a.b<=c", {"a.b": {"<=": "c"}}),
         ("a != 1.0", {"a": {"!=": 1.0}}),
         ("a==2020-01-01", {"a": {"==": datetime.datetime(2020, 1, 1, 0, 0)}}),
