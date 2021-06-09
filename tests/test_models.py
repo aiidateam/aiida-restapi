@@ -7,7 +7,14 @@ from aiida_restapi import models
 
 def replace_dynamic(data: dict) -> dict:
     """Replace dynamic fields with their type name."""
-    for key in ["id", "uuid", "dbnode_id", "user_id", "mtime", "ctime"]:
+    for key in [
+        "id",
+        "uuid",
+        "dbnode_id",
+        "user_id",
+        "mtime",
+        "ctime",
+    ]:
         if key in data:
             data[key] = type(data[key]).__name__
     return data
@@ -29,3 +36,15 @@ def test_user_get_entities(data_regression):
     orm.User(email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi").store()
     py_users = models.User.get_entities(order_by=["id"])
     data_regression.check([replace_dynamic(c.dict()) for c in py_users])
+
+
+def test_computer_get_entities(data_regression):
+    """Test ``Computer.get_entities``"""
+    orm.Computer(
+        name="test_comp_1",
+        hostname="localhost_1",
+        transport_type="local",
+        scheduler_type="pbspro",
+    ).store()
+    py_computer = models.Computer.get_entities()
+    data_regression.check([replace_dynamic(c.dict()) for c in py_computer])

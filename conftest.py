@@ -26,10 +26,33 @@ def client():
 @pytest.fixture(scope="function")
 def default_users():
     """Populate database with some users."""
-    orm.User(email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi").store()
-    orm.User(
+    user_1 = orm.User(
+        email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi"
+    ).store()
+    user_2 = orm.User(
         email="stravinsky@symphony.org", first_name="Igor", last_name="Stravinsky"
     ).store()
+
+    return [user_1.id, user_2.id]
+
+
+@pytest.fixture(scope="function")
+def default_computers():
+    """Populate database with some computer"""
+    comp_1 = orm.Computer(
+        label="test_comp_1",
+        hostname="localhost_1",
+        transport_type="local",
+        scheduler_type="pbspro",
+    ).store()
+    comp_2 = orm.Computer(
+        label="test_comp_2",
+        hostname="localhost_2",
+        transport_type="local",
+        scheduler_type="pbspro",
+    ).store()
+
+    return [comp_1.id, comp_2.id]
 
 
 @pytest.fixture(scope="function")
