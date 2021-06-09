@@ -7,9 +7,134 @@ The current Graphql schema is:
 
 ## Data Limits and Pagination
 
-...
+The amount of rows of data returned is rate-limited, to find this limit use:
+
+```graphql
+{ rowLimitMax }
+```
+
+You can retrieve all the rows of data in multiple requests, via the `limit` and `offset` options. For example, for pages of 50.
+
+Page 1:
+
+```graphql
+{
+  Nodes {
+    count
+    rows(limit: 50, offset: 0) {
+      attributes
+    }
+  }
+}
+```
+
+Page 2:
+
+```graphql
+{
+  Nodes {
+    count
+    rows(limit: 50, offset: 50) {
+      attributes
+    }
+  }
+}
+```
+
+## Filtering
+
+The `filters` option for `Computers`, `Groups` `Nodes`, and `Users`, accepts a `FilterString`.
+Its syntax is defined by the following [EBNF Grammar](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form):
+
+````{dropdown} FilterString Syntax
+
+```
+filter: [SPACES] comparison [ AND comparison ]
+
+// Comparisons
+
+comparison: PROPERTY rhs_comparisons [SPACES]
+
+rhs_comparisons: value_op_rhs
+    | fuzzy_string_op_rhs
+    | length_op_rhs
+    | contains_op_rhs
+    | is_in_op_rhs
+    | has_op_rhs
+
+value_op_rhs: OPERATOR value
+fuzzy_string_op_rhs: ILIKE STRING | LIKE STRING
+length_op_rhs: [OF] LENGTH DIGITS
+contains_op_rhs: CONTAINS valuelist
+is_in_op_rhs: [IS] IN valuelist
+has_op_rhs: HAS [KEY] ( STRING | PROPERTY )
+
+// Values
+
+value: STRING | FLOAT | INTEGER | PROPERTY | DATE | TIME | DATETIME
+valuelist: value (COMMA value)*
+
+// Separators
+
+DOT: "." [SPACES]
+COMMA: "," [SPACES]
+COLON: ":" [SPACES]
+SEMICOLON: ";" [SPACES]
+AND: [SPACES] ("AND" | "&") [SPACES]
+
+// Relations
+
+OPERATOR: [SPACES] ( "<" [ "=" ] | ">" [ "=" ] | "!=" | "==" ) [SPACES]
+
+LIKE: [SPACES] "LIKE" [SPACES]
+ILIKE: [SPACES] "iLIKE" [SPACES]
+
+OF: [SPACES] "OF" [SPACES]
+LENGTH: [SPACES] "LENGTH" [SPACES]
+CONTAINS: [SPACES] "CONTAINS" [SPACES]
+IS: [SPACES] "IS" [SPACES]
+IN: [SPACES] "IN" [SPACES]
+HAS: [SPACES] "HAS" [SPACES]
+KEY: [SPACES] "KEY" [SPACES]
+
+// Datetime
+// minimal implementation of ISO 8601 subset
+
+DATE: DIGIT DIGIT DIGIT DIGIT "-" DIGIT DIGIT "-" DIGIT DIGIT
+TIME: DIGIT DIGIT ":" DIGIT DIGIT | DIGIT DIGIT ":" DIGIT DIGIT ":" DIGIT DIGIT
+DATETIME: DATE [SPACE] TIME
+
+// Property
+
+%import common.LCASE_LETTER -> LCASE_LETTER
+IDENTIFIER: ( LCASE_LETTER | "_" ) ( LCASE_LETTER | "_" | DIGIT )*
+PROPERTY: IDENTIFIER ( DOT IDENTIFIER )*
+
+// Strings
+
+%import common._STRING_ESC_INNER -> _STRING_ESC_INNER
+STRING: "'" _STRING_ESC_INNER "'" | "\"" _STRING_ESC_INNER "\""
+
+// Numbers
+
+DIGIT: "0".."9"
+DIGITS: DIGIT+
+%import common.SIGNED_FLOAT
+FLOAT: SIGNED_FLOAT
+%import common.SIGNED_INT
+INTEGER: SIGNED_INT
+
+// White-space
+
+SPACE: /[ \t\f\r\n]/
+SPACES: SPACE+
+```
+
+````
 
 ## Plugins
+
+All top-level queries are plugins.
 
 ...
 

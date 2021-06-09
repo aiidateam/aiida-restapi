@@ -33,6 +33,7 @@ load_documentation_profile()
 extensions = [
     "myst_parser",
     "sphinx_external_toc",
+    "sphinx_panels",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",

@@ -7,6 +7,7 @@ from typing import Any, Optional
 import graphene as gr
 from aiida.orm import Group
 
+from aiida_restapi.filter_syntax import parse_filter_str
 from aiida_restapi.graphql.nodes import NodesQuery
 from aiida_restapi.graphql.plugins import QueryPlugin
 
@@ -16,6 +17,7 @@ from .orm_factories import (
     resolve_entity,
     single_cls_factory,
 )
+from .utils import FilterString
 
 
 class GroupQuery(single_cls_factory(Group)):  # type: ignore[misc]
@@ -44,10 +46,12 @@ def resolve_Group(
     return resolve_entity(Group, info, id, uuid)
 
 
-def resolve_Groups(parent: Any, info: gr.ResolveInfo) -> dict:
+def resolve_Groups(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to GroupsQuery
-    return {}
+    return {"filters": parse_filter_str(filters)}
 
 
 GroupQueryPlugin = QueryPlugin(
@@ -62,6 +66,10 @@ GroupQueryPlugin = QueryPlugin(
 )
 GroupsQueryPlugin = QueryPlugin(
     "Groups",
-    gr.Field(GroupsQuery, description="Query for multiple Groups"),
+    gr.Field(
+        GroupsQuery,
+        description="Query for multiple Groups",
+        filters=FilterString(),
+    ),
     resolve_Groups,
 )
