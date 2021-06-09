@@ -1,0 +1,15 @@
+data:
+  Node:
+    Incoming:
+      count: 2
+      rows:
+      - link:
+          label: link1
+          type: input_calc
+        node:
+          label: incoming1
+      - link:
+          label: link2
+          type: input_calc
+        node:
+          label: incoming2

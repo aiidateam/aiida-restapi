@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-"""The 'source of truth' for database entity fields."""
+"""The 'source of truth' for mapping AiiDA's database table models, to pydantic models.
+
+Note in the future we may want to do this programmatically, however, there is two issues:
+- AiiDA uses both SQLAlchemy and Django backends, so one would need to be chosen
+- Neither model includes descriptions of fields
+"""
 from datetime import datetime
 from typing import Dict, Optional, Type
 from uuid import UUID
@@ -103,14 +108,25 @@ class User(BaseModel):
     )
 
 
-ORM_MAPPING: Dict[Type[orm.Entity], Type[BaseModel]] = {
-    orm.AuthInfo: AuthInfo,
-    orm.Comment: Comment,
-    orm.Computer: Computer,
-    orm.Group: Group,
-    orm.Log: Log,
-    orm.nodes.Node: Node,
-    orm.User: User,
+class Link(BaseModel):
+    """AiiDA Link SQL table fields."""
+
+    id: int = Field(description="Unique id (pk)")
+    input_id: int = Field(description="Unique id (pk) of the input node")
+    output_id: int = Field(description="Unique id (pk) of the output node")
+    label: Optional[str] = Field(description="The label of the link")
+    type: str = Field(description="The type of link")
+
+
+ORM_MAPPING: Dict[str, Type[BaseModel]] = {
+    "AuthInfo": AuthInfo,
+    "Comment": Comment,
+    "Computer": Computer,
+    "Group": Group,
+    "Log": Log,
+    "Node": Node,
+    "User": User,
+    "Link": Link,
 }
 
 
@@ -121,8 +137,8 @@ def get_model_from_orm(
 
     :param allow_subclasses: Return the base class mapping for subclasses
     """
-    if orm_cls in ORM_MAPPING:
-        return ORM_MAPPING[orm_cls]
+    if orm_cls.__name__ in ORM_MAPPING:
+        return ORM_MAPPING[orm_cls.__name__]
     if allow_subclasses and issubclass(orm_cls, orm.nodes.Node):
         return Node
     if allow_subclasses and issubclass(orm_cls, orm.Group):

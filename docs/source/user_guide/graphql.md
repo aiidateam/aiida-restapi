@@ -5,7 +5,7 @@ The current Graphql schema is:
 ```{aiida-graphql-schema}
 ```
 
-## Pagination
+## Data Limits and Pagination
 
 ...
 

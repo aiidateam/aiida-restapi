@@ -9,7 +9,7 @@ data:
     id: int
     label: ''
     mtime: str
-    node_type: data.Data.
+    node_type: process.calculation.calcjob.CalcJobNode.
     process_type: my_process
     user_id: int
     uuid: str

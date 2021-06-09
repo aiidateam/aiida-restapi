@@ -10,7 +10,7 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from graphql import GraphQLError
 
-from aiida_restapi.orm_mappings import get_model_from_orm
+from aiida_restapi.aiida_db_mappings import ORM_MAPPING, get_model_from_orm
 
 from .config import ENTITY_LIMIT
 from .utils import JSON, selected_field_names_naive
@@ -39,12 +39,27 @@ def fields_from_orm(
     return output
 
 
+def fields_from_name(
+    cls: str, exclude_fields: Sequence[str] = ()
+) -> Dict[str, gr.Scalar]:
+    """Extract the fields from an AIIDA ORM class name and convert them to graphene objects."""
+    output = {}
+    for name, field in ORM_MAPPING[cls].__fields__.items():
+        if name in exclude_fields:
+            continue
+        gr_type = _type_mapping[field.type_]
+        output[name] = gr_type(description=field.field_info.description)
+    return output
+
+
 def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
     """Extract the field names from an AIIDA ORM class."""
     return set(get_model_from_orm(cls).__fields__.keys())
 
 
-def get_projection(db_fields: Set[str], info: gr.ResolveInfo) -> List[str]:
+def get_projection(
+    db_fields: Set[str], info: gr.ResolveInfo, is_link: bool = False
+) -> List[str]:
     """Traverse the child AST, to work out what fields we should project.
 
     Any fields found that are not database fields, are assumed to be joins.
@@ -52,6 +67,9 @@ def get_projection(db_fields: Set[str], info: gr.ResolveInfo) -> List[str]:
 
     We fallback to "**" (all fields) if the selection set cannot be identified.
     """
+    if is_link:
+        # TODO here we need to look deeper under the "node" field
+        return ["**"]
     try:
         selected = set(selected_field_names_naive(info.field_asts[0].selection_set))
         fields = db_fields.intersection(selected)
@@ -75,6 +93,31 @@ def single_cls_factory(
 EntitiesParentType = Optional[Dict[str, Any]]
 
 
+def create_query_path(
+    query: orm.QueryBuilder, parent: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Append parents to the query path, e.g. containing groups and incoming/outgoing nodes.
+
+    :param parent: data from the parent resolver
+    :returns: key-word arguments for the "leaf" path
+    """
+    leaf_kwargs: Dict[str, Any] = {}
+    if "group_id" in parent:
+        query.append(orm.Group, filters={"id": parent["group_id"]}, tag="group")
+        leaf_kwargs["with_group"] = "group"
+    if "edge_type" in parent:
+        query.append(
+            orm.nodes.Node,
+            filters={"id": parent["parent_id"]},
+            tag=parent["edge_type"],
+        )
+        leaf_kwargs[f'with_{parent["edge_type"]}'] = parent["edge_type"]
+        if parent.get("project_edge"):
+            leaf_kwargs["edge_tag"] = f'{parent["edge_type"]}_edge'
+            leaf_kwargs["edge_project"] = ["**"]
+    return leaf_kwargs
+
+
 def multirow_cls_factory(
     entity_cls: Type[gr.ObjectType], orm_cls: Type[orm.Entity], name: str
 ) -> Type[gr.ObjectType]:
@@ -90,7 +133,7 @@ def multirow_cls_factory(
             entity_cls,
             limit=gr.Int(
                 default_value=ENTITY_LIMIT,
-                description=f"Maximum number of rows to return (no more than {ENTITY_LIMIT}",
+                description=f"Maximum number of rows to return (no more than {ENTITY_LIMIT})",
             ),
             offset=gr.Int(default_value=0, description="Skip the first n rows"),
             orderBy=gr.String(description="Field to order rows by", default_value="id"),
@@ -100,28 +143,13 @@ def multirow_cls_factory(
             ),
         )
 
-        @staticmethod
-        def create_query_path(
-            query: orm.QueryBuilder, parent: Dict[str, Any]
-        ) -> Dict[str, Any]:
-            """Append parents to the query path, e.g. containing groups and incoming/outgoing nodes.
-
-            :param parent: data from the parent resolver
-            :returns: key-word arguments for the "leaf" path
-            """
-            leaf_kwargs = {}
-            if "group_id" in parent:
-                query.append(orm.Group, filters={"id": parent["group_id"]}, tag="group")
-                leaf_kwargs["with_group"] = "group"
-            return leaf_kwargs
-
         @with_dbenv()
         @staticmethod
         def resolve_count(parent: EntitiesParentType, info: gr.ResolveInfo) -> int:
             """Count the number of rows, after applying filters parsed down from the parent."""
             parent = parent or {}
             query = orm.QueryBuilder()
-            leaf_kwargs = AiidaOrmRowsType.create_query_path(query, parent)
+            leaf_kwargs = create_query_path(query, parent)
             leaf_kwargs["filters"] = parent.get("filters", None)
             query.append(orm_cls, **leaf_kwargs)
             return query.count()
@@ -152,19 +180,27 @@ def multirow_cls_factory(
 
             # setup the query
             query = orm.QueryBuilder()
-            leaf_kwargs = AiidaOrmRowsType.create_query_path(query, parent)
+            leaf_kwargs = create_query_path(query, parent)
             leaf_kwargs["filters"] = parent.get("filters", None)
-            leaf_kwargs["project"] = get_projection(db_fields, info)
+            leaf_kwargs["project"] = get_projection(
+                db_fields, info, is_link=(parent.get("project_edge") is True)
+            )
             leaf_kwargs["tag"] = "fields"
             query.append(orm_cls, **leaf_kwargs)
 
             # setup returned rows configuration of the query
+            query.distinct()
             query.offset(offset)
             query.limit(limit)
             if orderBy:
                 query.order_by({"fields": {orderBy: "asc" if orderAsc else "desc"}})
 
             # run query
+            if parent.get("project_edge") is True:
+                return [
+                    {"node": d["fields"], "link": d[f'{parent["edge_type"]}_edge']}
+                    for d in query.dict()
+                ]
             return [d["fields"] for d in query.dict()]
 
     return AiidaOrmRowsType

@@ -95,10 +95,11 @@ nitpick_ignore = [
         "pydantic.types.Json",
         "graphene.types.generic.GenericScalar",
         "graphene.types.objecttype.ObjectType",
-        "aiida_restapi.orm_mappings.Config",
+        "aiida_restapi.aiida_db_mappings.Config",
         "aiida_restapi.models.Config",
         "aiida_restapi.routers.auth.Config",
         "aiida_restapi.graphql.orm_factories.AiidaOrmObjectType",
+        "aiida_restapi.graphql.nodes.LinkObjectType",
         "aiida_restapi.graphql.orm_factories.multirow_cls_factory.<locals>.AiidaOrmRowsType",
     ]
 ]

@@ -150,16 +150,23 @@ def create_node():
         attributes: Optional[dict] = None,
         extras: Optional[dict] = None,
         process_type: Optional[str] = None,
-        computer: Optional[orm.Computer] = None
-    ) -> orm.Data:
-        node = orm.Data(computer=computer)
+        computer: Optional[orm.Computer] = None,
+        store: bool = True
+    ) -> orm.nodes.Node:
+        node = (
+            orm.CalcJobNode(computer=computer)
+            if process_type
+            else orm.Data(computer=computer)
+        )
         node.label = label
         node.description = description
         node.reset_attributes(attributes or {})
         node.reset_extras(extras or {})
         if process_type is not None:
             node.process_type = process_type
-        return node.store()
+        if store:
+            node.store()
+        return node
 
     return _func
 

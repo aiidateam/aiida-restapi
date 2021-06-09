@@ -13,6 +13,16 @@ Subpackages
 Submodules
 ----------
 
+aiida\_restapi.aiida\_db\_mappings module
+-----------------------------------------
+
+.. automodule:: aiida_restapi.aiida_db_mappings
+   :members:
+   :special-members:
+   :private-members:
+   :undoc-members:
+   :show-inheritance:
+
 aiida\_restapi.config module
 ----------------------------
 
@@ -37,16 +47,6 @@ aiida\_restapi.models module
 ----------------------------
 
 .. automodule:: aiida_restapi.models
-   :members:
-   :special-members:
-   :private-members:
-   :undoc-members:
-   :show-inheritance:
-
-aiida\_restapi.orm\_mappings module
------------------------------------
-
-.. automodule:: aiida_restapi.orm_mappings
    :members:
    :special-members:
    :private-members:

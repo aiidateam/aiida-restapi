@@ -1,0 +1,7 @@
+data:
+  Node:
+    Ancestors:
+      count: 2
+      rows:
+      - label: incoming1
+      - label: incoming2

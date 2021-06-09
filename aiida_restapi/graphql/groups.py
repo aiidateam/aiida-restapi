@@ -26,7 +26,6 @@ class GroupQuery(single_cls_factory(Group)):  # type: ignore[misc]
     @staticmethod
     def resolve_Nodes(parent: Any, info: gr.ResolveInfo) -> dict:
         """Resolution function."""
-        print("heya")
         # pass group specification to NodesQuery
         return {"group_id": parent["id"]}
 

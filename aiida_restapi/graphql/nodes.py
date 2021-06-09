@@ -12,11 +12,26 @@ from .comments import CommentsQuery
 from .logs import LogsQuery
 from .orm_factories import (
     ENTITY_DICT_TYPE,
+    fields_from_name,
     multirow_cls_factory,
     resolve_entity,
     single_cls_factory,
 )
 from .utils import JSON, parse_date
+
+Link = type("LinkObjectType", (gr.ObjectType,), fields_from_name("Link"))
+
+
+class LinkQuery(gr.ObjectType):
+    """A link and its end node."""
+
+    link = gr.Field(Link)
+    # note: we must refer to this query using a string, to prevent circular dependencies
+    node = gr.Field("aiida_restapi.graphql.nodes.NodeQuery")
+
+
+class LinksQuery(multirow_cls_factory(LinkQuery, orm.nodes.Node, "nodes")):  # type: ignore[misc]
+    """Query all AiiDA Links."""
 
 
 class NodeQuery(
@@ -38,25 +53,6 @@ class NodeQuery(
             description="return an exact set of extras keys (non-existent will return null)",
         ),
     )
-    Comments = gr.Field(CommentsQuery)
-
-    @staticmethod
-    def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
-        """Resolution function."""
-        # pass filter specification to CommentsQuery
-        filters = {}
-        filters["dbnode_id"] = parent["id"]
-        return {"filters": filters}
-
-    Logs = gr.Field(LogsQuery)
-
-    @staticmethod
-    def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
-        """Resolution function."""
-        # pass filter specification to CommentsQuery
-        filters = {}
-        filters["dbnode_id"] = parent["id"]
-        return {"filters": filters}
 
     # TODO it would be ideal if the attributes/extras were filtered via the SQL query
 
@@ -79,6 +75,71 @@ class NodeQuery(
         if filter is None or extras is None:
             return extras
         return {key: extras.get(key) for key in filter}
+
+    Comments = gr.Field(CommentsQuery, description="Comments attached to a node")
+
+    @staticmethod
+    def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass filter specification to CommentsQuery
+        filters = {}
+        filters["dbnode_id"] = parent["id"]
+        return {"filters": filters}
+
+    Logs = gr.Field(LogsQuery, description="Logs attached to a process node")
+
+    @staticmethod
+    def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass filter specification to CommentsQuery
+        filters = {}
+        filters["dbnode_id"] = parent["id"]
+        return {"filters": filters}
+
+    Incoming = gr.Field(LinksQuery, description="Query for incoming nodes")
+
+    @staticmethod
+    def resolve_Incoming(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass edge specification to LinksQuery
+        return {
+            "parent_id": parent["id"],
+            "edge_type": "outgoing",
+            "project_edge": True,
+        }
+
+    Outgoing = gr.Field(LinksQuery, description="Query for outgoing nodes")
+
+    @staticmethod
+    def resolve_Outgoing(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass edge specification to LinksQuery
+        return {
+            "parent_id": parent["id"],
+            "edge_type": "incoming",
+            "project_edge": True,
+        }
+
+    Ancestors = gr.Field(
+        "aiida_restapi.graphql.nodes.NodesQuery", description="Query for ancestor nodes"
+    )
+
+    @staticmethod
+    def resolve_Ancestors(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass edge specification to LinksQuery
+        return {"parent_id": parent["id"], "edge_type": "descendants"}
+
+    Descendants = gr.Field(
+        "aiida_restapi.graphql.nodes.NodesQuery",
+        description="Query for descendant nodes",
+    )
+
+    @staticmethod
+    def resolve_Descendants(parent: Any, info: gr.ResolveInfo) -> dict:
+        """Resolution function."""
+        # pass edge specification to LinksQuery
+        return {"parent_id": parent["id"], "edge_type": "ancestors"}
 
 
 class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):  # type: ignore[misc]
