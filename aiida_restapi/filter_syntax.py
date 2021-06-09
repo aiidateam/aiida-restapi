@@ -4,7 +4,7 @@
 This grammar was originally adapted from:
 https://github.com/Materials-Consortia/OPTIMADE/blob/master/optimade.rst#the-filter-language-ebnf-grammar
 """
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from lark import Lark, Token, Tree
 
@@ -42,7 +42,7 @@ DOT: "." [SPACES]
 COMMA: "," [SPACES]
 COLON: ":" [SPACES]
 SEMICOLON: ";" [SPACES]
-AND: [SPACES] ("AND" | SEMICOLON) [SPACES]
+AND: [SPACES] ("AND" | "&") [SPACES]
 
 // Relations
 
@@ -68,7 +68,6 @@ DATETIME: DATE [SPACE] TIME
 
 // Property
 
-%import common.LETTER -> LETTER
 %import common.LCASE_LETTER -> LCASE_LETTER
 IDENTIFIER: ( LCASE_LETTER | "_" ) ( LCASE_LETTER | "_" | DIGIT )*
 PROPERTY: IDENTIFIER ( DOT IDENTIFIER )*
@@ -125,10 +124,16 @@ def _parse_valuelist(valuelist: Tree) -> List[Union[int, float, str]]:
     return output
 
 
-def parse_filter(string: str) -> List[Dict[str, Any]]:
+def parse_filter_str(string: Optional[str]) -> List[Dict[str, Any]]:
     """Parse a filter string to a list of ``QueryBuilder`` compliant operators."""
-    tree = FILTER_PARSER.parse(string)
-    filters = []
+    filters = {}
+    if not string:
+        return filters
+    try:
+        tree = FILTER_PARSER.parse(string)
+    except Exception as err:
+        raise ValueError(f"Malformed filter string: {err}")
+
     for child in tree.children:
         try:
             if child.data != "comparison":
@@ -161,5 +166,6 @@ def parse_filter(string: str) -> List[Dict[str, Any]]:
             value = _parse_value(rhs_compare.children[-1])
         else:
             raise ValueError(f"Unknown comparison: {rhs_compare.data}")
-        filters.append({prop_token.value: {operator: value}})
+        # TODO if prop_token.value in filters
+        filters[prop_token.value] = {operator: value}
     return filters

@@ -7,8 +7,7 @@ import graphene as gr
 from aiida import orm
 
 from aiida_restapi.graphql.plugins import QueryPlugin
-
-from ..utils import parse_date
+from aiida_restapi.filter_syntax import parse_filter_str
 from .comments import CommentsQuery
 from .logs import LogsQuery
 from .orm_factories import (
@@ -18,7 +17,7 @@ from .orm_factories import (
     resolve_entity,
     single_cls_factory,
 )
-from .utils import JSON
+from .utils import JSON, FilterString
 
 Link = type("LinkObjectType", (gr.ObjectType,), fields_from_name("Link"))
 
@@ -146,57 +145,6 @@ class NodeQuery(
 class NodesQuery(multirow_cls_factory(NodeQuery, orm.nodes.Node, "nodes")):  # type: ignore[misc]
     """Query all AiiDA Nodes"""
 
-    @staticmethod
-    def get_filter_kwargs() -> Dict[str, gr.Scalar]:
-        """Return a mapping of parameters to filter fields."""
-        return dict(
-            after=gr.String(
-                description="Earliest modified time (allows most known formats to represent a date and/or time)"
-            ),
-            before=gr.String(
-                description="Latest modified time (allows most known formats to represent a date and/or time)"
-            ),
-            created_after=gr.String(
-                description="Earliest created time (allows most known formats to represent a date and/or time)"
-            ),
-            created_before=gr.String(
-                description="Latest created time (allows most known formats to represent a date and/or time)"
-            ),
-        )
-
-    @staticmethod
-    def create_nodes_filter(kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """Given keyword arguments from the resolver,
-        create a filter dictionary to parse to the ``QueryBuilder``."""
-
-        after = kwargs.get("after")
-        before = kwargs.get("before")
-        created_after = kwargs.get("created_after")
-        created_before = kwargs.get("created_before")
-
-        filters: Dict[str, Any] = {}
-        if after is not None and before is not None:
-            filters["mtime"] = {
-                "and": [{">": parse_date(after)}, {"<": parse_date(before)}]
-            }
-        elif after is not None:
-            filters["mtime"] = {">": parse_date(after)}
-        elif before is not None:
-            filters["mtime"] = {"<": parse_date(before)}
-
-        if created_after is not None and created_before is not None:
-            filters["ctime"] = {
-                "and": [
-                    {">": parse_date(created_after)},
-                    {"<": parse_date(created_before)},
-                ]
-            }
-        elif created_after is not None:
-            filters["ctime"] = {">": parse_date(created_after)}
-        elif created_before is not None:
-            filters["ctime"] = {"<": parse_date(created_before)}
-        return filters
-
 
 def resolve_Node(
     parent: Any,
@@ -208,10 +156,10 @@ def resolve_Node(
     return resolve_entity(orm.nodes.Node, info, id, uuid)
 
 
-def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs: Any) -> dict:
+def resolve_Nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
     """Resolution function."""
     # pass filter to NodesQuery
-    return {"filters": NodesQuery.create_nodes_filter(kwargs)}
+    return {"filters": parse_filter_str(filters)}
 
 
 NodeQueryPlugin = QueryPlugin(
@@ -226,7 +174,7 @@ NodesQueryPlugin = QueryPlugin(
     gr.Field(
         NodesQuery,
         description="Query for multiple Nodes",
-        **NodesQuery.get_filter_kwargs()
+        filters=FilterString()
     ),
     resolve_Nodes,
 )

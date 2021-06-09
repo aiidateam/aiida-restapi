@@ -5,6 +5,7 @@
 
 from typing import Iterator
 
+import graphene as gr
 from graphene.types.generic import GenericScalar
 from graphql.language import ast
 
@@ -15,6 +16,10 @@ class JSON(GenericScalar):
     GraphQL scalar value that could be:
     String, Boolean, Int, Float, List or Object.
     """
+
+
+class FilterString(gr.String):
+    """A string adhering to the AiiDA filter syntax."""
 
 
 def selected_field_names_naive(selection_set: ast.SelectionSet) -> Iterator[str]:

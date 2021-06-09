@@ -16,18 +16,20 @@ from .orm_factories import (
     resolve_entity,
     single_cls_factory,
 )
+from aiida_restapi.filter_syntax import parse_filter_str
+from .utils import FilterString
 
 
 class ComputerQuery(single_cls_factory(Computer)):  # type: ignore[misc]
     """Query an AiiDA Computer"""
 
-    Nodes = gr.Field(NodesQuery, **NodesQuery.get_filter_kwargs())
+    Nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_Nodes(parent: Any, info: gr.ResolveInfo, **kwargs: Any) -> dict:
+    def resolve_Nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
         """Resolution function."""
         # pass filter specification to NodesQuery
-        filters = NodesQuery.create_nodes_filter(kwargs)
+        filters = parse_filter_str(filters)
         filters["dbcomputer_id"] = parent["id"]
         return {"filters": filters}
 
