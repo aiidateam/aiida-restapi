@@ -60,7 +60,7 @@ def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
 def get_projection(
     db_fields: Set[str], info: gr.ResolveInfo, is_link: bool = False
 ) -> List[str]:
-    """Traverse the child AST, to work out what fields we should project.
+    """Traverse the child AST to work out what fields we should project.
 
     Any fields found that are not database fields, are assumed to be joins.
     If any joins are present, we always include "id", so they can be linked.

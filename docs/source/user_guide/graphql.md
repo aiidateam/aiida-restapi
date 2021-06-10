@@ -7,13 +7,13 @@ The current Graphql schema is:
 
 ## Data Limits and Pagination
 
-The amount of rows of data returned is rate-limited, to find this limit use:
+The maximum number of rows of data returned is limited. To find this limit use:
 
 ```graphql
 { rowLimitMax }
 ```
 
-You can retrieve all the rows of data in multiple requests, via the `limit` and `offset` options. For example, for pages of 50.
+Use the `offset` option in conjunction with `limit` in order to retrieve all the rows of data over multiple requests. For example, for pages of length 50:
 
 Page 1:
 
@@ -155,10 +155,14 @@ http://localhost:5000/api/v4/server/endpoints
 http://localhost:5000/graphql
 ```
 
+It is important to note that (in contrast to REST) with GraphQL
+
+  * you select the fields you want to retrieve, and
+  * you can combine multiple queries in one request.
+ 
 ### Nodes
 
-It is important to note, that with GraphQL you specify exactly the fields that you want to retrieve.
-It is also important to note, that you are not constrained to one query per request.
+
 
 ```html
 http://localhost:5000/api/v4/nodes?id=in=45,56,78

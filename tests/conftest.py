@@ -75,7 +75,7 @@ def create_user():
 
 @pytest.fixture
 def create_comment():
-    """Create and store an AiiDA Comment (and the user and node)."""
+    """Create and store an AiiDA Comment (+ associated user and node)."""
 
     def _func(
         content: str = "content",

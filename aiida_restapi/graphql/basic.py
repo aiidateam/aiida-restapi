@@ -12,19 +12,19 @@ from .plugins import QueryPlugin
 
 
 def resolve_rowLimitMax(parent: Any, info: gr.ResolveInfo) -> int:
-    """Resolution function."""
+    """Get row maximum number of rows."""
     return ENTITY_LIMIT
 
 
 def resolve_aiidaVersion(parent: Any, info: gr.ResolveInfo) -> str:
-    """Resolution function."""
+    """Get AiiDA version."""
     return aiida.__version__
 
 
 rowLimitMaxPlugin = QueryPlugin(
     "rowLimitMax",
     gr.Int(
-        description="Maximum amount of entity rows you are allowed to return from a query"
+        description="Maximum number of entity rows allowed to be returned from a query"
     ),
     resolve_rowLimitMax,
 )

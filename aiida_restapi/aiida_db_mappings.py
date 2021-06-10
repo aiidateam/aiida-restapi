@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""The 'source of truth' for mapping AiiDA's database table models, to pydantic models.
+"""The 'source of truth' for mapping AiiDA's database table models to pydantic models.
 
-Note in the future we may want to do this programmatically, however, there is two issues:
+Note in the future we may want to do this programmatically, however, there are two issues:
 - AiiDA uses both SQLAlchemy and Django backends, so one would need to be chosen
 - Neither model includes descriptions of fields
 """
@@ -28,7 +28,7 @@ class Comment(BaseModel):
     """AiiDA Comment SQL table fields."""
 
     id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Unique uuid")
+    uuid: UUID = Field(description="Universally unique id")
     ctime: datetime = Field(description="Creation time")
     mtime: datetime = Field(description="Last modification time")
     content: Optional[str] = Field(description="Content of the comment")
@@ -89,10 +89,10 @@ class Node(BaseModel):
     user_id: int = Field(description="Created by user id (pk)")
     dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
     attributes: Json = Field(
-        description="Variable attributes of the node",
+        description="Attributes of the node (immutable after storing the node)",
     )
     extras: Json = Field(
-        description="Variable extras (unsealed) of the node",
+        description="Extra attributes of the node (mutable)",
     )
 
 
