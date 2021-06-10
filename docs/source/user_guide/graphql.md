@@ -1,5 +1,25 @@
 # GraphQL server (`/graphql`)
 
+## What is GraphQL?
+
+From [graphql.org](https://graphql.org/):
+
+> GraphQL is a query language for APIs and a runtime for fulfilling those queries. GraphQL provides a complete and understandable description of the data in your API, gives clients the power to ask for exactly what they need and nothing more
+
+Features:
+
+- Ask for what you need, get exactly that.
+- Get many resources in a single request
+- Describe what’s possible with a clear schema
+
+## Why GraphQL?
+
+GitHub provided a very concise blog of why they switched to GraphQL: <https://github.blog/2016-09-14-the-github-graphql-api/>
+
+> GraphQL represents a massive leap forward for API development. Type safety, introspection, generated documentation, and predictable responses benefit both the maintainers and consumers of our platform.
+
+## The GraphQL schema
+
 The current Graphql schema is:
 
 ```{aiida-graphql-schema}
