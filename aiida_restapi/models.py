@@ -8,9 +8,10 @@ Models in this module mirror those in
 
 from datetime import datetime
 from typing import ClassVar, List, Optional, Type, TypeVar
+from uuid import UUID
 
 from aiida import orm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Json
 
 # Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
@@ -116,4 +117,25 @@ class Computer(AiidaModel):
     )
     metadata: Optional[dict] = Field(
         description="General settings for these communication and management protocols"
+    )
+
+
+class Node(AiidaModel):
+    """AiiDA Node model."""
+
+    id: Optional[int] = Field(description="Unique id (pk)")
+    uuid: Optional[UUID] = Field(description="Unique uuid")
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
+    ctime: Optional[datetime] = Field(description="Creation time")
+    mtime: Optional[datetime] = Field(description="Last modification time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Json] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Json] = Field(
+        description="Variable extras (unsealed) of the node",
     )
