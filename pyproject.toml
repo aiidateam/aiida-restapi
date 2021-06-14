@@ -19,6 +19,9 @@ disable = [
     "too-many-ancestors",
 ]
 
+[tool.pylint.similarities]
+ignore-imports = "yes"
+
 [tool.pytest.ini_options]
 python_files = "test_*.py example_*.py"
 filterwarnings = [
