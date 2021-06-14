@@ -26,11 +26,12 @@ and makes it very intuitive for clients to construct complex queries, e.g.
 {
   aiidaVersion
   aiidaEntryPointGroups
-  nodes(filters: "node_type LIKE '%Calc%'") {
+  nodes(filters: "node_type LIKE '%Calc%' & mtime >= 2018-02-01") {
     count
-    rows(limit: 10) {
+    rows(limit: 10, offset: 10) {
       uuid
       node_type
+      mtime
       incoming {
         count
       }
@@ -69,58 +70,86 @@ and makes it very intuitive for clients to construct complex queries, e.g.
       "count": 17784,
       "rows": [
         {
-          "uuid": "9505e71d-60a9-4d0a-ac44-b27ad42c5d66",
-          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
-          "incoming": {
-            "count": 0
-          },
-          "outgoing": {
-            "count": 0
-          }
-        },
-        {
-          "uuid": "6783928c-24a0-43c2-9b70-f48051222c60",
-          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
-          "incoming": {
-            "count": 0
-          },
-          "outgoing": {
-            "count": 0
-          }
-        },
-        {
-          "uuid": "70971dba-dce7-4272-ac52-3c1c5d1749b0",
-          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
-          "incoming": {
-            "count": 1
-          },
-          "outgoing": {
-            "count": 1
-          }
-        },
-        {
-          "uuid": "6af3f8a0-cf0d-4427-8472-f8907acfc87a",
+          "uuid": "0f487263-999e-42dd-a71a-66ed6c4d39ba",
           "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "mtime": "2018-02-03T07:18:35.129525+01:00",
           "incoming": {
-            "count": 7
+            "count": 8
+          },
+          "outgoing": {
+            "count": 5
+          }
+        },
+        {
+          "uuid": "cff1e914-5a34-4930-9429-9dcc6d38feb1",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "mtime": "2018-02-03T07:18:35.129813+01:00",
+          "incoming": {
+            "count": 2
+          },
+          "outgoing": {
+            "count": 3
+          }
+        },
+        {
+          "uuid": "2be5f351-6dd7-4a68-9873-4bc1b3b581fb",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "mtime": "2018-02-03T07:18:35.129843+01:00",
+          "incoming": {
+            "count": 2
+          },
+          "outgoing": {
+            "count": 3
+          }
+        },
+        {
+          "uuid": "3e4c9793-49f1-4165-85e1-beaba5a1c4f0",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "mtime": "2018-02-03T07:18:35.130197+01:00",
+          "incoming": {
+            "count": 2
+          },
+          "outgoing": {
+            "count": 2
+          }
+        },
+        {
+          "uuid": "3c397478-06af-4b76-8de8-a01fa7248d13",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "mtime": "2018-02-03T07:18:35.130550+01:00",
+          "incoming": {
+            "count": 2
+          },
+          "outgoing": {
+            "count": 3
+          }
+        },
+        {
+          "uuid": "d872a924-b831-4c91-92a9-59945544cea8",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "mtime": "2018-02-03T07:18:35.130714+01:00",
+          "incoming": {
+            "count": 8
           },
           "outgoing": {
             "count": 4
           }
         },
         {
-          "uuid": "de98792b-ad78-4817-bf67-84630671e277",
+          "uuid": "dfe24253-9993-4abd-91c3-8ed0f2a4fd6f",
           "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "mtime": "2018-02-03T07:18:35.131319+01:00",
           "incoming": {
-            "count": 9
+            "count": 7
           },
           "outgoing": {
             "count": 6
           }
         },
         {
-          "uuid": "c00f403f-84f8-433e-90ee-3801e2fa4fd1",
+          "uuid": "1feace00-7282-481c-bf6c-51659ef5b115",
           "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "mtime": "2018-02-03T07:18:35.131384+01:00",
           "incoming": {
             "count": 8
           },
@@ -129,43 +158,25 @@ and makes it very intuitive for clients to construct complex queries, e.g.
           }
         },
         {
-          "uuid": "66738498-ff6b-40c8-a167-b0c6556695a0",
-          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "uuid": "899d7d18-4880-4942-b45b-2885ca341d55",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "mtime": "2018-02-03T07:18:35.131482+01:00",
           "incoming": {
-            "count": 7
+            "count": 2
           },
           "outgoing": {
-            "count": 4
+            "count": 1
           }
         },
         {
-          "uuid": "b0e93972-4782-4908-b593-5fff627b7c93",
+          "uuid": "483f69f7-1f23-43ce-b9de-1bb5598083f3",
           "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "mtime": "2018-02-03T07:18:35.132315+01:00",
           "incoming": {
-            "count": 9
-          },
-          "outgoing": {
-            "count": 4
-          }
-        },
-        {
-          "uuid": "115904df-b621-4b86-afb6-17fab3359d05",
-          "node_type": "process.calculation.calcjob.CalcJobNode.",
-          "incoming": {
-            "count": 9
+            "count": 8
           },
           "outgoing": {
             "count": 6
-          }
-        },
-        {
-          "uuid": "a4b9d700-33dc-4114-9d0e-2b0afeb89c0b",
-          "node_type": "process.calculation.calcjob.CalcJobNode.",
-          "incoming": {
-            "count": 9
-          },
-          "outgoing": {
-            "count": 4
           }
         }
       ]
