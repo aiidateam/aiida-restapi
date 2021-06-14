@@ -14,3 +14,4 @@ dist/
 pip-wheel-metadata/
 .tox
 docs/_build/
+docs/source/apidoc
