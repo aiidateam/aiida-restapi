@@ -13,8 +13,10 @@ max-line-length = 125
 
 [tool.pylint.messages_control]
 disable = [
-    "too-many-ancestors",
+    "duplicate-code",
+    "fixme",
     "invalid-name",
+    "too-many-ancestors",
 ]
 
 [tool.pylint.similarities]

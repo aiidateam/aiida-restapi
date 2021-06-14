@@ -14,8 +14,6 @@ pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 def clear_database_auto(clear_database_before_test):  # pylint: disable=unused-argument
     """Automatically clear database in between tests."""
 
-    # TODO: Somehow this does not reset the user id counter, which causes the /users/id test to fail  # pylint: disable=fixme
-
 
 @pytest.fixture(scope="function")
 def client():

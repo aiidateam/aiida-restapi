@@ -1,0 +1,15 @@
+data:
+  node:
+    outgoing:
+      count: 2
+      rows:
+      - link:
+          label: link1
+          type: create
+        node:
+          label: outgoing1
+      - link:
+          label: link2
+          type: create
+        node:
+          label: outgoing2

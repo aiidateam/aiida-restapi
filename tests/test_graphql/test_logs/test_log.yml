@@ -1,0 +1,10 @@
+data:
+  log:
+    dbnode_id: int
+    id: int
+    levelname: level 1
+    loggername: name
+    message: ''
+    metadata: {}
+    time: str
+    uuid: str

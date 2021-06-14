@@ -51,10 +51,13 @@ repos:
       - fastapi~=0.65.1
       - uvicorn[standard]>=0.12.0,<0.14.0
       - pydantic~=1.8.2
+      - graphene
+      - lark
       - python-jose
       - python-multipart
       - passlib
       - pytest~=3.6,<5.0.0
+      - sphinx<4
       exclude: >
         (?x)^(
             docs/.*|
