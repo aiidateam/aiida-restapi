@@ -29,6 +29,7 @@ from aiida_restapi.filter_syntax import parse_filter_str
         ('a IN "x","y","z"', {"a": {"in": ["x", "y", "z"]}}),
         ('a HAS "x"', {"a": {"has_key": "x"}}),
         ('a HAS KEY "y"', {"a": {"has_key": "y"}}),
+        ("a < 2 & a >=1 & a == 3", {"a": {"and": [{"<": 2}, {">=": 1}, {"==": 3}]}}),
     ],
 )
 def test_parser(input_str, output):

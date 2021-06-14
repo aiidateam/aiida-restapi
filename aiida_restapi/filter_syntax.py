@@ -4,6 +4,7 @@
 This grammar was originally adapted from:
 https://github.com/Materials-Consortia/OPTIMADE/blob/master/optimade.rst#the-filter-language-ebnf-grammar
 """
+# pylint: disable=too-many-branches
 from importlib import resources
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -88,6 +89,12 @@ def parse_filter_str(string: Optional[str]) -> Dict[str, Any]:
             value = _parse_value(rhs_compare.children[-1])
         else:
             raise ValueError(f"Unknown comparison: {rhs_compare.data}")
-        # TODO if prop_token.value in filters, turn int "and"
-        filters[prop_token.value] = {operator: value}
+
+        if prop_token.value in filters:
+            if "and" not in filters[prop_token.value]:
+                current = filters.pop(prop_token.value)
+                filters[prop_token.value] = {"and": [current]}
+            filters[prop_token.value]["and"].append({operator: value})
+        else:
+            filters[prop_token.value] = {operator: value}
     return filters

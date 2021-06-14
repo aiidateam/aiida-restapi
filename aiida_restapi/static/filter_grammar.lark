@@ -1,4 +1,4 @@
-filter: [SPACES] comparison [ AND comparison ]
+filter: [SPACES] comparison ( AND comparison )*
 
 // Comparisons
 
