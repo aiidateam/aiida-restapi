@@ -39,10 +39,10 @@ AND: [SPACES] ("AND" | "&") [SPACES]
 
 // Relations
 
-OPERATOR: [SPACES] ( "<" [ "=" ] | ">" [ "=" ] | "!=" | "==" ) [SPACES]
+OPERATOR: [SPACES] ( "<" [ "=" ] | ">" [ "=" ] | "!==" | "==" ) [SPACES]
 
 LIKE: [SPACES] "LIKE" [SPACES]
-ILIKE: [SPACES] "iLIKE" [SPACES]
+ILIKE: [SPACES] "ILIKE" [SPACES]
 
 OF: [SPACES] "OF" [SPACES]
 LENGTH: [SPACES] "LENGTH" [SPACES]

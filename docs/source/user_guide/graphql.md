@@ -232,8 +232,21 @@ Page 2:
 
 ## Filtering
 
-The `filters` option for `Computers`, `Groups` `Nodes`, and `Users`, accepts a `FilterString`.
-Its syntax is defined by the following [EBNF Grammar](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form):
+The `filters` option for `computers`, `comments`, `groups`, `logs`, `nodes`, and `users`, accepts a `FilterString`, which maps a string to the `filters` input of the `QueryBuilder` (see [the reference table](https://aiida.readthedocs.io/projects/aiida-core/en/v1.6.3/topics/database.html#reference-tables) for more information).
+
+For example:
+
+```graphql
+nodes(filters: "node_type ILIKE '%Calc%' & mtime >= 2018-02-01") { count }
+```
+
+maps to:
+
+```python
+QueryBuilder().append(Node, filters={"node_type": {"ilike": "%Calc%"}, "mtime": {">=": datetime(2018, 2, 1)}}).count()
+```
+
+The syntax is defined by the following [EBNF Grammar](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form):
 
 ````{dropdown} FilterString Syntax
 
@@ -583,7 +596,7 @@ http://localhost:5000/api/v4/users/?first_name=ilike="aii%"
 
 ```graphql
 {
-  users(filters: "first_name iLIKE 'aii%'") {
+  users(filters: "first_name ILIKE 'aii%'") {
     count
     rows {
       email
