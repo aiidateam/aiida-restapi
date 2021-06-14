@@ -39,7 +39,7 @@ Page 1:
 
 ```graphql
 {
-  Nodes {
+  nodes {
     count
     rows(limit: 50, offset: 0) {
       attributes
@@ -52,7 +52,7 @@ Page 2:
 
 ```graphql
 {
-  Nodes {
+  nodes {
     count
     rows(limit: 50, offset: 50) {
       attributes
@@ -177,12 +177,10 @@ http://localhost:5000/graphql
 
 It is important to note that (in contrast to REST) with GraphQL
 
-  * you select the fields you want to retrieve, and
-  * you can combine multiple queries in one request.
- 
+- you select the fields you want to retrieve, and
+- you can combine multiple queries in one request.
+
 ### Nodes
-
-
 
 ```html
 http://localhost:5000/api/v4/nodes?id=in=45,56,78
@@ -190,7 +188,7 @@ http://localhost:5000/api/v4/nodes?id=in=45,56,78
 
 ```graphql
 {
-  Nodes(filters: "id IN 45,56,78") {
+  nodes(filters: "id IN 45,56,78") {
     count
     rows {
       id
@@ -205,7 +203,7 @@ http://localhost:5000/api/v4/nodes?limit=2&offset=8&orderby=-id
 
 ```graphql
 {
-  Nodes {
+  nodes {
     rows(limit: 2, offset: 8, orderBy: "id", orderAsc: false) {
       id
     }
@@ -213,14 +211,13 @@ http://localhost:5000/api/v4/nodes?limit=2&offset=8&orderby=-id
 }
 ```
 
-
 ```
 http://localhost:5000/api/v4/nodes?attributes=true&attributes_filter=pbc1
 ```
 
 ```graphql
 {
-  Nodes {
+  nodes {
     rows {
       attributes(filter: ["pbc1"])
     }
@@ -249,7 +246,7 @@ http://localhost:5000/api/v4/nodes/12f95e1c
 ```
 
 ```graphql
-{ Node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { uuid } }
+{ node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { uuid } }
 ```
 
 Partial UUIDs are not yet implemented (but you can also select using `id`).
@@ -261,8 +258,8 @@ http://localhost:5000/api/v4/nodes/de83b1/links/incoming?limit=2
 
 ```graphql
 {
-  Node(id: 1011) {
-    Incoming {
+  node(id: 1011) {
+    incoming {
       rows(limit: 2) {
         link {
           label
@@ -285,8 +282,8 @@ http://localhost:5000/api/v4/nodes/de83b1/links/incoming?full_type="data.dict.Di
 
 ```graphql
 {
-  Node(id: 1011) {
-    Incoming(filters: "node_type == 'data.dict.Dict.'") {
+  node(id: 1011) {
+    incoming(filters: "node_type == 'data.dict.Dict.'") {
       count
       rows {
         link {
@@ -310,8 +307,8 @@ http://localhost:5000/api/v4/nodes/a67fba41/links/outgoing?full_type="data.dict.
 
 ```graphql
 {
-  Node(id: 1011) {
-    Outgoing(filters: "node_type == 'data.dict.Dict.'") {
+  node(id: 1011) {
+    outgoing(filters: "node_type == 'data.dict.Dict.'") {
       count
       rows {
         link {
@@ -334,7 +331,7 @@ http://localhost:5000/api/v4/nodes/ffe11/contents/attributes
 ```
 
 ```graphql
-{ Node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { attributes } }
+{ node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { attributes } }
 ```
 
 
@@ -343,7 +340,7 @@ http://localhost:5000/api/v4/nodes/ffe11/contents/attributes?attributes_filter=a
 ```
 
 ```graphql
-{ Node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { attributes(filter: ["append_text", "is_local"]) } }
+{ node(uuid: "dee1f869-c45e-40d9-9f9c-f492f4117f13") { attributes(filter: ["append_text", "is_local"]) } }
 ```
 
 
@@ -353,8 +350,8 @@ http://localhost:5000/api/v4/nodes/ffe11/contents/comments
 
 ```graphql
 {
-  Node(id: 1011) {
-    Comments {
+  node(id: 1011) {
+    comments {
       count
       rows {
         content
@@ -384,7 +381,7 @@ http://localhost:5000/api/v4/nodes?mtime>=2019-04-23
 
 ```graphql
 {
-  Nodes(filters: "mtime>=2019-04-23") {
+  nodes(filters: "mtime>=2019-04-23") {
     count
     rows {
         uuid
@@ -410,7 +407,7 @@ http://localhost:5000/api/v4/computers?limit=3&offset=2&orderby=id
 
 ```graphql
 {
-  Computers {
+  computers {
     count
     rows(limit: 3, offset: 3, orderBy: "id") {
       id
@@ -424,7 +421,7 @@ http://localhost:5000/api/v4/computers/5d490d77
 
 ```graphql
 {
-  Computer(uuid: "5d490d77") {
+  computer(uuid: "5d490d77") {
     label
   }
 }
@@ -436,7 +433,7 @@ http://localhost:5000/api/v4/computers/?scheduler_type=in="slurm","pbs"
 
 ```graphql
 {
-  Computers(filters: "scheduler_type IN slurm,pbs") {
+  computers(filters: "scheduler_type IN slurm,pbs") {
     count
     rows {
       scheduler_type
@@ -451,7 +448,7 @@ http://localhost:5000/api/v4/computers?orderby=+name
 
 ```graphql
 {
-  Computers {
+  computers {
     rows(orderBy: "name") {
       id
     }
@@ -465,7 +462,7 @@ http://localhost:5000/api/v4/computers/page/1?perpage=5
 
 ```graphql
 {
-  Computers {
+  computers {
     rows(limit: 5) {
       id
     }
@@ -481,7 +478,7 @@ http://localhost:5000/api/v4/users/
 
 ```graphql
 {
-  Users {
+  users {
     count
     rows {
       id
@@ -496,7 +493,7 @@ http://localhost:5000/api/v4/users/?first_name=ilike="aii%"
 
 ```graphql
 {
-  Users(filters: "first_name iLIKE 'aii%'") {
+  users(filters: "first_name iLIKE 'aii%'") {
     count
     rows {
       email
@@ -516,7 +513,7 @@ http://localhost:5000/api/v4/groups/?limit=10&orderby=-user_id
 
 ```graphql
 {
-  Groups {
+  groups {
     count
     rows(limit: 10, orderBy: "user_id", orderAsc: false) {
       id
@@ -531,10 +528,10 @@ http://localhost:5000/api/v4/groups/a6e5b
 
 ```graphql
 {
-  Group(id: 1) {
+  group(id: 1) {
     id
     label
-    Nodes {
+    nodes {
       count
     }
   }

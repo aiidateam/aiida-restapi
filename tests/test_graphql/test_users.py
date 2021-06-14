@@ -13,7 +13,7 @@ def test_user(create_user, orm_regression):
     fields = field_names_from_orm(type(user))
     schema = create_schema([UserQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ User(id: %r) { %s } }" % (user.id, " ".join(fields)))
+    executed = client.execute("{ user(id: %r) { %s } }" % (user.id, " ".join(fields)))
     orm_regression(executed)
 
 
@@ -24,5 +24,5 @@ def test_users(create_user, orm_regression):
     fields = field_names_from_orm(type(user))
     schema = create_schema([UsersQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ Users {  count rows { %s } } }" % " ".join(fields))
+    executed = client.execute("{ users {  count rows { %s } } }" % " ".join(fields))
     orm_regression(executed)

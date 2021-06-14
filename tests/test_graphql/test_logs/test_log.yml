@@ -1,5 +1,5 @@
 data:
-  Log:
+  log:
     dbnode_id: int
     id: int
     levelname: level 1

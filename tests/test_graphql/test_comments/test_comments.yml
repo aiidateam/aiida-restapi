@@ -1,5 +1,5 @@
 data:
-  Comments:
+  comments:
     count: 2
     rows:
     - content: comment 1

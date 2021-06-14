@@ -23,10 +23,10 @@ from .utils import FilterString
 class ComputerQuery(single_cls_factory(Computer)):  # type: ignore[misc]
     """Query an AiiDA Computer"""
 
-    Nodes = gr.Field(NodesQuery, filters=FilterString())
+    nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_Nodes(
+    def resolve_nodes(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -59,7 +59,7 @@ def resolve_Computers(
 
 
 ComputerQueryPlugin = QueryPlugin(
-    "Computer",
+    "computer",
     gr.Field(
         ComputerQuery,
         id=gr.Int(),
@@ -69,7 +69,7 @@ ComputerQueryPlugin = QueryPlugin(
     resolve_Computer,
 )
 ComputersQueryPlugin = QueryPlugin(
-    "Computers",
+    "computers",
     gr.Field(
         ComputersQuery,
         description="Query for multiple Computers",

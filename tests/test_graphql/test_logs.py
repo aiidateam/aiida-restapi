@@ -13,7 +13,7 @@ def test_log(create_log, orm_regression):
     fields = field_names_from_orm(type(log))
     schema = create_schema([LogQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ Log(id: %r) { %s } }" % (log.id, " ".join(fields)))
+    executed = client.execute("{ log(id: %r) { %s } }" % (log.id, " ".join(fields)))
     orm_regression(executed)
 
 
@@ -24,5 +24,5 @@ def test_logs(create_log, orm_regression):
     fields = field_names_from_orm(type(log))
     schema = create_schema([LogsQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ Logs {  count rows { %s } } }" % " ".join(fields))
+    executed = client.execute("{ logs {  count rows { %s } } }" % " ".join(fields))
     orm_regression(executed)

@@ -1,5 +1,5 @@
 data:
-  Node:
+  node:
     attributes: {}
     ctime: str
     dbcomputer_id: null

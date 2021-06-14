@@ -1,5 +1,5 @@
 data:
-  Nodes:
+  nodes:
     count: 2
     rows:
     - attributes: {}

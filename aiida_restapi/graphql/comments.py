@@ -6,7 +6,9 @@ from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import Comment
+
 from aiida_restapi.filter_syntax import parse_filter_str
+
 from .orm_factories import (
     ENTITY_DICT_TYPE,
     multirow_cls_factory,
@@ -15,6 +17,7 @@ from .orm_factories import (
 )
 from .plugins import QueryPlugin
 from .utils import FilterString
+
 
 class CommentQuery(single_cls_factory(Comment)):  # type: ignore[misc]
     """Query an AiiDA Comment"""
@@ -34,14 +37,16 @@ def resolve_Comment(
     return resolve_entity(Comment, info, id, uuid)
 
 
-def resolve_Comments(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
+def resolve_Comments(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to CommentsQuery
     return {"filters": parse_filter_str(filters)}
 
 
 CommentQueryPlugin = QueryPlugin(
-    "Comment",
+    "comment",
     gr.Field(
         CommentQuery,
         id=gr.Int(),
@@ -51,7 +56,9 @@ CommentQueryPlugin = QueryPlugin(
     resolve_Comment,
 )
 CommentsQueryPlugin = QueryPlugin(
-    "Comments",
-    gr.Field(CommentsQuery, description="Query for multiple Comments",filters=FilterString()),
+    "comments",
+    gr.Field(
+        CommentsQuery, description="Query for multiple Comments", filters=FilterString()
+    ),
     resolve_Comments,
 )

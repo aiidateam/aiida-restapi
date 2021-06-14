@@ -1,5 +1,5 @@
 data:
-  Group:
+  group:
     description: ''
     extras: {}
     id: int

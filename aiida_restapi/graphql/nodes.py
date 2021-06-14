@@ -77,32 +77,32 @@ class NodeQuery(
             return extras
         return {key: extras.get(key) for key in filter}
 
-    Comments = gr.Field(CommentsQuery, description="Comments attached to a node")
+    comments = gr.Field(CommentsQuery, description="Comments attached to a node")
 
     @staticmethod
-    def resolve_Comments(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_comments(parent: Any, info: gr.ResolveInfo) -> dict:
         """Resolution function."""
         # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
         return {"filters": filters}
 
-    Logs = gr.Field(LogsQuery, description="Logs attached to a process node")
+    logs = gr.Field(LogsQuery, description="Logs attached to a process node")
 
     @staticmethod
-    def resolve_Logs(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_logs(parent: Any, info: gr.ResolveInfo) -> dict:
         """Resolution function."""
         # pass filter specification to CommentsQuery
         filters = {}
         filters["dbnode_id"] = parent["id"]
         return {"filters": filters}
 
-    Incoming = gr.Field(
+    incoming = gr.Field(
         LinksQuery, description="Query for incoming nodes", filters=FilterString()
     )
 
     @staticmethod
-    def resolve_Incoming(
+    def resolve_incoming(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -114,12 +114,12 @@ class NodeQuery(
             "filters": parse_filter_str(filters),
         }
 
-    Outgoing = gr.Field(
+    outgoing = gr.Field(
         LinksQuery, description="Query for outgoing nodes", filters=FilterString()
     )
 
     @staticmethod
-    def resolve_Outgoing(
+    def resolve_outgoing(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -131,14 +131,14 @@ class NodeQuery(
             "filters": parse_filter_str(filters),
         }
 
-    Ancestors = gr.Field(
+    ancestors = gr.Field(
         "aiida_restapi.graphql.nodes.NodesQuery",
         description="Query for ancestor nodes",
         filters=FilterString(),
     )
 
     @staticmethod
-    def resolve_Ancestors(
+    def resolve_ancestors(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -149,14 +149,14 @@ class NodeQuery(
             "filters": parse_filter_str(filters),
         }
 
-    Descendants = gr.Field(
+    descendants = gr.Field(
         "aiida_restapi.graphql.nodes.NodesQuery",
         description="Query for descendant nodes",
         filters=FilterString(),
     )
 
     @staticmethod
-    def resolve_Descendants(
+    def resolve_descendants(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -191,14 +191,14 @@ def resolve_Nodes(
 
 
 NodeQueryPlugin = QueryPlugin(
-    "Node",
+    "node",
     gr.Field(
         NodeQuery, id=gr.Int(), uuid=gr.String(), description="Query for a single Node"
     ),
     resolve_Node,
 )
 NodesQueryPlugin = QueryPlugin(
-    "Nodes",
+    "nodes",
     gr.Field(
         NodesQuery, description="Query for multiple Nodes", filters=FilterString()
     ),

@@ -1,6 +1,6 @@
 data:
-  Group:
-    Nodes:
+  group:
+    nodes:
       count: 2
       rows:
       - label: node 1

@@ -23,10 +23,10 @@ from .utils import FilterString
 class GroupQuery(single_cls_factory(Group)):  # type: ignore[misc]
     """Query an AiiDA Group"""
 
-    Nodes = gr.Field(NodesQuery)
+    nodes = gr.Field(NodesQuery)
 
     @staticmethod
-    def resolve_Nodes(parent: Any, info: gr.ResolveInfo) -> dict:
+    def resolve_nodes(parent: Any, info: gr.ResolveInfo) -> dict:
         """Resolution function."""
         # pass group specification to NodesQuery
         return {"group_id": parent["id"]}
@@ -55,7 +55,7 @@ def resolve_Groups(
 
 
 GroupQueryPlugin = QueryPlugin(
-    "Group",
+    "group",
     gr.Field(
         GroupQuery,
         id=gr.Int(),
@@ -65,7 +65,7 @@ GroupQueryPlugin = QueryPlugin(
     resolve_Group,
 )
 GroupsQueryPlugin = QueryPlugin(
-    "Groups",
+    "groups",
     gr.Field(
         GroupsQuery,
         description="Query for multiple Groups",

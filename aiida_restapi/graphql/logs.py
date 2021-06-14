@@ -6,7 +6,9 @@ from typing import Any, Optional
 
 import graphene as gr
 from aiida.orm import Log
+
 from aiida_restapi.filter_syntax import parse_filter_str
+
 from .orm_factories import (
     ENTITY_DICT_TYPE,
     multirow_cls_factory,
@@ -15,6 +17,7 @@ from .orm_factories import (
 )
 from .plugins import QueryPlugin
 from .utils import FilterString
+
 
 class LogQuery(single_cls_factory(Log)):  # type: ignore[misc]
     """Query an AiiDA Log"""
@@ -34,19 +37,27 @@ def resolve_Log(
     return resolve_entity(Log, info, id, uuid)
 
 
-def resolve_Logs(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
+def resolve_Logs(
+    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
+) -> dict:
     """Resolution function."""
     # pass filter to LogsQuery
     return {"filters": parse_filter_str(filters)}
 
 
 LogQueryPlugin = QueryPlugin(
-    "Log",
+    "log",
     gr.Field(
         LogQuery, id=gr.Int(), uuid=gr.String(), description="Query for a single Log"
     ),
     resolve_Log,
 )
 LogsQueryPlugin = QueryPlugin(
-    "Logs", gr.Field(LogsQuery, description="Query for multiple Logs",filters=FilterString(),), resolve_Logs
+    "logs",
+    gr.Field(
+        LogsQuery,
+        description="Query for multiple Logs",
+        filters=FilterString(),
+    ),
+    resolve_Logs,
 )

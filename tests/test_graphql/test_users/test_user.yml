@@ -1,5 +1,5 @@
 data:
-  User:
+  user:
     email: a@b.com
     first_name: ''
     id: int

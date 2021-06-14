@@ -22,10 +22,10 @@ from .utils import FilterString
 class UserQuery(single_cls_factory(User)):  # type: ignore[misc]
     """Query an AiiDA User"""
 
-    Nodes = gr.Field(NodesQuery, filters=FilterString())
+    nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_Nodes(
+    def resolve_nodes(
         parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
     ) -> dict:
         """Resolution function."""
@@ -58,14 +58,14 @@ def resolve_Users(
 
 
 UserQueryPlugin = QueryPlugin(
-    "User",
+    "user",
     gr.Field(
         UserQuery, id=gr.Int(), email=gr.String(), description="Query for a single User"
     ),
     resolve_User,
 )
 UsersQueryPlugin = QueryPlugin(
-    "Users",
+    "users",
     gr.Field(
         UsersQuery, description="Query for multiple Users", filters=FilterString()
     ),

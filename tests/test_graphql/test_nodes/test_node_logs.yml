@@ -1,6 +1,6 @@
 data:
-  Node:
-    Logs:
+  node:
+    logs:
       count: 2
       rows:
       - message: log 1

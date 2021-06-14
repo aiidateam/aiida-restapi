@@ -1,6 +1,6 @@
 data:
-  Computer:
-    Nodes:
+  computer:
+    nodes:
       count: 2
       rows:
       - label: node 1

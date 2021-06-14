@@ -1,5 +1,5 @@
 data:
-  Users:
+  users:
     count: 3
     rows:
     - email: tests@aiida.mail

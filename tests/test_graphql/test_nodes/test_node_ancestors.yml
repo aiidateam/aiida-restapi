@@ -1,6 +1,6 @@
 data:
-  Node:
-    Ancestors:
+  node:
+    ancestors:
       count: 2
       rows:
       - label: incoming1

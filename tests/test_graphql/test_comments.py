@@ -14,7 +14,7 @@ def test_comment(create_comment, orm_regression):
     schema = create_schema([CommentQueryPlugin])
     client = Client(schema)
     executed = client.execute(
-        "{ Comment(id: %r) { %s } }" % (comment.id, " ".join(fields))
+        "{ comment(id: %r) { %s } }" % (comment.id, " ".join(fields))
     )
     orm_regression(executed)
 
@@ -26,7 +26,7 @@ def test_comments(create_comment, orm_regression):
     fields = field_names_from_orm(type(comment))
     schema = create_schema([CommentsQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ Comments {  count rows { %s } } }" % " ".join(fields))
+    executed = client.execute("{ comments {  count rows { %s } } }" % " ".join(fields))
     orm_regression(executed)
 
 
@@ -38,6 +38,6 @@ def test_comments_order_by(create_comment, orm_regression):
     schema = create_schema([CommentsQueryPlugin])
     client = Client(schema)
     executed = client.execute(
-        '{ Comments {  count rows(orderBy: "content", orderAsc: false) { content } } }'
+        '{ comments {  count rows(orderBy: "content", orderAsc: false) { content } } }'
     )
     orm_regression(executed)

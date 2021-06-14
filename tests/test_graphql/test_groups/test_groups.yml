@@ -1,5 +1,5 @@
 data:
-  Groups:
+  groups:
     count: 2
     rows:
     - description: ''

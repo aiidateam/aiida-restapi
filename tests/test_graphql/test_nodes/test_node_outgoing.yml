@@ -1,6 +1,6 @@
 data:
-  Node:
-    Outgoing:
+  node:
+    outgoing:
       count: 2
       rows:
       - link:

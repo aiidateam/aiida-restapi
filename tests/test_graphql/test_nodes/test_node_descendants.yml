@@ -1,6 +1,6 @@
 data:
-  Node:
-    Descendants:
+  node:
+    descendants:
       count: 2
       rows:
       - label: outgoing1
