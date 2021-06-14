@@ -16,7 +16,165 @@ Features:
 
 GitHub provided a very concise blog of why they switched to GraphQL: <https://github.blog/2016-09-14-the-github-graphql-api/>
 
-> GraphQL represents a massive leap forward for API development. Type safety, introspection, generated documentation, and predictable responses benefit both the maintainers and consumers of our platform.
+> GraphQL represents a massive leap forward for API development.
+> Type safety, introspection, generated documentation, and predictable responses benefit both the maintainers and consumers of our platform.
+
+More so than this, GraphQL maps very well with the data structure of an AiiDA profile,
+and makes it very intuitive for clients to construct complex queries, e.g.
+
+```graphql
+{
+  aiidaVersion
+  aiidaEntryPointGroups
+  nodes(filters: "node_type LIKE '%Calc%'") {
+    count
+    rows(limit: 10) {
+      uuid
+      node_type
+      incoming {
+        count
+      }
+      outgoing {
+        count
+      }
+    }
+  }
+}
+```
+
+````{dropdown} Example response
+
+```json
+{
+  "data": {
+    "aiidaVersion": "1.6.3",
+    "aiidaEntryPointGroups": [
+      "aiida.calculations",
+      "aiida.cmdline.data",
+      "aiida.cmdline.data.structure.import",
+      "aiida.cmdline.computer.configure",
+      "aiida.data",
+      "aiida.groups",
+      "aiida.node",
+      "aiida.parsers",
+      "aiida.schedulers",
+      "aiida.tools.calculations",
+      "aiida.tools.data.orbitals",
+      "aiida.tools.dbexporters",
+      "aiida.tools.dbimporters",
+      "aiida.transports",
+      "aiida.workflows"
+    ],
+    "nodes": {
+      "count": 17784,
+      "rows": [
+        {
+          "uuid": "9505e71d-60a9-4d0a-ac44-b27ad42c5d66",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "incoming": {
+            "count": 0
+          },
+          "outgoing": {
+            "count": 0
+          }
+        },
+        {
+          "uuid": "6783928c-24a0-43c2-9b70-f48051222c60",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "incoming": {
+            "count": 0
+          },
+          "outgoing": {
+            "count": 0
+          }
+        },
+        {
+          "uuid": "70971dba-dce7-4272-ac52-3c1c5d1749b0",
+          "node_type": "process.calculation.calcfunction.CalcFunctionNode.",
+          "incoming": {
+            "count": 1
+          },
+          "outgoing": {
+            "count": 1
+          }
+        },
+        {
+          "uuid": "6af3f8a0-cf0d-4427-8472-f8907acfc87a",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 7
+          },
+          "outgoing": {
+            "count": 4
+          }
+        },
+        {
+          "uuid": "de98792b-ad78-4817-bf67-84630671e277",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 9
+          },
+          "outgoing": {
+            "count": 6
+          }
+        },
+        {
+          "uuid": "c00f403f-84f8-433e-90ee-3801e2fa4fd1",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 8
+          },
+          "outgoing": {
+            "count": 6
+          }
+        },
+        {
+          "uuid": "66738498-ff6b-40c8-a167-b0c6556695a0",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 7
+          },
+          "outgoing": {
+            "count": 4
+          }
+        },
+        {
+          "uuid": "b0e93972-4782-4908-b593-5fff627b7c93",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 9
+          },
+          "outgoing": {
+            "count": 4
+          }
+        },
+        {
+          "uuid": "115904df-b621-4b86-afb6-17fab3359d05",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 9
+          },
+          "outgoing": {
+            "count": 6
+          }
+        },
+        {
+          "uuid": "a4b9d700-33dc-4114-9d0e-2b0afeb89c0b",
+          "node_type": "process.calculation.calcjob.CalcJobNode.",
+          "incoming": {
+            "count": 9
+          },
+          "outgoing": {
+            "count": 4
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+````
 
 ## The GraphQL schema
 
