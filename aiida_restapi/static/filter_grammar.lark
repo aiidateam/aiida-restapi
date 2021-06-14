@@ -47,7 +47,7 @@ HAS: [SPACES] "HAS" [SPACES]
 KEY: [SPACES] "KEY" [SPACES]
 
 // Datetime
-// minimal implementation of ISO 8601 subset
+// partial implementation of ISO 8601
 
 DATE: DIGIT DIGIT DIGIT DIGIT "-" DIGIT DIGIT "-" DIGIT DIGIT
 TIME: DIGIT DIGIT ":" DIGIT DIGIT | DIGIT DIGIT ":" DIGIT DIGIT ":" DIGIT DIGIT

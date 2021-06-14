@@ -42,10 +42,10 @@ class Computer(BaseModel):
     id: int = Field(description="Unique id (pk)")
     uuid: UUID = Field(description="Unique uuid")
     name: str = Field(description="Computer name")
-    hostname: str = Field(description="Computer name")
-    description: Optional[str] = Field(description="Computer name")
-    scheduler_type: str = Field(description="Scheduler type")
-    transport_type: str = Field(description="Transport type")
+    hostname: str = Field(description="Identifier for the computer within the network")
+    description: Optional[str] = Field(description="Description of the computer")
+    scheduler_type: str = Field(description="Scheduler plugin type, to manage compute jobs")
+    transport_type: str = Field(description="Transport plugin type, to manage file transfers")
     metadata: Json = Field(description="Metadata of the computer")
 
 
