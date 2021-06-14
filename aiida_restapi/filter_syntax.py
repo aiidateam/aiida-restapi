@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Defines an EBNF Grammar, for parsing a QueryBuilder filter string.
+"""The AiiDA QueryBuilder filter grammar resolver.
+
+Converts the string into a dict that can be passed to
+``QueryBuilder().append(..., filters=filters)``.
 
 This grammar was originally adapted from:
 https://github.com/Materials-Consortia/OPTIMADE/blob/master/optimade.rst#the-filter-language-ebnf-grammar
@@ -17,7 +20,7 @@ FILTER_GRAMMAR = resources.open_text(static, "filter_grammar.lark")
 
 FILTER_PARSER = Lark(FILTER_GRAMMAR, start="filter")
 
-_convertors: Dict[str, Callable[[str], Any]] = {
+_converters: Dict[str, Callable[[str], Any]] = {
     "FLOAT": float,
     "STRING": lambda s: s[1:-1],
     "PROPERTY": str,
@@ -31,7 +34,7 @@ _convertors: Dict[str, Callable[[str], Any]] = {
 
 def _parse_value(value: Token) -> Union[int, float, str]:
     """Parse a value token"""
-    return _convertors[value.type](value.value)
+    return _converters[value.type](value.value)
 
 
 def _parse_valuelist(valuelist: Tree) -> List[Union[int, float, str]]:

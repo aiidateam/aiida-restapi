@@ -1,3 +1,9 @@
+// The AiiDA QueryBuilder filter grammar
+// Defines an EBNF Grammar for specifying QueryBuilder filters as a string.
+// (see https://github.com/lark-parser for more details)
+
+// version: 0.1.0
+
 filter: [SPACES] comparison ( AND comparison )*
 
 // Comparisons

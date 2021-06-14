@@ -109,6 +109,7 @@ class NodeQuery(
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
+            # this node is outgoing relative to the incoming nodes
             "edge_type": "outgoing",
             "project_edge": True,
             "filters": parse_filter_str(filters),
@@ -126,6 +127,7 @@ class NodeQuery(
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
+            # this node is incoming relative to the outgoing nodes
             "edge_type": "incoming",
             "project_edge": True,
             "filters": parse_filter_str(filters),
@@ -145,6 +147,7 @@ class NodeQuery(
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
+            # this node is a descendant relative to the ancestor nodes
             "edge_type": "descendants",
             "filters": parse_filter_str(filters),
         }
@@ -163,6 +166,7 @@ class NodeQuery(
         # pass edge specification to LinksQuery
         return {
             "parent_id": parent["id"],
+            # this node is an ancestor relative to the descendant nodes
             "edge_type": "ancestors",
             "filters": parse_filter_str(filters),
         }

@@ -96,7 +96,7 @@ EntitiesParentType = Optional[Dict[str, Any]]
 def create_query_path(
     query: orm.QueryBuilder, parent: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Append parents to the query path, e.g. containing groups and incoming/outgoing nodes.
+    """Append parent entities to the ``QueryBuilder`` path.
 
     :param parent: data from the parent resolver
     :returns: key-word arguments for the "leaf" path

@@ -40,12 +40,16 @@ class Computer(BaseModel):
     """AiiDA Computer SQL table fields."""
 
     id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Unique uuid")
+    uuid: UUID = Field(description="Universally unique id")
     name: str = Field(description="Computer name")
     hostname: str = Field(description="Identifier for the computer within the network")
     description: Optional[str] = Field(description="Description of the computer")
-    scheduler_type: str = Field(description="Scheduler plugin type, to manage compute jobs")
-    transport_type: str = Field(description="Transport plugin type, to manage file transfers")
+    scheduler_type: str = Field(
+        description="Scheduler plugin type, to manage compute jobs"
+    )
+    transport_type: str = Field(
+        description="Transport plugin type, to manage file transfers"
+    )
     metadata: Json = Field(description="Metadata of the computer")
 
 
@@ -53,7 +57,7 @@ class Group(BaseModel):
     """AiiDA Group SQL table fields."""
 
     id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Unique uuid")
+    uuid: UUID = Field(description="Universally unique id")
     label: str = Field(description="Label of group")
     type_string: str = Field(description="type of the group")
     time: datetime = Field(description="Created time")
@@ -66,7 +70,7 @@ class Log(BaseModel):
     """AiiDA Log SQL table fields."""
 
     id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Unique uuid")
+    uuid: UUID = Field(description="Universally unique id")
     time: datetime = Field(description="Creation time")
     loggername: str = Field(description="The loggers name")
     levelname: str = Field(description="The log level")
@@ -79,7 +83,7 @@ class Node(BaseModel):
     """AiiDA Node SQL table fields."""
 
     id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Unique uuid")
+    uuid: UUID = Field(description="Universally unique id")
     node_type: str = Field(description="Node type")
     process_type: str = Field(description="Process type")
     label: str = Field(description="Label of node")

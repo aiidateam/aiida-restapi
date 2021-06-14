@@ -449,7 +449,7 @@ http://localhost:5000/api/v4/groups/a6e5b
 
 ```graphql
 {
-  group(id: 1) {
+  group(uuid: "a6eb") {
     id
     label
     nodes {
