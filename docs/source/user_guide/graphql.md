@@ -4,13 +4,13 @@
 
 From [graphql.org](https://graphql.org/):
 
-> GraphQL is a query language for APIs and a runtime for fulfilling those queries. GraphQL provides a complete and understandable description of the data in your API, gives clients the power to ask for exactly what they need and nothing more
+> GraphQL is a query language for APIs and a runtime for fulfilling those queries. GraphQL provides a complete and understandable description of the data in your API, gives clients the power to ask for exactly what they need and nothing more.
 
 Features:
 
 - Ask for what you need, get exactly that.
-- Get many resources in a single request
-- Describe what’s possible with a clear schema
+- Get many resources in a single request.
+- Describe what’s possible with a clear schema.
 
 ## Why GraphQL?
 
@@ -20,7 +20,7 @@ GitHub provided a very concise blog of why they switched to GraphQL: <https://gi
 > Type safety, introspection, generated documentation, and predictable responses benefit both the maintainers and consumers of our platform.
 
 More so than this, GraphQL maps very well with the data structure of an AiiDA profile,
-and makes it very intuitive for clients to construct complex queries, e.g.
+and makes it very intuitive for clients to construct complex queries, for example:
 
 ```graphql
 {
@@ -196,7 +196,8 @@ The current Graphql schema is:
 
 ## Data Limits and Pagination
 
-The maximum number of rows of data returned is limited. To find this limit use:
+The maximum number of rows of data returned is limited.
+To query this limit use:
 
 ```graphql
 { rowLimitMax }
@@ -237,13 +238,13 @@ The `filters` option for `computers`, `comments`, `groups`, `logs`, `nodes`, and
 For example:
 
 ```graphql
-nodes(filters: "node_type ILIKE '%Calc%' & mtime >= 2018-02-01") { count }
+{ nodes(filters: "node_type ILIKE '%Calc%' & mtime >= 2018-02-01") { count } }
 ```
 
 maps to:
 
 ```python
-QueryBuilder().append(Node, filters={"node_type": {"ilike": "%Calc%"}, "mtime": {">=": datetime(2018, 2, 1)}}).count()
+QueryBuilder().append(Node, filters={"node_type": {"ilike": "%Calc%"}, "mtime": {">=": datetime(2018, 2, 1, 0, 0)}}).count()
 ```
 
 The syntax is defined by the following [EBNF Grammar](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form):
@@ -255,12 +256,47 @@ The syntax is defined by the following [EBNF Grammar](https://en.wikipedia.org/w
 
 ````
 
-## Plugins
+## Query Plugins
 
 All top-level queries are plugins.
 
-...
+A plugin is defined as a `QueryPlugin` object, which simply includes three items:
 
+- `name`: The name by which to call the query
+- `field`: The graphene field to return (see [graphene types reference](https://docs.graphene-python.org/en/latest/types/))
+- `resolver`: The function that resolves the field.
+
+For example:
+
+```python
+from aiida_restapi.graphql.plugins import QueryPlugin
+import graphene as gr
+
+def resolver(parent, info):
+  return "halloworld!"
+
+myplugin = QueryPlugin(
+  name="myQuery",
+  field=gr.String(description="Return some data"),
+  resolver=resolver
+)
+```
+
+Would be called like:
+
+```graphql
+{ myQuery }
+```
+
+and return:
+
+```json
+{
+  "myQuery": "halloworld!"
+}
+```
+
+(TODO: loading plugins as entry points)
 
 ## REST Migration Guide
 
