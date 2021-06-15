@@ -2,14 +2,15 @@
 """Defines plugins for AiiDA groups."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import graphene as gr
+from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.orm import Group
 
 from aiida_restapi.filter_syntax import parse_filter_str
 from aiida_restapi.graphql.nodes import NodesQuery
-from aiida_restapi.graphql.plugins import QueryPlugin
+from aiida_restapi.graphql.plugins import MutationPlugin, QueryPlugin
 
 from .orm_factories import (
     ENTITY_DICT_TYPE,
@@ -73,3 +74,47 @@ GroupsQueryPlugin = QueryPlugin(
     ),
     resolve_Groups,
 )
+
+
+class GroupCreate(gr.Mutation):
+    """Create an AiiDA group (or change an existing one)."""
+
+    class Arguments:
+        """The arguments to create a group."""
+
+        label = gr.String(required=True)
+        description = gr.String(default_value="")
+        type_string = gr.String()
+
+    created = gr.Boolean(
+        description="Whether the group was created or already existed."
+    )
+    group = gr.Field(lambda: GroupQuery)
+
+    @with_dbenv()
+    @staticmethod
+    def mutate(
+        root: Any,
+        info: gr.ResolveInfo,
+        label: str,
+        description: str = "",
+        type_string: Optional[str] = None,
+    ) -> "GroupCreate":
+        """Create the group."""
+        output: Tuple[Group, bool] = Group.objects.get_or_create(
+            label=label, description=description, type_string=type_string
+        )
+        orm_group, created = output
+        if not created and not orm_group.description == description:
+            orm_group.description = description
+        group = GroupQuery(
+            id=orm_group.id,
+            uuid=orm_group.uuid,
+            label=orm_group.label,
+            type_string=orm_group.type_string,
+            description=orm_group.description,
+        )
+        return GroupCreate(group=group, created=created)
+
+
+GroupCreatePlugin = MutationPlugin("groupCreate", GroupCreate)

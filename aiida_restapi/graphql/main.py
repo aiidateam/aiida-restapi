@@ -6,14 +6,14 @@ from .basic import aiidaVersionPlugin, rowLimitMaxPlugin
 from .comments import CommentQueryPlugin, CommentsQueryPlugin
 from .computers import ComputerQueryPlugin, ComputersQueryPlugin
 from .entry_points import aiidaEntryPointGroupsPlugin, aiidaEntryPointsPlugin
-from .groups import GroupQueryPlugin, GroupsQueryPlugin
+from .groups import GroupCreatePlugin, GroupQueryPlugin, GroupsQueryPlugin
 from .logs import LogQueryPlugin, LogsQueryPlugin
 from .nodes import NodeQueryPlugin, NodesQueryPlugin
 from .plugins import create_schema
 from .users import UserQueryPlugin, UsersQueryPlugin
 
 SCHEMA = create_schema(
-    [
+    queries=[
         rowLimitMaxPlugin,
         aiidaVersionPlugin,
         aiidaEntryPointGroupsPlugin,
@@ -30,7 +30,8 @@ SCHEMA = create_schema(
         NodesQueryPlugin,
         UserQueryPlugin,
         UsersQueryPlugin,
-    ]
+    ],
+    mutations=[GroupCreatePlugin],
 )
 
 
