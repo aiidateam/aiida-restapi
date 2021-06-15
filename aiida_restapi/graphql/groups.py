@@ -100,7 +100,7 @@ class GroupCreate(gr.Mutation):
         description: str = "",
         type_string: Optional[str] = None,
     ) -> "GroupCreate":
-        """Create the group."""
+        """Create the group and return the requested fields."""
         output: Tuple[Group, bool] = Group.objects.get_or_create(
             label=label, description=description, type_string=type_string
         )
