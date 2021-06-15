@@ -98,6 +98,7 @@ nitpick_ignore = [
         "graphene.types.objecttype.ObjectType",
         "graphene.types.mutation.Mutation",
         "graphene.types.scalars.String",
+        "starlette.graphql.GraphQLApp",
         "aiida_restapi.aiida_db_mappings.Config",
         "aiida_restapi.models.Config",
         "aiida_restapi.routers.auth.Config",
