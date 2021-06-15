@@ -7,11 +7,11 @@ Models in this module mirror those in
 # pylint: disable=too-few-public-methods
 
 from datetime import datetime
-from typing import ClassVar, List, Optional, Type, TypeVar
+from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiida import orm
-from pydantic import BaseModel, Field, Json
+from pydantic import BaseModel, Field
 
 # Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
@@ -133,9 +133,9 @@ class Node(AiidaModel):
     mtime: Optional[datetime] = Field(description="Last modification time")
     user_id: Optional[int] = Field(description="Created by user id (pk)")
     dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
-    attributes: Optional[Json] = Field(
+    attributes: Optional[Dict] = Field(
         description="Variable attributes of the node",
     )
-    extras: Optional[Json] = Field(
+    extras: Optional[Dict] = Field(
         description="Variable extras (unsealed) of the node",
     )
