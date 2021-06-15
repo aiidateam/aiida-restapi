@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module defining the graphql plugin mechanism."""
-from typing import Any, Callable, Dict, NamedTuple, Sequence, Type, Union
+from typing import Any, Callable, Dict, NamedTuple, Optional, Sequence, Type, Union
 
 import graphene as gr
 
@@ -19,8 +19,10 @@ class QueryPlugin(NamedTuple):
 
 def create_query(
     queries: Sequence[QueryPlugin], docstring: str = "The root query"
-) -> Type[gr.ObjectType]:
+) -> Optional[Type[gr.ObjectType]]:
     """Generate a query from a sequence of query plugins."""
+    if not queries:
+        return None
     # check that there are no duplicate names
     name_map: Dict[str, QueryPlugin] = {}
     # construct the dict of attributes/methods on the class
@@ -48,8 +50,10 @@ class MutationPlugin(NamedTuple):
 
 def create_mutations(
     mutations: Sequence[MutationPlugin], docstring: str = "The root mutation"
-) -> Type[gr.ObjectType]:
+) -> Optional[Type[gr.ObjectType]]:
     """Generate mutations from a sequence of mutation plugins."""
+    if not mutations:
+        return None
     # check that there are no duplicate names
     name_map: Dict[str, MutationPlugin] = {}
     # construct the dict of attributes/methods on the class
