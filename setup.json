@@ -30,7 +30,10 @@
         "sqlalchemy<1.4",
         "fastapi~=0.65.1",
         "uvicorn[standard]>=0.12.0,<0.14.0",
-        "pydantic~=1.8.2"
+        "pydantic~=1.8.2",
+        "graphene~=2.0",
+        "python-dateutil~=2.0",
+        "lark~=0.11.0"
     ],
     "extras_require": {
         "testing": [
@@ -47,9 +50,11 @@
         ],
         "docs": [
             "sphinx",
-            "sphinxcontrib-contentui",
-            "sphinxcontrib-details-directive; python_version>='3.0'",
-            "sphinx-rtd-theme"
+            "myst-parser[linkify]>=0.13.7",
+            "sphinx-external-toc",
+            "sphinx-book-theme",
+            "sphinx-panels",
+            "pygments-graphql"
         ],
         "auth": [
             "python-jose",

@@ -1,14 +1,11 @@
-===============
-Getting started
-===============
+# Getting started
 
 This page should contain a short guide on what the plugin does and
 a short example on how to use the plugin.
 
-Installation
-++++++++++++
+## Installation
 
-Use the following commands to install the plugin::
+Use the following commands to install the plugin:
 
     git clone https://github.com/aiidateam/aiida-restapi .
     cd aiida-restapi

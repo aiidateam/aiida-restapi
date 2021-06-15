@@ -15,3 +15,4 @@ include CHANGELOG.md
 include README.md
 
 include aiida_restapi/py.typed
+include aiida_restapi/static/filter_grammar.lark

@@ -14,8 +14,6 @@ pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 def clear_database_auto(clear_database_before_test):  # pylint: disable=unused-argument
     """Automatically clear database in between tests."""
 
-    # TODO: Somehow this does not reset the user id counter, which causes the /users/id test to fail  # pylint: disable=fixme
-
 
 @pytest.fixture(scope="function")
 def client():
@@ -53,6 +51,20 @@ def default_computers():
     ).store()
 
     return [comp_1.id, comp_2.id]
+
+
+@pytest.fixture(scope="function")
+def default_groups():
+    """Populate database with some groups."""
+    test_user_1 = orm.User(
+        email="verdi@opera.net", first_name="Giuseppe", last_name="Verdi"
+    ).store()
+    test_user_2 = orm.User(
+        email="stravinsky@symphony.org", first_name="Igor", last_name="Stravinsky"
+    ).store()
+    group_1 = orm.Group(label="test_label_1", user=test_user_1).store()
+    group_2 = orm.Group(label="test_label_2", user=test_user_2).store()
+    return [group_1.id, group_2.id]
 
 
 @pytest.fixture(scope="function")

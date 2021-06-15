@@ -13,9 +13,14 @@ max-line-length = 125
 
 [tool.pylint.messages_control]
 disable = [
-    "too-many-ancestors",
+    "duplicate-code",
+    "fixme",
     "invalid-name",
+    "too-many-ancestors",
 ]
+
+[tool.pylint.similarities]
+ignore-imports = "yes"
 
 [tool.pytest.ini_options]
 python_files = "test_*.py example_*.py"

@@ -1,0 +1,7 @@
+data:
+  computer:
+    nodes:
+      count: 2
+      rows:
+      - label: node 1
+      - label: node 2

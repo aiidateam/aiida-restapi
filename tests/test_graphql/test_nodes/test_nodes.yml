@@ -1,0 +1,30 @@
+data:
+  nodes:
+    count: 2
+    rows:
+    - attributes: {}
+      ctime: str
+      dbcomputer_id: null
+      description: ''
+      extras:
+        _aiida_hash: str
+      id: int
+      label: node 1
+      mtime: str
+      node_type: data.Data.
+      process_type: null
+      user_id: int
+      uuid: str
+    - attributes: {}
+      ctime: str
+      dbcomputer_id: null
+      description: ''
+      extras:
+        _aiida_hash: str
+      id: int
+      label: node 2
+      mtime: str
+      node_type: data.Data.
+      process_type: null
+      user_id: int
+      uuid: str
