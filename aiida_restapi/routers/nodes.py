@@ -55,6 +55,9 @@ async def create_node(
 async def create_upload_file(
     upload_file: bytes = File(...),
     params: Node = Depends(Node.as_form),  # type: ignore # pylint: disable=maybe-no-member
+    current_user: User = Depends(
+        get_current_active_user
+    ),  # pylint: disable=unused-argument
 ) -> Node:
     """Test function for upload file will be merged with create_node later."""
     node_dict = params.dict(exclude_unset=True, exclude_none=True)

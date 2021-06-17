@@ -141,7 +141,9 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     assert response.status_code == 200, response.content
 
 
-def test_create_single_file_upload(client):  # pylint: disable=unused-argument
+def test_create_single_file_upload(
+    client, authenticate
+):  # pylint: disable=unused-argument
     """Testing file upload"""
     test_file = {
         "upload_file": (
