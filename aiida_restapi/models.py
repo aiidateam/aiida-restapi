@@ -35,12 +35,12 @@ def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
         for field in cls.__fields__.values()
     ]
 
-    async def _as_form(**data) -> Type[BaseModel]:
+    async def _as_form(**data: Dict) -> BaseModel:
         return cls(**data)
 
     sig = inspect.signature(_as_form)
     sig = sig.replace(parameters=new_params)
-    _as_form.__signature__ = sig
+    _as_form.__signature__ = sig  # type: ignore
     setattr(cls, "as_form", _as_form)
     return cls
 

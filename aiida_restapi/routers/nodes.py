@@ -54,7 +54,7 @@ async def create_node(
 @with_dbenv()
 async def create_upload_file(
     upload_file: bytes = File(...),
-    params: Node = Depends(Node.as_form),  # pylint: disable=maybe-no-member
+    params: Node = Depends(Node.as_form),  # type: ignore # pylint: disable=maybe-no-member
 ) -> Node:
     """Test function for upload file will be merged with create_node later."""
     node_dict = params.dict(exclude_unset=True, exclude_none=True)
