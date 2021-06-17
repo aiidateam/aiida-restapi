@@ -2,6 +2,9 @@
 """Test the /nodes endpoint"""
 
 
+import io
+
+
 def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     """Test creating a new dict."""
     response = client.post(
@@ -99,7 +102,62 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
                 "pymatgen_molecule": None,
             },
         },
-        files=None,
     )
 
     assert response.status_code == 200, response.content
+
+
+def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-argument
+    """Test creating a new OrbitalData."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "OrbitalData",
+            "process_type": None,
+            "label": "test_OrbitalData",
+            "description": "",
+            "attributes": {
+                "orbital_dicts": [
+                    {
+                        "spin": 0,
+                        "position": [
+                            -1,
+                            1,
+                            1,
+                        ],
+                        "kind_name": "As",
+                        "diffusivity": None,
+                        "radial_nodes": 0,
+                        "_orbital_type": "realhydrogen",
+                        "x_orientation": None,
+                        "z_orientation": None,
+                        "angular_momentum": -3,
+                    }
+                ]
+            },
+        },
+    )
+
+    assert response.status_code == 200, response.content
+
+
+def test_create_single_file_upload(client):  # pylint: disable=unused-argument
+    """Testing file upload"""
+    test_file = {
+        "upload_file": (
+            "test_file.txt",
+            io.BytesIO(b"Some test strings"),
+            "multipart/form-data",
+        )
+    }
+    params = {
+        "node_type": "SinglefileData",
+        "process_type": None,
+        "label": "test_upload_file",
+        "description": "Testing single upload file",
+        "attributes": {},
+    }
+
+    response = client.post("/nodes_file", files=test_file, data=params)
+
+    assert response.status_code == 200

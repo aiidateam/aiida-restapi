@@ -6,15 +6,43 @@ Models in this module mirror those in
 """
 # pylint: disable=too-few-public-methods
 
+import inspect
 from datetime import datetime
 from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiida import orm
+from fastapi import Form
 from pydantic import BaseModel, Field
 
 # Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
+
+
+def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
+    """
+    Adds an as_form class method to decorated models. The as_form class method
+    can be used with FastAPI endpoints
+
+    Note: Taken from https://github.com/tiangolo/fastapi/issues/2387
+    """
+    new_params = [
+        inspect.Parameter(
+            field.alias,
+            inspect.Parameter.POSITIONAL_ONLY,
+            default=(Form(field.default) if not field.required else Form(...)),
+        )
+        for field in cls.__fields__.values()
+    ]
+
+    async def _as_form(**data) -> Type[BaseModel]:
+        return cls(**data)
+
+    sig = inspect.signature(_as_form)
+    sig = sig.replace(parameters=new_params)
+    _as_form.__signature__ = sig
+    setattr(cls, "as_form", _as_form)
+    return cls
 
 
 class AiidaModel(BaseModel):
@@ -120,6 +148,7 @@ class Computer(AiidaModel):
     )
 
 
+@as_form
 class Node(AiidaModel):
     """AiiDA Node model."""
 
