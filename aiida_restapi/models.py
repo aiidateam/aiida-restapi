@@ -7,7 +7,8 @@ Models in this module mirror those in
 # pylint: disable=too-few-public-methods
 
 from datetime import datetime
-from typing import ClassVar, List, Optional, Type, TypeVar
+from typing import ClassVar, Dict, List, Optional, Type, TypeVar
+from uuid import UUID
 
 from aiida import orm
 from pydantic import BaseModel, Field
@@ -124,8 +125,21 @@ class Group(AiidaModel):
 
     _orm_entity = orm.Group
 
-    id: Optional[int] = Field(description="Id of the object")
+    id: int = Field(description="Unique id (pk)")
+    uuid: UUID = Field(description="Universally unique id")
+    label: str = Field(description="Label of group")
+    type_string: str = Field(description="type of the group")
+    description: Optional[str] = Field(description="Description of group")
+    extras: Dict = Field(description="extra data about for the group")
+    time: Optional[datetime] = Field(description="Created time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+
+
+class Group_Post(AiidaModel):
+    """AiiDA Group Post model."""
+
+    _orm_entity = orm.Group
+
     label: str = Field(description="Used to access the group. Must be unique.")
     type_string: Optional[str] = Field(description="Type of the group")
-    user_id: Optional[str] = Field(description="Id of the user that created the node.")
     description: Optional[str] = Field(description="Short description of the group.")

@@ -14,8 +14,16 @@ def test_get_group_projectable(client):
     response = client.get("/groups/projectable_properties")
 
     assert response.status_code == 200
-
-    assert response.json() == ["id", "label", "type_string", "user_id", "description"]
+    assert response.json() == [
+        "id",
+        "uuid",
+        "label",
+        "type_string",
+        "description",
+        "extras",
+        "time",
+        "user_id",
+    ]
 
 
 def test_get_single_group(default_groups, client):  # pylint: disable=unused-argument
