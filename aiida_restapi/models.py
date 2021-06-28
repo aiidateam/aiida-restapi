@@ -131,8 +131,25 @@ class Group(AiidaModel):
     type_string: str = Field(description="type of the group")
     description: Optional[str] = Field(description="Description of group")
     extras: Dict = Field(description="extra data about for the group")
-    time: Optional[datetime] = Field(description="Created time")
-    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    time: datetime = Field(description="Created time")
+    user_id: int = Field(description="Created by user id (pk)")
+
+    @classmethod
+    def from_orm(cls, orm_entity: orm.Group) -> orm.Group:
+        query = (
+            orm.QueryBuilder()
+            .append(
+                cls._orm_entity,
+                filters={"id": orm_entity.id},
+                tag="fields",
+                project=["user_id", "time"],
+            )
+            .limit(1)
+        )
+        orm_entity.user_id = query.dict()[0]["fields"]["user_id"]
+        orm_entity.time = query.dict()[0]["fields"]["time"]
+
+        return super().from_orm(orm_entity)
 
 
 class Group_Post(AiidaModel):

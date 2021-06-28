@@ -41,4 +41,15 @@ def test_create_group(client, authenticate):  # pylint: disable=unused-argument
 
     response = client.get("/groups")
     first_names = [group["label"] for group in response.json()]
+
     assert "test_label_create" in first_names
+
+
+def test_create_group_returns_user_id(
+    client, authenticate
+):  # pylint: disable=unused-argument
+    """Test creating a new group returns user_id."""
+    response = client.post("/groups", json={"label": "test_label_create"})
+    assert response.status_code == 200, response.content
+
+    assert response.json()["user_id"]
