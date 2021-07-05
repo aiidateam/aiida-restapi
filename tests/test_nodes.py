@@ -10,7 +10,7 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "Dict",
+            "node_type": "data.dict.Dict.|",
             "attributes": {"x": 1, "y": 2},
             "label": "test_dict",
         },
@@ -23,7 +23,7 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "List",
+            "node_type": "data.list.List.|",
             "attributes": {"list": [2, 3]},
             "label": "test_list",
         },
@@ -37,7 +37,7 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "Int",
+            "node_type": "data.int.Int.|",
             "attributes": {"value": 6},
             "label": "test_Int",
         },
@@ -50,7 +50,7 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "Float",
+            "node_type": "data.float.Float.|",
             "attributes": {"value": 6.6},
             "label": "test_Float",
         },
@@ -63,7 +63,7 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "String",
+            "node_type": "data.str.Str.|",
             "attributes": {"value": "test_string"},
             "label": "test_string",
         },
@@ -76,7 +76,7 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "Bool",
+            "node_type": "data.bool.Bool.|",
             "attributes": {"value": "True"},
             "label": "test_bool",
         },
@@ -89,7 +89,7 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     response = client.post(
         "/nodes",
         json={
-            "node_type": "StructureData",
+            "node_type": "data.structure.StructureData.|",
             "process_type": None,
             "label": "test_StructureData",
             "description": "",
@@ -112,7 +112,7 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     response = client.post(
         "/nodes",
         json={
-            "node_type": "OrbitalData",
+            "node_type": "data.orbital.OrbitalData.|",
             "process_type": None,
             "label": "test_OrbitalData",
             "description": "",
@@ -153,13 +153,13 @@ def test_create_single_file_upload(
         )
     }
     params = {
-        "node_type": "SinglefileData",
+        "node_type": "data.singlefile.SingleFileData.|",
         "process_type": None,
         "label": "test_upload_file",
         "description": "Testing single upload file",
         "attributes": {},
     }
 
-    response = client.post("/nodes_file", files=test_file, data=params)
+    response = client.post("/singlefiledata", files=test_file, data=params)
 
     assert response.status_code == 200

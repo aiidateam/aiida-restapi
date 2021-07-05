@@ -4,9 +4,9 @@
 
 import io
 
-from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, File, HTTPException
+from aiida.restapi.common.identifiers import load_entry_point_from_full_type
+from fastapi import APIRouter, Depends, File
 
 from aiida_restapi.models import Node, User
 
@@ -28,29 +28,15 @@ async def create_node(
     node_dict = node.dict(exclude_unset=True)
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
-    node_options = {
-        "Int": orm.Int,
-        "Float": orm.Float,
-        "String": orm.Str,
-        "Dict": orm.Dict,
-        "List": orm.List,
-        "Bool": orm.Bool,
-        "StructureData": orm.StructureData,
-        "OrbitalData": orm.OrbitalData,
-    }
 
-    if node_type not in node_options.keys():
-        raise HTTPException(status_code=404, detail="Node type not found")
+    orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
 
-    orm_object = node_options[node_type](**node_dict)
-
-    for key, value in attributes.items():
-        orm_object.set_attribute(key, value)
+    orm_object.set_attribute_many(attributes)
 
     return Node.from_orm(orm_object)
 
 
-@router.post("/nodes_file")
+@router.post("/singlefiledata")
 @with_dbenv()
 async def create_upload_file(
     upload_file: bytes = File(...),
@@ -63,16 +49,11 @@ async def create_upload_file(
     node_dict = params.dict(exclude_unset=True, exclude_none=True)
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", {})
-    node_options = {
-        "SinglefileData": orm.SinglefileData,
-    }
 
-    if node_type not in node_options.keys():
-        raise HTTPException(status_code=404, detail="Node type not found")
+    orm_object = load_entry_point_from_full_type(node_type)(
+        file=io.BytesIO(upload_file), **node_dict
+    )
 
-    orm_object = node_options[node_type](file=io.BytesIO(upload_file), **node_dict)
-
-    for key, value in attributes.items():
-        orm_object.set_attribute(key, value)
+    orm_object.set_attribute_many(attributes)
 
     return Node.from_orm(orm_object)
