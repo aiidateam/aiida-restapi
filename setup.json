@@ -19,6 +19,9 @@
         ],
         "aiida.cmdline.data": [
             "restapi = aiida_restapi.cli:data_cli"
+        ],
+        "console_scripts": [
+            "node = aiida_restapi.models:Node"
         ]
     },
     "include_package_data": true,

@@ -3,6 +3,7 @@
 
 
 import io
+from importlib import metadata
 
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.restapi.common.identifiers import load_entry_point_from_full_type
@@ -29,9 +30,13 @@ async def create_node(
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
 
-    orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+    entry_point_nodes = metadata.entry_points()["console_scripts"]
 
-    orm_object.set_attribute_many(attributes)
+    for ep_node in entry_point_nodes:
+        if ep_node.name == "node":
+            orm_object = ep_node.load().create_new_node(
+                node_type, attributes, node_dict
+            )
 
     return Node.from_orm(orm_object)
 

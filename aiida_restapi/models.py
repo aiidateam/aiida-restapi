@@ -12,6 +12,7 @@ from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiida import orm
+from aiida.restapi.common.identifiers import load_entry_point_from_full_type
 from fastapi import Form
 from pydantic import BaseModel, Field
 
@@ -168,6 +169,19 @@ class Node(AiidaModel):
     extras: Optional[Dict] = Field(
         description="Variable extras (unsealed) of the node",
     )
+
+    @classmethod
+    def create_new_node(
+        cls: Type[ModelType],
+        node_type: str,
+        attributes: Optional[dict],
+        node_dict: Optional[dict],
+    ) -> orm.Node:
+        "Create and Store new Node"
+        orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+        orm_object.set_attribute_many(attributes)
+        orm_object.store()
+        return orm_object
 
 
 class Group(AiidaModel):
