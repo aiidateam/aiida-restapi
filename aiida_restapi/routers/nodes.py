@@ -3,7 +3,11 @@
 
 
 import io
-from importlib import metadata
+
+try:
+    from importlib import metadata
+except ImportError:  # for Python<3.8
+    import importlib_metadata as metadata  # type: ignore[no-redef]
 
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.restapi.common.identifiers import load_entry_point_from_full_type
