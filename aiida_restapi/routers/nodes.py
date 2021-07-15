@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """Declaration of FastAPI application."""
 
-
-import io
-
 try:
     from importlib import metadata
 except ImportError:  # for Python<3.8
     import importlib_metadata as metadata  # type: ignore[no-redef]
 
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.restapi.common.identifiers import load_entry_point_from_full_type
 from fastapi import APIRouter, Depends, File
 
 from aiida_restapi.models import Node, User
@@ -59,10 +55,12 @@ async def create_upload_file(
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", {})
 
-    orm_object = load_entry_point_from_full_type(node_type)(
-        file=io.BytesIO(upload_file), **node_dict
-    )
+    entry_point_nodes = metadata.entry_points()["aiida.rest.post"]
 
-    orm_object.set_attribute_many(attributes)
+    for ep_node in entry_point_nodes:
+        if ep_node.name == node_type:
+            orm_object = ep_node.load().create_new_node_with_file(
+                node_type, attributes, node_dict, upload_file
+            )
 
     return Node.from_orm(orm_object)

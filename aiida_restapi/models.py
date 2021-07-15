@@ -7,6 +7,7 @@ Models in this module mirror those in
 # pylint: disable=too-few-public-methods
 
 import inspect
+import io
 from datetime import datetime
 from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
@@ -179,6 +180,22 @@ class Node(AiidaModel):
     ) -> orm.Node:
         "Create and Store new Node"
         orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+        orm_object.set_attribute_many(attributes)
+        orm_object.store()
+        return orm_object
+
+    @classmethod
+    def create_new_node_with_file(
+        cls: Type[ModelType],
+        node_type: str,
+        attributes: Optional[dict],
+        node_dict: Optional[dict],
+        file: bytes,
+    ) -> orm.Node:
+        "Create and Store new Node"
+        orm_object = load_entry_point_from_full_type(node_type)(
+            file=io.BytesIO(file), **node_dict
+        )
         orm_object.set_attribute_many(attributes)
         orm_object.store()
         return orm_object
