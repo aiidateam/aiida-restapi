@@ -20,8 +20,15 @@
         "aiida.cmdline.data": [
             "restapi = aiida_restapi.cli:data_cli"
         ],
-        "console_scripts": [
-            "node = aiida_restapi.models:Node"
+        "aiida.rest.post": [
+            "data.str.Str.| = aiida_restapi.models:Node",
+            "data.float.Float.| = aiida_restapi.models:Node",
+            "data.int.Int.| = aiida_restapi.models:Node",
+            "data.bool.Bool.| = aiida_restapi.models:Node",
+            "data.structure.StructureData.| = aiida_restapi.models:Node",
+            "data.orbital.OrbitalData.| = aiida_restapi.models:Node",
+            "data.list.List.|  = aiida_restapi.models:Node",
+            "data.dict.Dict.| = aiida_restapi.models:Node"
         ]
     },
     "include_package_data": true,

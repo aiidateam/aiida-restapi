@@ -34,10 +34,10 @@ async def create_node(
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
 
-    entry_point_nodes = metadata.entry_points()["console_scripts"]
+    entry_point_nodes = metadata.entry_points()["aiida.rest.post"]
 
     for ep_node in entry_point_nodes:
-        if ep_node.name == "node":
+        if ep_node.name == node_type:
             orm_object = ep_node.load().create_new_node(
                 node_type, attributes, node_dict
             )
