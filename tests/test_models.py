@@ -7,14 +7,7 @@ from aiida_restapi import models
 
 def replace_dynamic(data: dict) -> dict:
     """Replace dynamic fields with their type name."""
-    for key in [
-        "id",
-        "uuid",
-        "dbnode_id",
-        "user_id",
-        "mtime",
-        "ctime",
-    ]:
+    for key in ["id", "uuid", "dbnode_id", "user_id", "mtime", "ctime", "time"]:
         if key in data:
             data[key] = type(data[key]).__name__
     return data
