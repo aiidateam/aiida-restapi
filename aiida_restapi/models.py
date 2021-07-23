@@ -7,7 +7,8 @@ Models in this module mirror those in
 # pylint: disable=too-few-public-methods
 
 from datetime import datetime
-from typing import ClassVar, List, Optional, Type, TypeVar
+from typing import ClassVar, Dict, List, Optional, Type, TypeVar
+from uuid import UUID
 
 from aiida import orm
 from pydantic import BaseModel, Field
@@ -129,3 +130,26 @@ class Group(AiidaModel):
     type_string: Optional[str] = Field(description="Type of the group")
     user_id: Optional[str] = Field(description="Id of the user that created the node.")
     description: Optional[str] = Field(description="Short description of the group.")
+
+
+class Process(AiidaModel):
+    """AiiDA Process Model"""
+
+    _orm_entity = orm.ProcessNode
+
+    id: Optional[int] = Field(description="Unique id (pk)")
+    uuid: Optional[UUID] = Field(description="Unique uuid")
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
+    ctime: Optional[datetime] = Field(description="Creation time")
+    mtime: Optional[datetime] = Field(description="Last modification time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Dict] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Dict] = Field(
+        description="Variable extras (unsealed) of the node",
+    )

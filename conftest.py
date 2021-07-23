@@ -2,6 +2,8 @@
 """pytest fixtures for simplified testing."""
 import pytest
 from aiida import orm
+from aiida.engine import ProcessState
+from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
 
 from aiida_restapi import app, config
@@ -51,6 +53,44 @@ def default_computers():
     ).store()
 
     return [comp_1.id, comp_2.id]
+
+
+@pytest.fixture(scope="function")
+def default_process():
+    """Populate database with some process"""
+    calcs = []
+    process_label = "SomeDummyWorkFunctionNode"
+
+    # Create 6 WorkFunctionNodes and WorkChainNodes (one for each ProcessState)
+    for state in ProcessState:
+
+        calc = WorkFunctionNode()
+        calc.set_process_state(state)
+
+        # Set the WorkFunctionNode as successful
+        if state == ProcessState.FINISHED:
+            calc.set_exit_status(0)
+
+        # Give a `process_label` to the `WorkFunctionNodes` so the `--process-label` option can be tested
+        calc.set_attribute("process_label", process_label)
+
+        calc.store()
+        calcs.append(calc.id)
+
+        calc = WorkChainNode()
+        calc.set_process_state(state)
+
+        # Set the WorkChainNode as failed
+        if state == ProcessState.FINISHED:
+            calc.set_exit_status(1)
+
+        # Set the waiting work chain as paused as well
+        if state == ProcessState.WAITING:
+            calc.pause()
+
+        calc.store()
+        calcs.append(calc.id)
+    return calcs
 
 
 @pytest.fixture(scope="function")
