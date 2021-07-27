@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 """Declaration of FastAPI application."""
 
-try:
-    from importlib import metadata
-except ImportError:  # for Python<3.8
-    import importlib_metadata as metadata  # type: ignore[no-redef]
 
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends, File
+from importlib_metadata import entry_points
 
 from aiida_restapi import models
 
@@ -30,13 +27,16 @@ async def create_node(
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
 
-    entry_point_nodes = metadata.entry_points()["aiida.rest.post"]
+    try:
+        (entry_point_node,) = entry_points().select(
+            group="aiida.rest.post", name=node_type
+        )
+    except KeyError as exc:
+        raise KeyError("Entry point '{}' not recognized.".format(node_type)) from exc
 
-    for ep_node in entry_point_nodes:
-        if ep_node.name == node_type:
-            orm_object = ep_node.load().create_new_node(
-                node_type, attributes, node_dict
-            )
+    orm_object = entry_point_node.load().create_new_node(
+        node_type, attributes, node_dict
+    )
 
     return models.Node.from_orm(orm_object)
 
@@ -55,19 +55,13 @@ async def create_upload_file(
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", {})
 
-    entry_point_nodes = dict(metadata.entry_points()["aiida.rest.post"])
-
     try:
-        orm_object = (
-            entry_point_nodes[node_type]
-            .load()
-            .create_new_node_with_file(node_type, attributes, node_dict, upload_file)
-        )
+        (entry_point_node,) = entry_points(group="aiida.rest.post", name=node_type)
     except KeyError as exc:
-        raise KeyError(
-            "Entry point '{}' not recognized. Allowed values: {}".format(
-                node_type, list(entry_point_nodes.keys())
-            )
-        ) from exc
+        raise KeyError("Entry point '{}' not recognized.".format(node_type)) from exc
+
+    orm_object = entry_point_node.load().create_new_node_with_file(
+        node_type, attributes, node_dict, upload_file
+    )
 
     return models.Node.from_orm(orm_object)
