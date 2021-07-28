@@ -175,12 +175,28 @@ class Node(AiidaModel):
     def create_new_node(
         cls: Type[ModelType],
         node_type: str,
-        attributes: Optional[dict],
+        attributes: dict,
         node_dict: Optional[dict],
     ) -> orm.Node:
         "Create and Store new Node"
-        orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
-        orm_object.set_attribute_many(attributes)
+
+        orm_class = load_entry_point_from_full_type(node_type)
+
+        if issubclass(orm_class, orm.BaseType):
+            orm_object = orm_class(
+                attributes["value"],
+                **node_dict,
+            )
+        elif issubclass(orm_class, orm.Dict):
+            orm_object = orm_class(
+                dict=attributes,
+                **node_dict,
+            )
+        else:
+            orm_object = load_entry_point_from_full_type(node_type)(
+                **node_dict, **attributes
+            )
+
         orm_object.store()
         return orm_object
 
@@ -194,7 +210,7 @@ class Node(AiidaModel):
     ) -> orm.Node:
         "Create and Store new Node"
         orm_object = load_entry_point_from_full_type(node_type)(
-            file=io.BytesIO(file), **node_dict
+            file=io.BytesIO(file), **node_dict, **attributes
         )
         orm_object.set_attribute_many(attributes)
         orm_object.store()

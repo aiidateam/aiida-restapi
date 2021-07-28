@@ -26,7 +26,8 @@ async def create_node(
     node_dict = node.dict(exclude_unset=True)
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
-
+    print(node_dict)
+    print(attributes)
     try:
         (entry_point_node,) = entry_points().select(
             group="aiida.rest.post", name=node_type
