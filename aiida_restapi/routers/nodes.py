@@ -3,7 +3,7 @@
 
 
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, File
+from fastapi import APIRouter, Depends, File, HTTPException
 from importlib_metadata import entry_points
 
 from aiida_restapi import models
@@ -26,18 +26,32 @@ async def create_node(
     node_dict = node.dict(exclude_unset=True)
     node_type = node_dict.pop("node_type", None)
     attributes = node_dict.pop("attributes", None)
-    print(node_dict)
-    print(attributes)
+
     try:
         (entry_point_node,) = entry_points().select(
             group="aiida.rest.post", name=node_type
         )
-    except KeyError as exc:
-        raise KeyError("Entry point '{}' not recognized.".format(node_type)) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404, detail="Entry point '{}' not recognized.".format(node_type)
+        ) from exc
 
-    orm_object = entry_point_node.load().create_new_node(
-        node_type, attributes, node_dict
-    )
+    try:
+        orm_object = entry_point_node.load().create_new_node(
+            node_type, attributes, node_dict
+        )
+    except TypeError as err:
+        raise HTTPException(
+            status_code=400, detail="TypeError: {0}".format(err)
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=400, detail="ValueError: {0}".format(err)
+        ) from err
+    except KeyError as err:
+        raise HTTPException(
+            status_code=400, detail="KeyError: {0}".format(err)
+        ) from err
 
     return models.Node.from_orm(orm_object)
 

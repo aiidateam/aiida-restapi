@@ -193,9 +193,8 @@ class Node(AiidaModel):
                 **node_dict,
             )
         else:
-            orm_object = load_entry_point_from_full_type(node_type)(
-                **node_dict, **attributes
-            )
+            orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+            orm_object.set_attribute_many(attributes)
 
         orm_object.store()
         return orm_object
@@ -212,7 +211,6 @@ class Node(AiidaModel):
         orm_object = load_entry_point_from_full_type(node_type)(
             file=io.BytesIO(file), **node_dict, **attributes
         )
-        orm_object.set_attribute_many(attributes)
         orm_object.store()
         return orm_object
 

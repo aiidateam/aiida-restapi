@@ -107,34 +107,38 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     assert response.status_code == 200, response.content
 
 
-# def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-argument
-#     """Test creating a new OrbitalData."""
-#     response = client.post(
-#         "/nodes",
-#         json={
-#             "node_type": "data.orbital.OrbitalData.|",
-#             "process_type": None,
-#             "label": "test_OrbitalData",
-#             "description": "",
-#             "attributes": {
-#                 "orbital_dicts": [
-#                     {
-#                         "spin": 0,
-#                         "position": [-1, 1, 1,],
-#                         "kind_name": "As",
-#                         "diffusivity": None,
-#                         "radial_nodes": 0,
-#                         "_orbital_type": "realhydrogen",
-#                         "x_orientation": None,
-#                         "z_orientation": None,
-#                         "angular_momentum": -3,
-#                     }
-#                 ]
-#             },
-#         },
-#     )
+def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-argument
+    """Test creating a new OrbitalData."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.orbital.OrbitalData.|",
+            "process_type": None,
+            "label": "test_OrbitalData",
+            "description": "",
+            "attributes": {
+                "orbital_dicts": [
+                    {
+                        "spin": 0,
+                        "position": [
+                            -1,
+                            1,
+                            1,
+                        ],
+                        "kind_name": "As",
+                        "diffusivity": None,
+                        "radial_nodes": 0,
+                        "_orbital_type": "realhydrogen",
+                        "x_orientation": None,
+                        "z_orientation": None,
+                        "angular_momentum": -3,
+                    }
+                ]
+            },
+        },
+    )
 
-#     assert response.status_code == 200, response.content
+    assert response.status_code == 200, response.content
 
 
 def test_create_single_file_upload(
@@ -159,3 +163,56 @@ def test_create_single_file_upload(
     response = client.post("/singlefiledata", files=test_file, data=params)
 
     assert response.status_code == 200
+
+
+def test_create_node_wrond_value(
+    client, authenticate
+):  # pylint: disable=unused-argument
+    """Test creating a new node with wrong value."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.float.Float.|",
+            "attributes": {"value": "tests"},
+            "label": "test_Float",
+        },
+    )
+    assert response.status_code == 400, response.content
+
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.int.Int.|",
+            "attributes": {"value": "tests"},
+            "label": "test_int",
+        },
+    )
+    assert response.status_code == 400, response.content
+
+
+def test_create_node_wrong_attribute(
+    client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding node with wrong attributes."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.str.Str.|",
+            "attributes": {"value1": 5},
+            "label": "test_int",
+        },
+    )
+    assert response.status_code == 400, response.content
+
+
+def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argument
+    """Test adding node with wrong entry point."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.float.wrong.|",
+            "attributes": {"value": 3},
+            "label": "test_Float",
+        },
+    )
+    assert response.status_code == 404, response.content
