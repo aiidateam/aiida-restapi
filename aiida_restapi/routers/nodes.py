@@ -40,18 +40,8 @@ async def create_node(
         orm_object = entry_point_node.load().create_new_node(
             node_type, attributes, node_dict
         )
-    except TypeError as err:
-        raise HTTPException(
-            status_code=400, detail="TypeError: {0}".format(err)
-        ) from err
-    except ValueError as err:
-        raise HTTPException(
-            status_code=400, detail="ValueError: {0}".format(err)
-        ) from err
-    except KeyError as err:
-        raise HTTPException(
-            status_code=400, detail="KeyError: {0}".format(err)
-        ) from err
+    except (TypeError, ValueError, KeyError) as err:
+        raise HTTPException(status_code=400, detail="Error: {0}".format(err)) from err
 
     return models.Node.from_orm(orm_object)
 
