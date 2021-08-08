@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """pytest fixtures for simplified testing."""
+import tempfile
+
 import pytest
 from aiida import orm
 from aiida.engine import ProcessState
@@ -91,6 +93,34 @@ def default_process():
         calc.store()
         calcs.append(calc.id)
     return calcs
+
+
+@pytest.fixture(scope="function")
+def default_test_add_process():
+    """Populate database with some node to test adding process"""
+
+    workdir = tempfile.mkdtemp()
+
+    computer = orm.Computer(
+        label="localhost",
+        hostname="localhost",
+        workdir=workdir,
+        transport_type="local",
+        scheduler_type="direct",
+    )
+    computer.store()
+    computer.set_minimum_job_poll_interval(0.0)
+    computer.configure()
+
+    code = orm.Code(
+        input_plugin_name="arithmetic.add", remote_computer_exec=(computer, "/bin/true")
+    ).store()
+
+    x = orm.Int(1).store()
+
+    y = orm.Int(2).store()
+
+    return [code.id, x.id, y.id]
 
 
 @pytest.fixture(scope="function")

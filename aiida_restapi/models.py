@@ -153,3 +153,11 @@ class Process(AiidaModel):
     extras: Optional[Dict] = Field(
         description="Variable extras (unsealed) of the node",
     )
+
+
+class Process_Post(AiidaModel):
+    """AiiDA Process Post Model"""
+
+    label: str = Field(description="Label of node")
+    inputs: dict = Field(description="Input parmeters")
+    process_entry_point: str = Field(description="Entry Point for process")

@@ -38,3 +38,26 @@ def test_get_single_processes(
     for proc_id in default_process:
         response = client.get("/processes/{}".format(proc_id))
         assert response.status_code == 200
+
+
+def test_add_process(
+    default_test_add_process, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding new process"""
+    code_id, x_id, y_id = default_test_add_process
+    response = client.post(
+        "/processes",
+        json={
+            "label": "test_new_process",
+            "process_entry_point": "arithmetic.add",
+            "inputs": {
+                "code.id": code_id,
+                "x.id": x_id,
+                "y.id": y_id,
+                "metadata": {
+                    "description": "Test job submission with the add plugin",
+                },
+            },
+        },
+    )
+    assert response.status_code == 200
