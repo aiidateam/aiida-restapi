@@ -8,8 +8,8 @@ from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.exceptions import NotExistent
 from aiida.engine import submit
 from aiida.orm.querybuilder import QueryBuilder
+from aiida.plugins import load_entry_point_from_string
 from fastapi import APIRouter, Depends, HTTPException
-from importlib_metadata import entry_points
 
 from aiida_restapi.models import Process, Process_Post, User
 
@@ -21,13 +21,13 @@ router = APIRouter()
 def substitute_node(input_dict: dict) -> dict:
     """Substitutes node ids with nodes"""
     node_ids = {
-        key: node_id for key, node_id in input_dict.items() if not key.endswith(".id")
+        key: node_id for key, node_id in input_dict.items() if not key.endswith(".uuid")
     }
 
     for key, value in input_dict.items():
         if key not in node_ids.keys():
             try:
-                node_ids[key[:-3]] = orm.Node.get(id=value)
+                node_ids[key[:-5]] = orm.Node.get(uuid=value)
             except NotExistent as exc:
                 raise HTTPException(
                     status_code=404,
@@ -78,15 +78,13 @@ async def post_process(
     entry_point = process_dict.get("process_entry_point")
 
     try:
-        (entry_point_process,) = entry_points().select(
-            group="aiida.calculations", name=entry_point
-        )
+        entry_point_process = load_entry_point_from_string(entry_point)
     except ValueError as exc:
         raise HTTPException(
             status_code=404,
             detail="Entry point '{}' not recognized.".format(entry_point),
         ) from exc
 
-    process_node = submit(entry_point_process.load(), **inputs)
+    process_node = submit(entry_point_process, **inputs)
 
     return process_node

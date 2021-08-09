@@ -49,11 +49,11 @@ def test_add_process(
         "/processes",
         json={
             "label": "test_new_process",
-            "process_entry_point": "arithmetic.add",
+            "process_entry_point": "aiida.calculations:arithmetic.add",
             "inputs": {
-                "code.id": code_id,
-                "x.id": x_id,
-                "y.id": y_id,
+                "code.uuid": code_id,
+                "x.uuid": x_id,
+                "y.uuid": y_id,
                 "metadata": {
                     "description": "Test job submission with the add plugin",
                 },
@@ -74,9 +74,9 @@ def test_add_process_invalid_entry_point(
             "label": "test_new_process",
             "process_entry_point": "wrong_entry_point",
             "inputs": {
-                "code.id": code_id,
-                "x.id": x_id,
-                "y.id": y_id,
+                "code.uuid": code_id,
+                "x.uuid": x_id,
+                "y.uuid": y_id,
                 "metadata": {
                     "description": "Test job submission with the add plugin",
                 },
@@ -95,11 +95,11 @@ def test_add_process_invalid_node_id(
         "/processes",
         json={
             "label": "test_new_process",
-            "process_entry_point": "wrong_entry_point",
+            "process_entry_point": "aiida.calculations:arithmetic.add",
             "inputs": {
-                "code.id": code_id,
-                "x.id": x_id,
-                "y.id": 7,
+                "code.uuid": code_id,
+                "x.uuid": x_id,
+                "y.uuid": "891a9efa-f90e-11eb-9a03-0242ac130003",
                 "metadata": {
                     "description": "Test job submission with the add plugin",
                 },
@@ -107,4 +107,6 @@ def test_add_process_invalid_node_id(
         },
     )
     assert response.status_code == 404
-    assert response.json() == {"detail": "Node ID: 7 does not exist."}
+    assert response.json() == {
+        "detail": "Node ID: 891a9efa-f90e-11eb-9a03-0242ac130003 does not exist."
+    }

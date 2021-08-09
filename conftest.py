@@ -120,7 +120,7 @@ def default_test_add_process():
 
     y = orm.Int(2).store()
 
-    return [code.id, x.id, y.id]
+    return [code.uuid, x.uuid, y.uuid]
 
 
 @pytest.fixture(scope="function")
