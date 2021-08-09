@@ -5,7 +5,8 @@ from typing import List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.engine.launch import run_get_node
+from aiida.common.exceptions import NotExistent
+from aiida.engine import submit
 from aiida.orm.querybuilder import QueryBuilder
 from fastapi import APIRouter, Depends, HTTPException
 from importlib_metadata import entry_points
@@ -25,7 +26,13 @@ def substitute_node(input_dict: dict) -> dict:
 
     for key, value in input_dict.items():
         if key not in node_ids.keys():
-            node_ids[key[:-3]] = orm.Node.get(id=value)
+            try:
+                node_ids[key[:-3]] = orm.Node.get(id=value)
+            except NotExistent as exc:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Node ID: {} does not exist.".format(value),
+                ) from exc
 
     return node_ids
 
@@ -80,6 +87,6 @@ async def post_process(
             detail="Entry point '{}' not recognized.".format(entry_point),
         ) from exc
 
-    _, node = run_get_node(entry_point_process.load(), **inputs)
+    process_node = submit(entry_point_process.load(), **inputs)
 
-    return node
+    return process_node

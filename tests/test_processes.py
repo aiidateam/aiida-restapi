@@ -61,3 +61,50 @@ def test_add_process(
         },
     )
     assert response.status_code == 200
+
+
+def test_add_process_invalid_entry_point(
+    default_test_add_process, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding new process with invalid entry point"""
+    code_id, x_id, y_id = default_test_add_process
+    response = client.post(
+        "/processes",
+        json={
+            "label": "test_new_process",
+            "process_entry_point": "wrong_entry_point",
+            "inputs": {
+                "code.id": code_id,
+                "x.id": x_id,
+                "y.id": y_id,
+                "metadata": {
+                    "description": "Test job submission with the add plugin",
+                },
+            },
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_add_process_invalid_node_id(
+    default_test_add_process, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding new process with invalid Node ID"""
+    code_id, x_id, _ = default_test_add_process
+    response = client.post(
+        "/processes",
+        json={
+            "label": "test_new_process",
+            "process_entry_point": "wrong_entry_point",
+            "inputs": {
+                "code.id": code_id,
+                "x.id": x_id,
+                "y.id": 7,
+                "metadata": {
+                    "description": "Test job submission with the add plugin",
+                },
+            },
+        },
+    )
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Node ID: 7 does not exist."}
