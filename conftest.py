@@ -58,8 +58,8 @@ def default_computers():
 
 
 @pytest.fixture(scope="function")
-def default_process():
-    """Populate database with some process"""
+def example_processes():
+    """Populate database with some processes"""
     calcs = []
     process_label = "SomeDummyWorkFunctionNode"
 

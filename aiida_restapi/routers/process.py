@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Declaration of FastAPI application."""
+"""Declaration of FastAPI router for processes."""
 
 from typing import List, Optional
 

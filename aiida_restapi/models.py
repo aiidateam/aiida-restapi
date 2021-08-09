@@ -138,7 +138,7 @@ class Process(AiidaModel):
     _orm_entity = orm.ProcessNode
 
     id: Optional[int] = Field(description="Unique id (pk)")
-    uuid: Optional[UUID] = Field(description="Unique uuid")
+    uuid: Optional[UUID] = Field(description="Universally unique identifier")
     node_type: Optional[str] = Field(description="Node type")
     process_type: Optional[str] = Field(description="Process type")
     label: str = Field(description="Label of node")
