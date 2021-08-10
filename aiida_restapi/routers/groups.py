@@ -6,7 +6,7 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends
 
-from aiida_restapi.models import Group, User
+from aiida_restapi.models import Group, Group_Post, User
 
 from .auth import get_current_active_user
 
@@ -41,8 +41,8 @@ async def read_group(group_id: int) -> Optional[Group]:
 
 
 @router.post("/groups", response_model=Group)
-async def create_user(
-    group: Group,
+async def create_group(
+    group: Group_Post,
     current_user: User = Depends(
         get_current_active_user
     ),  # pylint: disable=unused-argument
