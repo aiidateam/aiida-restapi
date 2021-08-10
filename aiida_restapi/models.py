@@ -176,7 +176,7 @@ class Node(AiidaModel):
         cls: Type[ModelType],
         node_type: str,
         attributes: dict,
-        node_dict: Optional[dict],
+        node_dict: dict,
     ) -> orm.Node:
         "Create and Store new Node"
 
@@ -192,6 +192,15 @@ class Node(AiidaModel):
                 dict=attributes,
                 **node_dict,
             )
+        elif issubclass(orm_class, orm.Code):
+            orm_object = orm_class()
+            orm_object.set_remote_computer_exec(
+                (
+                    orm.Computer.get(id=node_dict.get("dbcomputer_id")),
+                    attributes["remote_exec_path"],
+                )
+            )
+            orm_object.label = node_dict.get("label")
         else:
             orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
             orm_object.set_attribute_many(attributes)

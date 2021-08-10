@@ -18,6 +18,24 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
+def test_create_code(
+    default_computers, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test creating a new Code."""
+
+    for comp_id in default_computers:
+        response = client.post(
+            "/nodes",
+            json={
+                "node_type": "data.code.Code.|",
+                "dbcomputer_id": comp_id,
+                "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
+                "label": "test_code",
+            },
+        )
+    assert response.status_code == 200, response.content
+
+
 def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     """Test creating a new list."""
     response = client.post(
