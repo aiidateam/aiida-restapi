@@ -150,9 +150,8 @@ class Computer(AiidaModel):
     )
 
 
-@as_form
 class Node(AiidaModel):
-    """AiiDA Node model."""
+    """AiiDA Node Model."""
 
     id: Optional[int] = Field(description="Unique id (pk)")
     uuid: Optional[UUID] = Field(description="Unique uuid")
@@ -162,6 +161,24 @@ class Node(AiidaModel):
     description: Optional[str] = Field(description="Description of node")
     ctime: Optional[datetime] = Field(description="Creation time")
     mtime: Optional[datetime] = Field(description="Last modification time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Dict] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Dict] = Field(
+        description="Variable extras (unsealed) of the node",
+    )
+
+
+@as_form
+class Node_Post(AiidaModel):
+    """AiiDA model for posting Nodes."""
+
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
     user_id: Optional[int] = Field(description="Created by user id (pk)")
     dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
     attributes: Optional[Dict] = Field(

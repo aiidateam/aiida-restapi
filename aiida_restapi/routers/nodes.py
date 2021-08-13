@@ -13,7 +13,7 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
-@router.post("/nodes", response_model=models.Node)
+@router.post("/nodes", response_model=models.Node_Post)
 @with_dbenv()
 async def create_node(
     node: models.Node,
@@ -50,7 +50,7 @@ async def create_node(
 @with_dbenv()
 async def create_upload_file(
     upload_file: bytes = File(...),
-    params: models.Node = Depends(models.Node.as_form),  # type: ignore # pylint: disable=maybe-no-member
+    params: models.Node_Post = Depends(models.Node_Post.as_form),  # type: ignore # pylint: disable=maybe-no-member
     current_user: models.User = Depends(
         get_current_active_user
     ),  # pylint: disable=unused-argument
