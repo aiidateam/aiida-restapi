@@ -1,5 +1,8 @@
 - description: regrerssion_test
+  extras: {}
   id: int
   label: regression_label_1
+  time: datetime
   type_string: core
-  user_id: str
+  user_id: int
+  uuid: UUID
