@@ -5,6 +5,42 @@
 import io
 
 
+def test_get_nodes_projectable(client):
+    """Test get projectable properites for nodes."""
+    response = client.get("/nodes/projectable_properties")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        "id",
+        "uuid",
+        "node_type",
+        "process_type",
+        "label",
+        "description",
+        "ctime",
+        "mtime",
+        "user_id",
+        "dbcomputer_id",
+        "attributes",
+        "extras",
+    ]
+
+
+def test_get_single_nodes(default_nodes, client):  # pylint: disable=unused-argument
+    """Test retrieving a single nodes."""
+
+    for nodes_id in default_nodes:
+        response = client.get("/nodes/{}".format(nodes_id))
+        assert response.status_code == 200
+
+
+def test_get_nodes(default_nodes, client):  # pylint: disable=unused-argument
+    """Test listing existing nodes."""
+    response = client.get("/nodes")
+    assert response.status_code == 200
+    assert len(response.json()) == 4
+
+
 def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     """Test creating a new dict."""
     response = client.post(
@@ -234,3 +270,43 @@ def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argu
         },
     )
     assert response.status_code == 404, response.content
+
+
+def test_create_additional_attribute(
+    default_computers, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding additional properties returns errors."""
+
+    for comp_id in default_computers:
+        response = client.post(
+            "/nodes",
+            json={
+                "uuid": "3",
+                "node_type": "data.code.Code.|",
+                "dbcomputer_id": comp_id,
+                "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
+                "label": "test_code",
+            },
+        )
+    assert response.status_code == 422, response.content
+
+
+def test_create_bool_with_extra(
+    client, authenticate
+):  # pylint: disable=unused-argument
+    """Test creating a new Bool with extra."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.bool.Bool.|",
+            "attributes": {"value": "True"},
+            "label": "test_bool",
+            "extras": {"extra_one": "value_1", "extra_two": "value_2"},
+        },
+    )
+
+    check_response = client.get("/nodes/{}".format(response.json()["id"]))
+
+    assert check_response.status_code == 200, response.content
+    assert check_response.json()["extras"]["extra_one"] == "value_1"
+    assert check_response.json()["extras"]["extra_two"] == "value_2"

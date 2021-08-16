@@ -56,6 +56,7 @@ class AiidaModel(BaseModel):
         """The models configuration."""
 
         orm_mode = True
+        extra = "forbid"
 
     @classmethod
     def get_projectable_properties(cls) -> List[str]:
@@ -118,6 +119,11 @@ class User(AiidaModel):
 
     _orm_entity = orm.User
 
+    class Config:
+        """The models configuration."""
+
+        extra = "allow"
+
     id: Optional[int] = Field(description="Unique user id (pk)")
     email: str = Field(description="Email address of the user")
     first_name: Optional[str] = Field(description="First name of the user")
@@ -149,9 +155,13 @@ class Computer(AiidaModel):
         description="General settings for these communication and management protocols"
     )
 
+    description: Optional[str] = Field(description="Description of node")
+
 
 class Node(AiidaModel):
     """AiiDA Node Model."""
+
+    _orm_entity = orm.Node
 
     id: Optional[int] = Field(description="Unique id (pk)")
     uuid: Optional[UUID] = Field(description="Unique uuid")
@@ -192,12 +202,13 @@ class Node_Post(AiidaModel):
     def create_new_node(
         cls: Type[ModelType],
         node_type: str,
-        attributes: dict,
         node_dict: dict,
     ) -> orm.Node:
         "Create and Store new Node"
 
         orm_class = load_entry_point_from_full_type(node_type)
+        attributes = node_dict.pop("attributes", {})
+        extras = node_dict.pop("extras", {})
 
         if issubclass(orm_class, orm.BaseType):
             orm_object = orm_class(
@@ -222,6 +233,7 @@ class Node_Post(AiidaModel):
             orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
             orm_object.set_attribute_many(attributes)
 
+        orm_object.set_extra_many(extras)
         orm_object.store()
         return orm_object
 
@@ -229,14 +241,18 @@ class Node_Post(AiidaModel):
     def create_new_node_with_file(
         cls: Type[ModelType],
         node_type: str,
-        attributes: Optional[dict],
-        node_dict: Optional[dict],
+        node_dict: dict,
         file: bytes,
     ) -> orm.Node:
         "Create and Store new Node"
+        attributes = node_dict.pop("attributes", {})
+        extras = node_dict.pop("extras", {})
+
         orm_object = load_entry_point_from_full_type(node_type)(
             file=io.BytesIO(file), **node_dict, **attributes
         )
+
+        orm_object.set_extra_many(extras)
         orm_object.store()
         return orm_object
 
