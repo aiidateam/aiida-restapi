@@ -81,7 +81,7 @@ async def create_upload_file(
         get_current_active_user
     ),  # pylint: disable=unused-argument
 ) -> models.Node:
-    """Test function for upload file will be merged with create_node later."""
+    """Endpoint for uploading file data"""
     node_dict = params.dict(exclude_unset=True, exclude_none=True)
     node_type = node_dict.pop("node_type", None)
 

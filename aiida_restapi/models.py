@@ -244,7 +244,7 @@ class Node_Post(AiidaModel):
         node_dict: dict,
         file: bytes,
     ) -> orm.Node:
-        "Create and Store new Node"
+        "Create and Store new Node with file"
         attributes = node_dict.pop("attributes", {})
         extras = node_dict.pop("extras", {})
 
