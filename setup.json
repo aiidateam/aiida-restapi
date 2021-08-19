@@ -19,6 +19,18 @@
         ],
         "aiida.cmdline.data": [
             "restapi = aiida_restapi.cli:data_cli"
+        ],
+        "aiida.rest.post": [
+            "data.str.Str.| = aiida_restapi.models:Node_Post",
+            "data.float.Float.| = aiida_restapi.models:Node_Post",
+            "data.int.Int.| = aiida_restapi.models:Node_Post",
+            "data.bool.Bool.| = aiida_restapi.models:Node_Post",
+            "data.structure.StructureData.| = aiida_restapi.models:Node_Post",
+            "data.orbital.OrbitalData.| = aiida_restapi.models:Node_Post",
+            "data.list.List.|  = aiida_restapi.models:Node_Post",
+            "data.dict.Dict.| = aiida_restapi.models:Node_Post",
+            "data.singlefile.SingleFileData.| = aiida_restapi.models:Node_Post",
+            "data.code.Code.| = aiida_restapi.models:Node_Post"
         ]
     },
     "include_package_data": true,
@@ -36,7 +48,8 @@
         "pydantic~=1.8.2",
         "graphene~=2.0",
         "python-dateutil~=2.0",
-        "lark~=0.11.0"
+        "lark~=0.11.0",
+        "importlib_metadata~=4.3"
     ],
     "extras_require": {
         "testing": [

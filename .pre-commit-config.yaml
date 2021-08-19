@@ -58,6 +58,7 @@ repos:
       - passlib
       - pytest~=3.6,<5.0.0
       - sphinx<4
+      - importlib_metadata~=4.3
       exclude: >
         (?x)^(
             docs/.*|

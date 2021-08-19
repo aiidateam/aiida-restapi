@@ -39,6 +39,7 @@ async def read_user(user_id: int) -> Optional[User]:
 
 
 @router.post("/users", response_model=User)
+@with_dbenv()
 async def create_user(
     user: User,
     current_user: User = Depends(

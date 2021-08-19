@@ -68,6 +68,17 @@ def default_groups():
 
 
 @pytest.fixture(scope="function")
+def default_nodes():
+    """Populate database with some nodes."""
+    node_1 = orm.Int(1).store()
+    node_2 = orm.Float(1.1).store()
+    node_3 = orm.Str("test_string").store()
+    node_4 = orm.Bool(False).store()
+
+    return [node_1.id, node_2.id, node_3.id, node_4.id]
+
+
+@pytest.fixture(scope="function")
 def authenticate():
     """Authenticate user.
 
