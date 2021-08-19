@@ -214,7 +214,7 @@ def test_create_single_file_upload(
         "attributes": {},
     }
 
-    response = client.post("/singlefiledata", files=test_file, data=params)
+    response = client.post("/nodes/singlefile", files=test_file, data=params)
 
     assert response.status_code == 200
 

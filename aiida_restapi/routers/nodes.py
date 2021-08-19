@@ -72,7 +72,7 @@ async def create_node(
     return models.Node.from_orm(orm_object)
 
 
-@router.post("/singlefiledata", response_model=models.Node)
+@router.post("/nodes/singlefile", response_model=models.Node)
 @with_dbenv()
 async def create_upload_file(
     upload_file: bytes = File(...),
