@@ -41,6 +41,7 @@ async def read_group(group_id: int) -> Optional[Group]:
 
 
 @router.post("/groups", response_model=Group)
+@with_dbenv()
 async def create_group(
     group: Group_Post,
     current_user: User = Depends(

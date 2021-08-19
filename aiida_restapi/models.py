@@ -6,15 +6,45 @@ Models in this module mirror those in
 """
 # pylint: disable=too-few-public-methods
 
+import inspect
+import io
 from datetime import datetime
 from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiida import orm
+from aiida.restapi.common.identifiers import load_entry_point_from_full_type
+from fastapi import Form
 from pydantic import BaseModel, Field
 
 # Template type for subclasses of `AiidaModel`
 ModelType = TypeVar("ModelType", bound="AiidaModel")
+
+
+def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
+    """
+    Adds an as_form class method to decorated models. The as_form class method
+    can be used with FastAPI endpoints
+
+    Note: Taken from https://github.com/tiangolo/fastapi/issues/2387
+    """
+    new_params = [
+        inspect.Parameter(
+            field.alias,
+            inspect.Parameter.POSITIONAL_ONLY,
+            default=(Form(field.default) if not field.required else Form(...)),
+        )
+        for field in cls.__fields__.values()
+    ]
+
+    async def _as_form(**data: Dict) -> BaseModel:
+        return cls(**data)
+
+    sig = inspect.signature(_as_form)
+    sig = sig.replace(parameters=new_params)
+    _as_form.__signature__ = sig  # type: ignore
+    setattr(cls, "as_form", _as_form)
+    return cls
 
 
 class AiidaModel(BaseModel):
@@ -26,6 +56,7 @@ class AiidaModel(BaseModel):
         """The models configuration."""
 
         orm_mode = True
+        extra = "forbid"
 
     @classmethod
     def get_projectable_properties(cls) -> List[str]:
@@ -88,6 +119,11 @@ class User(AiidaModel):
 
     _orm_entity = orm.User
 
+    class Config:
+        """The models configuration."""
+
+        extra = "allow"
+
     id: Optional[int] = Field(description="Unique user id (pk)")
     email: str = Field(description="Email address of the user")
     first_name: Optional[str] = Field(description="First name of the user")
@@ -118,6 +154,107 @@ class Computer(AiidaModel):
     metadata: Optional[dict] = Field(
         description="General settings for these communication and management protocols"
     )
+
+    description: Optional[str] = Field(description="Description of node")
+
+
+class Node(AiidaModel):
+    """AiiDA Node Model."""
+
+    _orm_entity = orm.Node
+
+    id: Optional[int] = Field(description="Unique id (pk)")
+    uuid: Optional[UUID] = Field(description="Unique uuid")
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
+    ctime: Optional[datetime] = Field(description="Creation time")
+    mtime: Optional[datetime] = Field(description="Last modification time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Dict] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Dict] = Field(
+        description="Variable extras (unsealed) of the node",
+    )
+
+
+@as_form
+class Node_Post(AiidaModel):
+    """AiiDA model for posting Nodes."""
+
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Dict] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Dict] = Field(
+        description="Variable extras (unsealed) of the node",
+    )
+
+    @classmethod
+    def create_new_node(
+        cls: Type[ModelType],
+        node_type: str,
+        node_dict: dict,
+    ) -> orm.Node:
+        "Create and Store new Node"
+
+        orm_class = load_entry_point_from_full_type(node_type)
+        attributes = node_dict.pop("attributes", {})
+        extras = node_dict.pop("extras", {})
+
+        if issubclass(orm_class, orm.BaseType):
+            orm_object = orm_class(
+                attributes["value"],
+                **node_dict,
+            )
+        elif issubclass(orm_class, orm.Dict):
+            orm_object = orm_class(
+                dict=attributes,
+                **node_dict,
+            )
+        elif issubclass(orm_class, orm.Code):
+            orm_object = orm_class()
+            orm_object.set_remote_computer_exec(
+                (
+                    orm.Computer.get(id=node_dict.get("dbcomputer_id")),
+                    attributes["remote_exec_path"],
+                )
+            )
+            orm_object.label = node_dict.get("label")
+        else:
+            orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+            orm_object.set_attribute_many(attributes)
+
+        orm_object.set_extra_many(extras)
+        orm_object.store()
+        return orm_object
+
+    @classmethod
+    def create_new_node_with_file(
+        cls: Type[ModelType],
+        node_type: str,
+        node_dict: dict,
+        file: bytes,
+    ) -> orm.Node:
+        "Create and Store new Node with file"
+        attributes = node_dict.pop("attributes", {})
+        extras = node_dict.pop("extras", {})
+
+        orm_object = load_entry_point_from_full_type(node_type)(
+            file=io.BytesIO(file), **node_dict, **attributes
+        )
+
+        orm_object.set_extra_many(extras)
+        orm_object.store()
+        return orm_object
 
 
 class Group(AiidaModel):

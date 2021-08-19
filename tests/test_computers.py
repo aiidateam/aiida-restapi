@@ -23,6 +23,7 @@ def test_get_computers_projectable(client):
         "scheduler_type",
         "transport_type",
         "metadata",
+        "description",
     ]
 
 

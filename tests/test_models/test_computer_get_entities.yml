@@ -1,4 +1,5 @@
-- hostname: localhost_1
+- description: ''
+  hostname: localhost_1
   id: int
   metadata: {}
   name: test_comp_1
