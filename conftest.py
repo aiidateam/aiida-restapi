@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """pytest fixtures for simplified testing."""
+import tempfile
+
 import pytest
 from aiida import orm
+from aiida.engine import ProcessState
+from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
 
 from aiida_restapi import app, config
@@ -51,6 +55,72 @@ def default_computers():
     ).store()
 
     return [comp_1.id, comp_2.id]
+
+
+@pytest.fixture(scope="function")
+def example_processes():
+    """Populate database with some processes"""
+    calcs = []
+    process_label = "SomeDummyWorkFunctionNode"
+
+    # Create 6 WorkFunctionNodes and WorkChainNodes (one for each ProcessState)
+    for state in ProcessState:
+
+        calc = WorkFunctionNode()
+        calc.set_process_state(state)
+
+        # Set the WorkFunctionNode as successful
+        if state == ProcessState.FINISHED:
+            calc.set_exit_status(0)
+
+        # Give a `process_label` to the `WorkFunctionNodes` so the `--process-label` option can be tested
+        calc.set_attribute("process_label", process_label)
+
+        calc.store()
+        calcs.append(calc.id)
+
+        calc = WorkChainNode()
+        calc.set_process_state(state)
+
+        # Set the WorkChainNode as failed
+        if state == ProcessState.FINISHED:
+            calc.set_exit_status(1)
+
+        # Set the waiting work chain as paused as well
+        if state == ProcessState.WAITING:
+            calc.pause()
+
+        calc.store()
+        calcs.append(calc.id)
+    return calcs
+
+
+@pytest.fixture(scope="function")
+def default_test_add_process():
+    """Populate database with some node to test adding process"""
+
+    workdir = tempfile.mkdtemp()
+
+    computer = orm.Computer(
+        label="localhost",
+        hostname="localhost",
+        workdir=workdir,
+        transport_type="local",
+        scheduler_type="direct",
+    )
+    computer.store()
+    computer.set_minimum_job_poll_interval(0.0)
+    computer.configure()
+
+    code = orm.Code(
+        input_plugin_name="arithmetic.add", remote_computer_exec=(computer, "/bin/true")
+    ).store()
+
+    x = orm.Int(1).store()
+
+    y = orm.Int(2).store()
+
+    return [code.uuid, x.uuid, y.uuid]
 
 
 @pytest.fixture(scope="function")

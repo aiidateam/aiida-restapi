@@ -297,3 +297,34 @@ class Group_Post(AiidaModel):
     label: str = Field(description="Used to access the group. Must be unique.")
     type_string: Optional[str] = Field(description="Type of the group")
     description: Optional[str] = Field(description="Short description of the group.")
+
+
+class Process(AiidaModel):
+    """AiiDA Process Model"""
+
+    _orm_entity = orm.ProcessNode
+
+    id: Optional[int] = Field(description="Unique id (pk)")
+    uuid: Optional[UUID] = Field(description="Universally unique identifier")
+    node_type: Optional[str] = Field(description="Node type")
+    process_type: Optional[str] = Field(description="Process type")
+    label: str = Field(description="Label of node")
+    description: Optional[str] = Field(description="Description of node")
+    ctime: Optional[datetime] = Field(description="Creation time")
+    mtime: Optional[datetime] = Field(description="Last modification time")
+    user_id: Optional[int] = Field(description="Created by user id (pk)")
+    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    attributes: Optional[Dict] = Field(
+        description="Variable attributes of the node",
+    )
+    extras: Optional[Dict] = Field(
+        description="Variable extras (unsealed) of the node",
+    )
+
+
+class Process_Post(AiidaModel):
+    """AiiDA Process Post Model"""
+
+    label: str = Field(description="Label of node")
+    inputs: dict = Field(description="Input parmeters")
+    process_entry_point: str = Field(description="Entry Point for process")
