@@ -4,9 +4,9 @@ We will demonstrate the usage of the [aiida-restapi](https://github.com/aiidatea
 
 To follow this tutorial, you need to have [aiida-core](https://github.com/aiidateam/aiida-core) and [aiida-restapi](https://github.com/aiidateam/aiida-restapi) installed. The REST API server should be running. Check the [README.md](https://github.com/aiidateam/aiida-restapi/blob/master/README.md) file from the [aiida-restapi](https://github.com/aiidateam/aiida-restapi) package to know how.
 
-You will also need a HTTP operator that allows you to send attachments (which will constitute what is called the `Request Body`). Here are two options:
+You will also need a tool to make HTTP requests. Here are two options:
 
-**Option 1: HTTPie**
+**Option 1: HTTPie command line tool**
 
 Install [HTTPie](https://httpie.io/) by typing in the terminal:
 
@@ -22,7 +22,7 @@ $ http localhost:8000/api/v4/endpoint < request_body
 
 where `request_body` is the file containing the request body.
 
-**Option 2: [Resquests library](https://docs.python-requests.org/en/latest/) (all python approach)**
+**Option 2: [`requests` python library](https://docs.python-requests.org/en/latest/) (all python approach)**
 
 Here is an example on how to do it in python:
 
@@ -39,7 +39,7 @@ body = {
 
 response = requests.post(url, data=body)
 
-print( response.text )
+print( response.json )
 ```
 
 ## Launching a WorkChain
@@ -50,7 +50,7 @@ Here, we show how the REST API can be used to submit a WorkChain process to add 
    
 Request URL: http://127.0.0.1:8000/nodes
 Request Body:
-```python
+```json
 {
    "node_type": "data.code.Code.|",
    "dbcomputer_id": 2,
@@ -63,7 +63,7 @@ Request Body:
 ```
 
 Response Body:
-```python
+```json
 {
    "id": 62,
    "uuid": "e590fff6-46e3-4983-bb2b-1f4a335c5836",
@@ -87,12 +87,12 @@ Response Body:
 
 ### Step 2: Post Integers
 
-We are creating two integers with values 6 and 3. Below is the example for posting orm.Int object with value 6.
+We are creating two integers with values 6 and 3. Below is the example for posting an `orm.Int` object with value 6.
 
 Request URL: http://127.0.0.1:8000/nodes
 
 Request Body:
-```python
+```json
 {
    "node_type": "data.int.Int.|",
    "attributes": {"value": 6},
@@ -101,7 +101,7 @@ Request Body:
 ```
 
 Response Body:
-```python
+```json
 {
    "id": 63,
    "uuid": "4a1a5e4c-e6ea-4a85-b407-4989a292b442",
@@ -122,7 +122,7 @@ Response Body:
 }
 ```
 
-Similarly, we created another orm.Int object of value 3. The retrieved UUID was “29ff3e11-5165-46db-84b0-d85620d0b972”.
+Similarly, we created another `orm.Int` object of value 3. The retrieved UUID was “29ff3e11-5165-46db-84b0-d85620d0b972”.
 
 ### Step 3: Posting Process
 
@@ -131,7 +131,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
    Request URL: http://127.0.0.1:8000/processes
 
    Request Body:
-   ```python 
+   ```json 
    {
       "label": "report_process",
       "process_entry_point": "aiida.calculations:arithmetic.add",
@@ -147,7 +147,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
    ```
 
    Response Body:
-   ```python
+   ```json
    {
       "id": 64,
       "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
@@ -175,7 +175,7 @@ Once the process is submitted, its status can be checked:
 Request URL: http://127.0.0.1:8000/processes/64
 
 Response Body:
-```python
+```json
 {
    "id": 64,
    "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
@@ -203,4 +203,4 @@ Response Body:
 }
 ```
 
-The process status can be retrieved from the response.
+The process status is reported in `response.json()["attributes"]["process_state"]`.
