@@ -1,11 +1,9 @@
 # Tutorial
 
-We will demonstrate with a few examples the usage of the [aiida-restapi](https://github.com/aiidateam/aiida-restapi) package.
+We will demonstrate the usage of the [aiida-restapi](https://github.com/aiidateam/aiida-restapi) package with a few examples.
 
-To follow this tutorial, you need to have aiida-core and aiida-restapi installed. The REST API server should be running, which you can start with:
-```console
-$ verdi restapi
-```
+To follow this tutorial, you need to have [aiida-core](https://github.com/aiidateam/aiida-core) and [aiida-restapi](https://github.com/aiidateam/aiida-restapi) installed. The REST API server should be running. Check the [README.md](https://github.com/aiidateam/aiida-restapi/blob/master/README.md) file from the [aiida-restapi](https://github.com/aiidateam/aiida-restapi) package to know how.
+
 You will also need a HTTP operator that allows you to send attachments (which will constitute what is called the `Request Body`). Here are two options:
 
 **Option 1: HTTPie**
