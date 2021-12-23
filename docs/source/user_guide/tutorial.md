@@ -4,6 +4,19 @@ We will demonstrate the usage of the [aiida-restapi](https://github.com/aiidatea
 
 To follow this tutorial, you need to have [aiida-core](https://github.com/aiidateam/aiida-core) and [aiida-restapi](https://github.com/aiidateam/aiida-restapi) installed. The REST API server should be running. Check the [README.md](https://github.com/aiidateam/aiida-restapi/blob/master/README.md) file from the [aiida-restapi](https://github.com/aiidateam/aiida-restapi) package to know how.
 
+## Authentication
+
+For some of the REST API endpoints, you need an authentication token. Do the following steps:
+
+
+   1. Go to http://127.0.0.1:8000/docs
+   2. Click on "Authorize"
+   3. Use username "johndoe@example.com" and password "secret"
+   4. Click on "Authorize", then "Close"
+
+To follow the steps in the tutorial below, you can use the Swagger Javascript client, which you can access at http://127.0.0.1:8000/docs
+
+<!-- 
 You will also need a tool to make HTTP requests. Here are two options:
 
 **Option 1: HTTPie command line tool**
@@ -40,7 +53,7 @@ body = {
 response = requests.post(url, data=body)
 
 print( response.json )
-```
+``` -->
 
 ## Launching a WorkChain
 
