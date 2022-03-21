@@ -2,7 +2,11 @@
 """Tests for group plugins."""
 from graphene.test import Client
 
-from aiida_restapi.graphql.groups import GroupQueryPlugin, GroupsQueryPlugin
+from aiida_restapi.graphql.groups import (
+    GroupCreatePlugin,
+    GroupQueryPlugin,
+    GroupsQueryPlugin,
+)
 from aiida_restapi.graphql.orm_factories import field_names_from_orm
 from aiida_restapi.graphql.plugins import create_schema
 
@@ -38,4 +42,15 @@ def test_groups(create_group, orm_regression):
     schema = create_schema([GroupsQueryPlugin])
     client = Client(schema)
     executed = client.execute("{ groups {  count rows { %s } } }" % " ".join(fields))
+    orm_regression(executed)
+
+
+def test_group_create(orm_regression):
+    """Test Group creation."""
+    schema = create_schema(mutations=[GroupCreatePlugin])
+    client = Client(schema)
+    executed = client.execute(
+        'mutation { groupCreate(label: "group1", description: "hi") '
+        "{ created group { id uuid label type_string description } } }"
+    )
     orm_regression(executed)
