@@ -52,7 +52,7 @@ copyright_year_string = (
     else "{}-{}".format(copyright_first_year, current_year)
 )
 # pylint: disable=redefined-builtin
-copyright = u"{}, {}. All rights reserved".format(
+copyright = "{}, {}. All rights reserved".format(
     copyright_year_string, copyright_owners
 )
 
