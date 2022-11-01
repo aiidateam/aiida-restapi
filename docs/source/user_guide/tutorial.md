@@ -160,7 +160,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
    ```
 
    Response Body:
-   ```json
+   ```
    {
       "id": 64,
       "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
@@ -188,7 +188,7 @@ Once the process is submitted, its status can be checked:
 Request URL: http://127.0.0.1:8000/processes/64
 
 Response Body:
-```json
+```
 {
    "id": 64,
    "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
