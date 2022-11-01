@@ -16,7 +16,7 @@ For some of the REST API endpoints, you need an authentication token. Do the fol
 
 To follow the steps in the tutorial below, you can use the Swagger Javascript client, which you can access at http://127.0.0.1:8000/docs
 
-<!-- 
+<!--
 You will also need a tool to make HTTP requests. Here are two options:
 
 **Option 1: HTTPie command line tool**
@@ -60,7 +60,7 @@ print( response.json )
 Here, we show how the REST API can be used to submit a WorkChain process to add two integers.
 
 ### Step 1: Post Code Object
-   
+
 Request URL: http://127.0.0.1:8000/nodes
 Request Body:
 ```json
@@ -144,7 +144,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
    Request URL: http://127.0.0.1:8000/processes
 
    Request Body:
-   ```json 
+   ```json
    {
       "label": "report_process",
       "process_entry_point": "aiida.calculations:arithmetic.add",
