@@ -140,7 +140,7 @@ class Computer(AiidaModel):
 
     id: Optional[int] = Field(description="Unique computer id (pk)")
     uuid: Optional[str] = Field(description="Unique id for computer")
-    name: str = Field(description="Used to identify a computer. Must be unique")
+    label: str = Field(description="Used to identify a computer. Must be unique")
     hostname: Optional[str] = Field(
         description="Label that identifies the computer within the network"
     )
