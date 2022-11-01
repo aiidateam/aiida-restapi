@@ -11,7 +11,7 @@ def test_get_processes(example_processes, client):  # pylint: disable=unused-arg
 
 
 def test_get_processes_projectable(client):
-    """Test get projectable properites for processes."""
+    """Test get projectable properties for processes."""
     response = client.get("/processes/projectable_properties")
 
     assert response.status_code == 200
@@ -28,6 +28,7 @@ def test_get_processes_projectable(client):
         "dbcomputer_id",
         "attributes",
         "extras",
+        "repository_metadata",
     ]
 
 

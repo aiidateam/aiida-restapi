@@ -15,11 +15,6 @@ import os
 import sys
 import time
 
-import reentry
-
-# run reentry before importing aiida
-reentry.manager.scan()
-
 from aiida.manage.configuration import load_documentation_profile
 
 import aiida_restapi
