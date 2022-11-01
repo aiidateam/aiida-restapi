@@ -11,13 +11,6 @@ repos:
       - id: check-json
       - id: check-yaml
 
-  - repo: https://github.com/mgedmin/check-manifest
-    rev: "0.46"
-    hooks:
-    - id: check-manifest
-      args: [--no-build-isolation]
-      additional_dependencies: [setuptools>=46.4.0, "reentry"]
-
   - repo: https://github.com/pycqa/isort
     rev: 5.8.0
     hooks:
@@ -63,13 +56,3 @@ repos:
         (?x)^(
             docs/.*|
         )$
-
-  - repo: local
-    hooks:
-    - id: version-number
-      name: Check version numbers
-      entry: python ./.github/check_version.py ./setup.json ./aiida_restapi/__init__.py
-      language: python
-      language_version: python3
-      pass_filenames: false
-      files: "^(setup.json)|(aiida_restapi/__init__.py)"
