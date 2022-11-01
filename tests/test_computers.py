@@ -18,7 +18,7 @@ def test_get_computers_projectable(client):
     assert response.json() == [
         "id",
         "uuid",
-        "label",
+        "name",
         "hostname",
         "scheduler_type",
         "transport_type",
@@ -42,7 +42,7 @@ def test_create_computer(client, authenticate):  # pylint: disable=unused-argume
     response = client.post(
         "/computers",
         json={
-            "label": "test_comp",
+            "name": "test_comp",
             "hostname": "fake_host",
             "transport_type": "local",
             "scheduler_type": "pbspro",
