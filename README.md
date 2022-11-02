@@ -1,5 +1,5 @@
 [![Build Status](https://github.com/aiidateam/aiida-restapi/workflows/ci/badge.svg?branch=master)](https://github.com/aiidateam/aiida-restapi/actions)
-[![Coverage Status](https://coveralls.io/repos/github/aiidateam/aiida-restapi/badge.svg?branch=master)](https://coveralls.io/github/aiidateam/aiida-restapi?branch=master)
+[![Coverage Status](https://codecov.io/gh/aiidateam/aiida-restapi/branch/master/graph/badge.svg?token=zLdnsxfR3v)](https://codecov.io/gh/aiidateam/aiida-restapi)
 [![Docs status](https://readthedocs.org/projects/aiida-restapi/badge)](http://aiida-restapi.readthedocs.io/)
 [![PyPI version](https://badge.fury.io/py/aiida-restapi.svg)](https://badge.fury.io/py/aiida-restapi)
 
