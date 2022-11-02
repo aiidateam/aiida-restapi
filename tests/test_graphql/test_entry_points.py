@@ -30,4 +30,4 @@ def test_aiidaEntryPoints():
     assert "data" in executed, executed
     assert "aiidaEntryPoints" in executed["data"]
     assert executed["data"]["aiidaEntryPoints"]["group"] == "aiida.schedulers"
-    assert "direct" in executed["data"]["aiidaEntryPoints"]["names"]
+    assert "core.direct" in executed["data"]["aiidaEntryPoints"]["names"]

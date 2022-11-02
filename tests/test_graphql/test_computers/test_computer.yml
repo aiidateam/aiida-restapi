@@ -3,8 +3,8 @@ data:
     description: ''
     hostname: localhost
     id: int
+    label: localhost
     metadata: {}
-    name: localhost
-    scheduler_type: direct
-    transport_type: local
+    scheduler_type: core.direct
+    transport_type: core.local
     uuid: str

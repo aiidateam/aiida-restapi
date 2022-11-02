@@ -23,6 +23,7 @@ def test_get_nodes_projectable(client):
         "dbcomputer_id",
         "attributes",
         "extras",
+        "repository_metadata",
     ]
 
 
@@ -46,7 +47,7 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.dict.Dict.|",
+            "node_type": "data.core.dict.Dict.|",
             "attributes": {"x": 1, "y": 2},
             "label": "test_dict",
         },
@@ -63,7 +64,7 @@ def test_create_code(
         response = client.post(
             "/nodes",
             json={
-                "node_type": "data.code.Code.|",
+                "node_type": "data.core.code.Code.|",
                 "dbcomputer_id": comp_id,
                 "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
                 "label": "test_code",
@@ -77,7 +78,7 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.list.List.|",
+            "node_type": "data.core.list.List.|",
             "attributes": {"list": [2, 3]},
             "label": "test_list",
         },
@@ -91,7 +92,7 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.int.Int.|",
+            "node_type": "data.core.int.Int.|",
             "attributes": {"value": 6},
             "label": "test_Int",
         },
@@ -104,7 +105,7 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.float.Float.|",
+            "node_type": "data.core.float.Float.|",
             "attributes": {"value": 6.6},
             "label": "test_Float",
         },
@@ -117,7 +118,7 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.str.Str.|",
+            "node_type": "data.core.str.Str.|",
             "attributes": {"value": "test_string"},
             "label": "test_string",
         },
@@ -130,7 +131,7 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.bool.Bool.|",
+            "node_type": "data.core.bool.Bool.|",
             "attributes": {"value": "True"},
             "label": "test_bool",
         },
@@ -143,7 +144,7 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.structure.StructureData.|",
+            "node_type": "data.core.structure.StructureData.|",
             "process_type": None,
             "label": "test_StructureData",
             "description": "",
@@ -166,7 +167,7 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.orbital.OrbitalData.|",
+            "node_type": "data.core.orbital.OrbitalData.|",
             "process_type": None,
             "label": "test_OrbitalData",
             "description": "",
@@ -207,7 +208,7 @@ def test_create_single_file_upload(
         )
     }
     params = {
-        "node_type": "data.singlefile.SingleFileData.|",
+        "node_type": "data.core.singlefile.SingleFileData.|",
         "process_type": None,
         "label": "test_upload_file",
         "description": "Testing single upload file",
@@ -226,7 +227,7 @@ def test_create_node_wrond_value(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.float.Float.|",
+            "node_type": "data.core.float.Float.|",
             "attributes": {"value": "tests"},
             "label": "test_Float",
         },
@@ -236,7 +237,7 @@ def test_create_node_wrond_value(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.int.Int.|",
+            "node_type": "data.core.int.Int.|",
             "attributes": {"value": "tests"},
             "label": "test_int",
         },
@@ -251,7 +252,7 @@ def test_create_node_wrong_attribute(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.str.Str.|",
+            "node_type": "data.core.str.Str.|",
             "attributes": {"value1": 5},
             "label": "test_int",
         },
@@ -264,7 +265,7 @@ def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argu
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.float.wrong.|",
+            "node_type": "data.core.float.wrong.|",
             "attributes": {"value": 3},
             "label": "test_Float",
         },
@@ -282,7 +283,7 @@ def test_create_additional_attribute(
             "/nodes",
             json={
                 "uuid": "3",
-                "node_type": "data.code.Code.|",
+                "node_type": "data.core.code.Code.|",
                 "dbcomputer_id": comp_id,
                 "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
                 "label": "test_code",
@@ -298,7 +299,7 @@ def test_create_bool_with_extra(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.bool.Bool.|",
+            "node_type": "data.core.bool.Bool.|",
             "attributes": {"value": "True"},
             "label": "test_bool",
             "extras": {"extra_one": "value_1", "extra_two": "value_2"},

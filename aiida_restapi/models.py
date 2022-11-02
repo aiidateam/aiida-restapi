@@ -140,7 +140,7 @@ class Computer(AiidaModel):
 
     id: Optional[int] = Field(description="Unique computer id (pk)")
     uuid: Optional[str] = Field(description="Unique id for computer")
-    name: str = Field(description="Used to identify a computer. Must be unique")
+    label: str = Field(description="Used to identify a computer. Must be unique")
     hostname: Optional[str] = Field(
         description="Label that identifies the computer within the network"
     )
@@ -178,6 +178,9 @@ class Node(AiidaModel):
     )
     extras: Optional[Dict] = Field(
         description="Variable extras (unsealed) of the node",
+    )
+    repository_metadata: Optional[Dict] = Field(
+        description="Metadata about file repository associated with this node",
     )
 
 
@@ -319,6 +322,9 @@ class Process(AiidaModel):
     )
     extras: Optional[Dict] = Field(
         description="Variable extras (unsealed) of the node",
+    )
+    repository_metadata: Optional[Dict] = Field(
+        description="Metadata about file repository associated with this node",
     )
 
 

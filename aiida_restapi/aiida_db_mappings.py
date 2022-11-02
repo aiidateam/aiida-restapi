@@ -41,7 +41,7 @@ class Computer(BaseModel):
 
     id: int = Field(description="Unique id (pk)")
     uuid: UUID = Field(description="Universally unique id")
-    name: str = Field(description="Computer name")
+    label: str = Field(description="Computer name")
     hostname: str = Field(description="Identifier for the computer within the network")
     description: Optional[str] = Field(description="Description of the computer")
     scheduler_type: str = Field(

@@ -1,4 +1,4 @@
 data:
-  aiidaVersion: 1.6.9
+  aiidaVersion: str
   node:
     label: node 1

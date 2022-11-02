@@ -42,6 +42,7 @@ def orm_regression(data_regression):
             "dbnode_id",
             "user_id",
             "_aiida_hash",
+            "aiidaVersion",
         ),
     ):
         mutate_mapping(
@@ -122,8 +123,8 @@ def create_computer():
     def _func(
         label: str = "localhost",
         hostname: str = "localhost",
-        transport_type: str = "local",
-        scheduler_type: str = "direct",
+        transport_type: str = "core.local",
+        scheduler_type: str = "core.direct",
         description: str = "",
         workdir: Optional[str] = None,
     ) -> orm.Computer:

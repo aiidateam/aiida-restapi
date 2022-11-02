@@ -5,16 +5,16 @@ data:
     - description: ''
       hostname: localhost
       id: int
+      label: computer 1
       metadata: {}
-      name: computer 1
-      scheduler_type: direct
-      transport_type: local
+      scheduler_type: core.direct
+      transport_type: core.local
       uuid: str
     - description: ''
       hostname: localhost
       id: int
+      label: computer 2
       metadata: {}
-      name: computer 2
-      scheduler_type: direct
-      transport_type: local
+      scheduler_type: core.direct
+      transport_type: core.local
       uuid: str

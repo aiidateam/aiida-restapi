@@ -44,14 +44,14 @@ def default_computers():
     comp_1 = orm.Computer(
         label="test_comp_1",
         hostname="localhost_1",
-        transport_type="local",
-        scheduler_type="pbspro",
+        transport_type="core.local",
+        scheduler_type="core.pbspro",
     ).store()
     comp_2 = orm.Computer(
         label="test_comp_2",
         hostname="localhost_2",
-        transport_type="local",
-        scheduler_type="pbspro",
+        transport_type="core.local",
+        scheduler_type="core.pbspro",
     ).store()
 
     return [comp_1.id, comp_2.id]
@@ -105,8 +105,8 @@ def default_test_add_process():
         label="localhost",
         hostname="localhost",
         workdir=workdir,
-        transport_type="local",
-        scheduler_type="direct",
+        transport_type="core.local",
+        scheduler_type="core.direct",
     )
     computer.store()
     computer.set_minimum_job_poll_interval(0.0)

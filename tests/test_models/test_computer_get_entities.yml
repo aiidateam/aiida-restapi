@@ -1,8 +1,8 @@
 - description: ''
   hostname: localhost_1
   id: int
+  label: test_comp_1
   metadata: {}
-  name: test_comp_1
-  scheduler_type: pbspro
-  transport_type: local
+  scheduler_type: core.pbspro
+  transport_type: core.local
   uuid: str

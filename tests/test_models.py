@@ -34,10 +34,10 @@ def test_user_get_entities(data_regression):
 def test_computer_get_entities(data_regression):
     """Test ``Computer.get_entities``"""
     orm.Computer(
-        name="test_comp_1",
+        label="test_comp_1",
         hostname="localhost_1",
-        transport_type="local",
-        scheduler_type="pbspro",
+        transport_type="core.local",
+        scheduler_type="core.pbspro",
     ).store()
     py_computer = models.Computer.get_entities()
     data_regression.check([replace_dynamic(c.dict()) for c in py_computer])
