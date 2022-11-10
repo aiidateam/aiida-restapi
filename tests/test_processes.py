@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Test the /processes endpoint"""
+import io
+
+from aiida.orm import Dict, SinglefileData
 
 
 def test_get_processes(example_processes, client):  # pylint: disable=unused-argument
@@ -109,5 +112,38 @@ def test_add_process_invalid_node_id(
     )
     assert response.status_code == 404
     assert response.json() == {
-        "detail": "Node ID: 891a9efa-f90e-11eb-9a03-0242ac130003 does not exist."
+        "detail": "Node with UUID `891a9efa-f90e-11eb-9a03-0242ac130003` does not exist."
     }
+
+
+def test_add_process_nested_inputs(
+    default_test_add_process, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test adding new process that has nested inputs"""
+    code_id, _, _ = default_test_add_process
+    template = Dict(
+        {
+            "files_to_copy": [("file", "file.txt")],
+        }
+    ).store()
+    single_file = SinglefileData(io.StringIO("content")).store()
+
+    response = client.post(
+        "/processes",
+        json={
+            "label": "test_new_process",
+            "process_entry_point": "aiida.calculations:core.templatereplacer",
+            "inputs": {
+                "code.uuid": code_id,
+                "template.uuid": template.uuid,
+                "files": {"file.uuid": single_file.uuid},
+                "metadata": {
+                    "description": "Test job submission with the add plugin",
+                    "options": {
+                        "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 1}
+                    },
+                },
+            },
+        },
+    )
+    assert response.status_code == 200

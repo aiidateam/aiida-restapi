@@ -18,23 +18,34 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
-def substitute_node(input_dict: dict) -> dict:
-    """Substitutes node ids with nodes"""
-    node_ids = {
-        key: node_id for key, node_id in input_dict.items() if not key.endswith(".uuid")
-    }
+def process_inputs(inputs: dict) -> dict:
+    """Process the inputs dictionary converting each node UUID into the corresponding node by loading it.
 
-    for key, value in input_dict.items():
-        if key not in node_ids.keys():
-            try:
-                node_ids[key[:-5]] = orm.Node.get(uuid=value)
-            except NotExistent as exc:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Node ID: {} does not exist.".format(value),
-                ) from exc
+    A node UUID is indicated by the key ending with the suffix ``.uuid``.
 
-    return node_ids
+    :param inputs: The inputs dictionary.
+    :returns: The deserialized inputs dictionary.
+    :raises HTTPException: If the inputs contain a UUID that does not correspond to an existing node.
+    """
+    uuid_suffix = ".uuid"
+    results = {}
+
+    for key, value in inputs.items():
+        if isinstance(value, dict):
+            results[key] = process_inputs(value)
+        else:
+            if key.endswith(uuid_suffix):
+                try:
+                    results[key[: -len(uuid_suffix)]] = orm.load_node(uuid=value)
+                except NotExistent as exc:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Node with UUID `{value}` does not exist.",
+                    ) from exc
+            else:
+                results[key] = value
+
+    return results
 
 
 @router.get("/processes", response_model=List[Process])
@@ -74,7 +85,7 @@ async def post_process(
 ) -> Optional[Process]:
     """Create new process."""
     process_dict = process.dict(exclude_unset=True, exclude_none=True)
-    inputs = substitute_node(process_dict["inputs"])
+    inputs = process_inputs(process_dict["inputs"])
     entry_point = process_dict.get("process_entry_point")
 
     try:
