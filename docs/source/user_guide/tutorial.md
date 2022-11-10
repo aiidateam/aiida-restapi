@@ -147,7 +147,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
    ```json
    {
       "label": "report_process",
-      "process_entry_point": "aiida.calculations:arithmetic.add",
+      "process_entry_point": "aiida.calculations:core.arithmetic.add",
       "inputs": {
          "code.uuid": "e590fff6-46e3-4983-bb2b-1f4a335c5836",
          "x.uuid": "4a1a5e4c-e6ea-4a85-b407-4989a292b442",
@@ -165,7 +165,7 @@ After retrieving the UUIDs, the process is submitted at `/processes` endpoint as
       "id": 64,
       "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
       "node_type": "process.calculation.calcjob.CalcJobNode.",
-      "process_type": "aiida.calculations:arithmetic.add",
+      "process_type": "aiida.calculations:core.arithmetic.add",
       "label": "",
       "description": "job submission with the adding processes",
       "ctime": "2021-08-14T13:41:39.823818+00:00",
@@ -193,7 +193,7 @@ Response Body:
    "id": 64,
    "uuid": "6bc238e2-0dec-4449-bbe0-3cf181df00eb",
    "node_type": "process.calculation.calcjob.CalcJobNode.",
-   "process_type": "aiida.calculations:arithmetic.add",
+   "process_type": "aiida.calculations:core.arithmetic.add",
    "label": "",
    "description": "job submission with the adding processes",
    "ctime": "2021-08-14T23:41:39.823818+10:00",
@@ -206,7 +206,7 @@ Response Body:
          "plugin": "1.6.4"
       },
    ...
-      "parser_name": "arithmetic.add",
+      "parser_name": "core.arithmetic.add",
       "prepend_text": "",
       "process_label": "ArithmeticAddCalculation",
       "process_state": "created",

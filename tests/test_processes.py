@@ -53,7 +53,7 @@ def test_add_process(
         "/processes",
         json={
             "label": "test_new_process",
-            "process_entry_point": "aiida.calculations:arithmetic.add",
+            "process_entry_point": "aiida.calculations:core.arithmetic.add",
             "inputs": {
                 "code.uuid": code_id,
                 "x.uuid": x_id,
@@ -99,7 +99,7 @@ def test_add_process_invalid_node_id(
         "/processes",
         json={
             "label": "test_new_process",
-            "process_entry_point": "aiida.calculations:arithmetic.add",
+            "process_entry_point": "aiida.calculations:core.arithmetic.add",
             "inputs": {
                 "code.uuid": code_id,
                 "x.uuid": x_id,

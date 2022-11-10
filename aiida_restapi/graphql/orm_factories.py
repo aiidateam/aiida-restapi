@@ -59,7 +59,7 @@ def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
 
 def get_projection(
     db_fields: Set[str], info: gr.ResolveInfo, is_link: bool = False
-) -> List[str]:
+) -> Union[List[str], str]:
     """Traverse the child AST to work out what fields we should project.
 
     Any fields found that are not database fields, are assumed to be joins.
@@ -69,7 +69,7 @@ def get_projection(
     """
     if is_link:
         # TODO here we need to look deeper under the "node" field
-        return ["**"]
+        return "**"
     try:
         selected = set(selected_field_names_naive(info.field_asts[0].selection_set))
         fields = db_fields.intersection(selected)
@@ -78,7 +78,7 @@ def get_projection(
             fields.add("id")
         return list(fields)
     except NotImplementedError:
-        return ["**"]
+        return "**"
 
 
 def single_cls_factory(
@@ -114,7 +114,7 @@ def create_query_path(
         leaf_kwargs[f'with_{parent["edge_type"]}'] = parent["edge_type"]
         if parent.get("project_edge"):
             leaf_kwargs["edge_tag"] = f'{parent["edge_type"]}_edge'
-            leaf_kwargs["edge_project"] = ["**"]
+            leaf_kwargs["edge_project"] = "**"
     return leaf_kwargs
 
 

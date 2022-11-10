@@ -34,9 +34,9 @@ async def read_group(group_id: int) -> Optional[Group]:
     """Get group by id."""
     qbobj = orm.QueryBuilder()
 
-    qbobj.append(
-        orm.Group, filters={"id": group_id}, project=["**"], tag="group"
-    ).limit(1)
+    qbobj.append(orm.Group, filters={"id": group_id}, project="**", tag="group").limit(
+        1
+    )
     return qbobj.dict()[0]["group"]
 
 

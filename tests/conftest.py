@@ -20,7 +20,7 @@ pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
 
 @pytest.fixture(scope="function", autouse=True)
-def clear_database_auto(clear_database_before_test):  # pylint: disable=unused-argument
+def clear_database_auto(aiida_profile_clean):  # pylint: disable=unused-argument
     """Automatically clear database in between tests."""
 
 
@@ -40,7 +40,7 @@ def default_users():
         email="stravinsky@symphony.org", first_name="Igor", last_name="Stravinsky"
     ).store()
 
-    return [user_1.id, user_2.id]
+    return [user_1.pk, user_2.pk]
 
 
 @pytest.fixture(scope="function")
@@ -59,7 +59,7 @@ def default_computers():
         scheduler_type="core.pbspro",
     ).store()
 
-    return [comp_1.id, comp_2.id]
+    return [comp_1.pk, comp_2.pk]
 
 
 @pytest.fixture(scope="function")
@@ -79,10 +79,10 @@ def example_processes():
             calc.set_exit_status(0)
 
         # Give a `process_label` to the `WorkFunctionNodes` so the `--process-label` option can be tested
-        calc.set_attribute("process_label", process_label)
+        calc.base.attributes.set("process_label", process_label)
 
         calc.store()
-        calcs.append(calc.id)
+        calcs.append(calc.pk)
 
         calc = WorkChainNode()
         calc.set_process_state(state)
@@ -96,7 +96,7 @@ def example_processes():
             calc.pause()
 
         calc.store()
-        calcs.append(calc.id)
+        calcs.append(calc.pk)
     return calcs
 
 
@@ -117,8 +117,10 @@ def default_test_add_process():
     computer.set_minimum_job_poll_interval(0.0)
     computer.configure()
 
-    code = orm.Code(
-        input_plugin_name="arithmetic.add", remote_computer_exec=(computer, "/bin/true")
+    code = orm.InstalledCode(
+        default_calc_job_plugin="core.arithmetic.add",
+        computer=computer,
+        filepath_executable="/bin/true",
     ).store()
 
     x = orm.Int(1).store()
@@ -139,7 +141,7 @@ def default_groups():
     ).store()
     group_1 = orm.Group(label="test_label_1", user=test_user_1).store()
     group_2 = orm.Group(label="test_label_2", user=test_user_2).store()
-    return [group_1.id, group_2.id]
+    return [group_1.pk, group_2.pk]
 
 
 @pytest.fixture(scope="function")
@@ -150,7 +152,7 @@ def default_nodes():
     node_3 = orm.Str("test_string").store()
     node_4 = orm.Bool(False).store()
 
-    return [node_1.id, node_2.id, node_3.id, node_4.id]
+    return [node_1.pk, node_2.pk, node_3.pk, node_4.pk]
 
 
 @pytest.fixture(scope="function")
@@ -243,7 +245,7 @@ def create_comment():
         node: Optional[orm.nodes.Node] = None,
     ) -> orm.Comment:
         try:
-            user = orm.User.objects.get(email=user_email)
+            user = orm.User.collection.get(email=user_email)
         except NotExistent:
             user = orm.User(
                 email=user_email, first_name="Giuseppe", last_name="Verdi"
@@ -269,7 +271,7 @@ def create_log():
     ) -> orm.Comment:
         orm_node = node or orm.Data().store()
         return orm.Log(
-            datetime.now(pytz.UTC), loggername, level_name, orm_node.id, message=message
+            datetime.now(pytz.UTC), loggername, level_name, orm_node.pk, message=message
         ).store()
 
     return _func
@@ -320,8 +322,8 @@ def create_node():
         )
         node.label = label
         node.description = description
-        node.reset_attributes(attributes or {})
-        node.reset_extras(extras or {})
+        node.base.attributes.reset(attributes or {})
+        node.base.extras.reset(extras or {})
         if process_type is not None:
             node.process_type = process_type
         if store:

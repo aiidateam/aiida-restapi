@@ -35,7 +35,7 @@ async def read_computer(comp_id: int) -> Optional[Computer]:
     """Get computer by id."""
     qbobj = QueryBuilder()
     qbobj.append(
-        orm.Computer, filters={"id": comp_id}, project=["**"], tag="computer"
+        orm.Computer, filters={"id": comp_id}, project="**", tag="computer"
     ).limit(1)
 
     return qbobj.dict()[0]["computer"]

@@ -33,7 +33,7 @@ async def get_users_projectable_properties() -> List[str]:
 async def read_user(user_id: int) -> Optional[User]:
     """Get user by id."""
     qbobj = QueryBuilder()
-    qbobj.append(orm.User, filters={"id": user_id}, project=["**"], tag="user").limit(1)
+    qbobj.append(orm.User, filters={"id": user_id}, project="**", tag="user").limit(1)
 
     return qbobj.dict()[0]["user"]
 

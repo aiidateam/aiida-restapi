@@ -51,7 +51,7 @@ def test_node_incoming(create_node, orm_regression):
         ("incoming1", LinkType.INPUT_CALC, "link1"),
         ("incoming2", LinkType.INPUT_CALC, "link2"),
     ]:
-        node.add_incoming(create_node(label=label), link_type, link_label)
+        node.base.links.add_incoming(create_node(label=label), link_type, link_label)
     node.store()
 
     schema = create_schema([NodeQueryPlugin])
@@ -71,7 +71,7 @@ def test_node_outgoing(create_node, orm_regression):
         ("outgoing2", LinkType.CREATE, "link2"),
     ]:
         outgoing = create_node(label=label)
-        outgoing.add_incoming(node, link_type, link_label)
+        outgoing.base.links.add_incoming(node, link_type, link_label)
         outgoing.store()
 
     schema = create_schema([NodeQueryPlugin])
@@ -90,7 +90,7 @@ def test_node_ancestors(create_node, orm_regression):
         ("incoming1", LinkType.INPUT_CALC, "link1"),
         ("incoming2", LinkType.INPUT_CALC, "link2"),
     ]:
-        node.add_incoming(create_node(label=label), link_type, link_label)
+        node.base.links.add_incoming(create_node(label=label), link_type, link_label)
     node.store()
 
     schema = create_schema([NodeQueryPlugin])
@@ -109,7 +109,7 @@ def test_node_descendants(create_node, orm_regression):
         ("outgoing2", LinkType.CREATE, "link2"),
     ]:
         outgoing = create_node(label=label)
-        outgoing.add_incoming(node, link_type, link_label)
+        outgoing.base.links.add_incoming(node, link_type, link_label)
         outgoing.store()
 
     schema = create_schema([NodeQueryPlugin])
