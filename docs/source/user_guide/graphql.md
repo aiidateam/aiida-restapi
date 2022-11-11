@@ -560,11 +560,12 @@ http://localhost:5000/api/v4/computers/5d490d77
 
 ```graphql
 {
-  computer(uuid: "5d490d77") {
+  computer(uuid: "3d09ebd4-4bda-44c1-86c3-530a778911d5") {
     label
   }
 }
 ```
+Partial UUIDs are not yet implemented (but you can also select using `id`).
 
 ```html
 http://localhost:5000/api/v4/computers/?scheduler_type=in="slurm","pbs"
@@ -667,7 +668,7 @@ http://localhost:5000/api/v4/groups/a6e5b
 
 ```graphql
 {
-  group(uuid: "a6eb") {
+  group(uuid: "3d09ebd4-4bda-44c1-86c3-530a778911d5") {
     id
     label
     nodes {
@@ -676,3 +677,5 @@ http://localhost:5000/api/v4/groups/a6e5b
   }
 }
 ```
+
+Partial UUIDs are not yet implemented (but you can also select using `id`).
