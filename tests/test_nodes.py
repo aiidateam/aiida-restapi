@@ -80,7 +80,6 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
         json={
             "node_type": "data.core.list.List.|",
             "attributes": {"list": [2, 3]},
-            "label": "test_list",
         },
     )
 
@@ -94,7 +93,6 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
         json={
             "node_type": "data.core.int.Int.|",
             "attributes": {"value": 6},
-            "label": "test_Int",
         },
     )
     assert response.status_code == 200, response.content
@@ -107,7 +105,6 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
         json={
             "node_type": "data.core.float.Float.|",
             "attributes": {"value": 6.6},
-            "label": "test_Float",
         },
     )
     assert response.status_code == 200, response.content
@@ -120,7 +117,6 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
         json={
             "node_type": "data.core.str.Str.|",
             "attributes": {"value": "test_string"},
-            "label": "test_string",
         },
     )
     assert response.status_code == 200, response.content
@@ -133,7 +129,6 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
         json={
             "node_type": "data.core.bool.Bool.|",
             "attributes": {"value": "True"},
-            "label": "test_bool",
         },
     )
     assert response.status_code == 200, response.content
@@ -146,7 +141,6 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
         json={
             "node_type": "data.core.structure.StructureData.|",
             "process_type": None,
-            "label": "test_StructureData",
             "description": "",
             "attributes": {
                 "cell": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
@@ -169,7 +163,6 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
         json={
             "node_type": "data.core.orbital.OrbitalData.|",
             "process_type": None,
-            "label": "test_OrbitalData",
             "description": "",
             "attributes": {
                 "orbital_dicts": [
@@ -210,7 +203,6 @@ def test_create_single_file_upload(
     params = {
         "node_type": "data.core.singlefile.SingleFileData.|",
         "process_type": None,
-        "label": "test_upload_file",
         "description": "Testing single upload file",
         "attributes": {},
     }
@@ -220,7 +212,7 @@ def test_create_single_file_upload(
     assert response.status_code == 200
 
 
-def test_create_node_wrond_value(
+def test_create_node_wrong_value(
     client, authenticate
 ):  # pylint: disable=unused-argument
     """Test creating a new node with wrong value."""
@@ -229,7 +221,6 @@ def test_create_node_wrond_value(
         json={
             "node_type": "data.core.float.Float.|",
             "attributes": {"value": "tests"},
-            "label": "test_Float",
         },
     )
     assert response.status_code == 400, response.content
@@ -239,7 +230,6 @@ def test_create_node_wrond_value(
         json={
             "node_type": "data.core.int.Int.|",
             "attributes": {"value": "tests"},
-            "label": "test_int",
         },
     )
     assert response.status_code == 400, response.content
@@ -254,7 +244,6 @@ def test_create_node_wrong_attribute(
         json={
             "node_type": "data.core.str.Str.|",
             "attributes": {"value1": 5},
-            "label": "test_int",
         },
     )
     assert response.status_code == 400, response.content
@@ -267,7 +256,6 @@ def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argu
         json={
             "node_type": "data.core.float.wrong.|",
             "attributes": {"value": 3},
-            "label": "test_Float",
         },
     )
     assert response.status_code == 404, response.content
@@ -301,7 +289,6 @@ def test_create_bool_with_extra(
         json={
             "node_type": "data.core.bool.Bool.|",
             "attributes": {"value": "True"},
-            "label": "test_bool",
             "extras": {"extra_one": "value_1", "extra_two": "value_2"},
         },
     )
