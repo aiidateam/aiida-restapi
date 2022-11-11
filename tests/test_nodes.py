@@ -64,9 +64,9 @@ def test_create_code(
         response = client.post(
             "/nodes",
             json={
-                "node_type": "data.core.code.Code.|",
+                "node_type": "data.core.code.installed.InstalledCode.|",
                 "dbcomputer_id": comp_id,
-                "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
+                "attributes": {"filepath_executable": "/bin/true"},
                 "label": "test_code",
             },
         )
@@ -283,9 +283,9 @@ def test_create_additional_attribute(
             "/nodes",
             json={
                 "uuid": "3",
-                "node_type": "data.core.code.Code.|",
+                "node_type": "data.core.code.installed.InstalledCode.|",
                 "dbcomputer_id": comp_id,
-                "attributes": {"is_local": False, "remote_exec_path": "/bin/true"},
+                "attributes": {"filepath_executable": "/bin/true"},
                 "label": "test_code",
             },
         )

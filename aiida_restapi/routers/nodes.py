@@ -35,10 +35,7 @@ async def get_nodes_projectable_properties() -> List[str]:
 async def read_node(nodes_id: int) -> Optional[models.Node]:
     """Get nodes by id."""
     qbobj = orm.QueryBuilder()
-
-    qbobj.append(orm.Node, filters={"id": nodes_id}, project=["**"], tag="node").limit(
-        1
-    )
+    qbobj.append(orm.Node, filters={"id": nodes_id}, project="**", tag="node").limit(1)
     return qbobj.dict()[0]["node"]
 
 

@@ -212,6 +212,7 @@ class Node_Post(AiidaModel):
         orm_class = load_entry_point_from_full_type(node_type)
         attributes = node_dict.pop("attributes", {})
         extras = node_dict.pop("extras", {})
+        repository_metadata = node_dict.pop("repository_metadata", {})
 
         if issubclass(orm_class, orm.BaseType):
             orm_object = orm_class(
@@ -223,20 +224,25 @@ class Node_Post(AiidaModel):
                 dict=attributes,
                 **node_dict,
             )
-        elif issubclass(orm_class, orm.Code):
-            orm_object = orm_class()
-            orm_object.set_remote_computer_exec(
-                (
-                    orm.Computer.get(id=node_dict.get("dbcomputer_id")),
-                    attributes["remote_exec_path"],
-                )
+        elif issubclass(orm_class, orm.InstalledCode):
+            orm_object = orm_class(
+                computer=orm.load_computer(pk=node_dict.get("dbcomputer_id")),
+                filepath_executable=attributes["filepath_executable"],
+            )
+            orm_object.label = node_dict.get("label")
+        elif issubclass(orm_class, orm.PortableCode):
+            orm_object = orm_class(
+                computer=orm.load_computer(pk=node_dict.get("dbcomputer_id")),
+                filepath_executable=attributes["filepath_executable"],
+                filepath_files=attributes["filepath_files"],
             )
             orm_object.label = node_dict.get("label")
         else:
             orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
-            orm_object.set_attribute_many(attributes)
+            orm_object.base.attributes.set_many(attributes)
 
-        orm_object.set_extra_many(extras)
+        orm_object.base.extras.set_many(extras)
+        orm_object.base.repository.repository_metadata = repository_metadata
         orm_object.store()
         return orm_object
 
@@ -255,7 +261,7 @@ class Node_Post(AiidaModel):
             file=io.BytesIO(file), **node_dict, **attributes
         )
 
-        orm_object.set_extra_many(extras)
+        orm_object.base.extras.set_many(extras)
         orm_object.store()
         return orm_object
 
@@ -270,7 +276,7 @@ class Group(AiidaModel):
     label: str = Field(description="Label of group")
     type_string: str = Field(description="type of the group")
     description: Optional[str] = Field(description="Description of group")
-    extras: Dict = Field(description="extra data about for the group")
+    extras: Optional[Dict] = Field(description="extra data about for the group")
     time: datetime = Field(description="Created time")
     user_id: int = Field(description="Created by user id (pk)")
 

@@ -69,7 +69,7 @@ async def read_process(proc_id: int) -> Optional[Process]:
     """Get process by id."""
     qbobj = QueryBuilder()
     qbobj.append(
-        orm.ProcessNode, filters={"id": proc_id}, project=["**"], tag="process"
+        orm.ProcessNode, filters={"id": proc_id}, project="**", tag="process"
     ).limit(1)
 
     return qbobj.dict()[0]["process"]
