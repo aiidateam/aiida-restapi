@@ -17,6 +17,18 @@ def test_group(create_group, orm_regression):
     orm_regression(executed)
 
 
+def test_group_label(create_group, orm_regression):
+    """Test Group query on the label."""
+    group = create_group(label="custom-label")
+    fields = field_names_from_orm(type(group))
+    schema = create_schema([GroupQueryPlugin])
+    client = Client(schema)
+    executed = client.execute(
+        '{ group(label: "custom-label") { %s } }' % (" ".join(fields))
+    )
+    orm_regression(executed)
+
+
 def test_group_nodes(create_group, create_node, orm_regression):
     """Test querying Nodes inside Group."""
     create_node(label="not in group")

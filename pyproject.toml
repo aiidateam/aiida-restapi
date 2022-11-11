@@ -113,6 +113,7 @@ disable = [
     'fixme',
     'invalid-name',
     'too-many-ancestors',
+    'too-many-arguments',
 ]
 
 [tool.pylint.similarities]

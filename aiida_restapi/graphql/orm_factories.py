@@ -215,6 +215,7 @@ def resolve_entity(
     info: gr.ResolveInfo,
     id: Optional[int] = None,
     uuid: Optional[str] = None,
+    label: Optional[str] = None,
     uuid_name: str = "uuid",
 ) -> ENTITY_DICT_TYPE:
     """Query for a single entity, and project only the fields requested.
@@ -227,8 +228,10 @@ def resolve_entity(
         filters = {"id": id}
     elif uuid is not None:
         filters = {uuid_name: uuid}
+    elif label is not None:
+        filters = {"label": label}
     else:
-        raise AssertionError(f"One of id or {uuid_name} must be specified")
+        raise AssertionError(f"One of id, {uuid_name}, or label must be specified")
 
     db_fields = field_names_from_orm(orm_cls)
     project = get_projection(db_fields, info)
