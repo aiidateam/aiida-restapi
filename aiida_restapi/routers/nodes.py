@@ -4,16 +4,15 @@ from typing import List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.common.exceptions import EntryPointError
+from aiida.plugins.entry_point import load_entry_point
 from fastapi import APIRouter, Depends, File, HTTPException
-from importlib_metadata import EntryPoint, entry_points
 
 from aiida_restapi import models
 
 from .auth import get_current_active_user
 
 router = APIRouter()
-
-ENTRY_POINTS = entry_points()
 
 
 @router.get("/nodes", response_model=List[models.Node])
@@ -48,16 +47,18 @@ async def create_node(
     ),  # pylint: disable=unused-argument
 ) -> models.Node:
     """Create new AiiDA node."""
-
     node_dict = node.dict(exclude_unset=True)
-    node_type = node_dict.pop("node_type", None)
-
-    entry_point_node = _get_entry_point(group="aiida.rest.post", name=node_type)
+    entry_point = node_dict.pop("entry_point", None)
 
     try:
-        orm_object = entry_point_node.load().create_new_node(node_type, node_dict)
-    except (TypeError, ValueError, KeyError) as err:
-        raise HTTPException(status_code=400, detail="Error: {0}".format(err)) from err
+        cls = load_entry_point(group="aiida.data", name=entry_point)
+    except EntryPointError as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+
+    try:
+        orm_object = models.Node_Post.create_new_node(cls, node_dict)
+    except (TypeError, ValueError, KeyError) as exception:
+        raise HTTPException(status_code=400, detail=str(exception)) from exception
 
     return models.Node.from_orm(orm_object)
 
@@ -73,35 +74,16 @@ async def create_upload_file(
 ) -> models.Node:
     """Endpoint for uploading file data"""
     node_dict = params.dict(exclude_unset=True, exclude_none=True)
-    node_type = node_dict.pop("node_type", None)
+    entry_point = node_dict.pop("entry_point", None)
 
-    entry_point_node = _get_entry_point(group="aiida.rest.post", name=node_type)
+    try:
+        cls = load_entry_point(group="aiida.data", name=entry_point)
+    except EntryPointError as exception:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not load entry point: {exception}",
+        ) from exception
 
-    orm_object = entry_point_node.load().create_new_node_with_file(
-        node_type, node_dict, upload_file
-    )
+    orm_object = models.Node_Post.create_new_node_with_file(cls, node_dict, upload_file)
 
     return models.Node.from_orm(orm_object)
-
-
-def _get_entry_point(group: str, name: str) -> EntryPoint:
-    """Fetch entry point.
-
-    Provides a more user-friendly error message if the entry point is not found.
-    """
-    eps = ENTRY_POINTS.select(
-        group=group,
-        name=name,
-    )
-    if not eps:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Entry point '{name}' not found in group '{group}'.",
-        )
-    if len(eps) > 1 and len(set(ep.value for ep in eps)) != 1:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Multiple entry points '{name}' found in group '{group}': {eps}",
-        )
-
-    return eps[name]
