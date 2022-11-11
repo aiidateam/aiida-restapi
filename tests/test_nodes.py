@@ -261,6 +261,24 @@ def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argu
     assert response.status_code == 404, response.content
 
 
+def test_create_unknown_entry_point(
+    default_computers, client, authenticate
+):  # pylint: disable=unused-argument
+    """Test error message when specifying unknown ``node_type``."""
+    response = client.post(
+        "/nodes",
+        json={
+            "node_type": "data.core.Unknown.|",
+            "label": "test_code",
+        },
+    )
+    assert response.status_code == 404, response.content
+    assert (
+        response.json()["detail"]
+        == "Entry point 'data.core.Unknown.|' not found in group 'aiida.rest.post'."
+    )
+
+
 def test_create_additional_attribute(
     default_computers, client, authenticate
 ):  # pylint: disable=unused-argument

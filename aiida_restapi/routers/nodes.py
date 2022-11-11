@@ -95,7 +95,8 @@ def _get_entry_point(group: str, name: str) -> EntryPoint:
     )
     if not eps:
         raise HTTPException(
-            status_code=404, detail="Entry point '{name}' not found in group '{group}'."
+            status_code=404,
+            detail=f"Entry point '{name}' not found in group '{group}'.",
         )
     if len(eps) > 1 and len(set(ep.value for ep in eps)) != 1:
         raise HTTPException(
