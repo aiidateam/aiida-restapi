@@ -41,9 +41,10 @@ def resolve_Group(
     info: gr.ResolveInfo,
     id: Optional[int] = None,
     uuid: Optional[str] = None,
+    label: Optional[str] = None,
 ) -> ENTITY_DICT_TYPE:
     """Resolution function."""
-    return resolve_entity(Group, info, id, uuid)
+    return resolve_entity(Group, info, id, uuid, label)
 
 
 def resolve_Groups(
@@ -60,6 +61,7 @@ GroupQueryPlugin = QueryPlugin(
         GroupQuery,
         id=gr.Int(),
         uuid=gr.String(),
+        label=gr.String(),
         description="Query for a single Group",
     ),
     resolve_Group,
