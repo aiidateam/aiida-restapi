@@ -190,7 +190,7 @@ class Node_Post(AiidaModel):
 
     node_type: Optional[str] = Field(description="Node type")
     process_type: Optional[str] = Field(description="Process type")
-    label: str = Field(description="Label of node")
+    label: Optional[str] = Field(description="Label of node")
     description: Optional[str] = Field(description="Description of node")
     user_id: Optional[int] = Field(description="Created by user id (pk)")
     dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
