@@ -87,6 +87,7 @@ name = 'aiida_restapi'
 exclude = [
     '.github/',
     'docs/',
+    'examples/',
     'tests/',
     '.coveragerc',
     '.gitignore',
