@@ -64,22 +64,6 @@ testing = [
     'requests',
 ]
 
-[project.entry-points.'aiida.cmdline.data']
-'restapi' = 'aiida_restapi.cli:data_cli'
-
-[project.entry-points.'aiida.rest.post']
-'data.core.str.Str.|' = 'aiida_restapi.models:Node_Post'
-'data.core.float.Float.|' = 'aiida_restapi.models:Node_Post'
-'data.core.int.Int.|' = 'aiida_restapi.models:Node_Post'
-'data.core.bool.Bool.|' = 'aiida_restapi.models:Node_Post'
-'data.core.structure.StructureData.|' = 'aiida_restapi.models:Node_Post'
-'data.core.orbital.OrbitalData.|' = 'aiida_restapi.models:Node_Post'
-'data.core.list.List.|'  = 'aiida_restapi.models:Node_Post'
-'data.core.dict.Dict.|' = 'aiida_restapi.models:Node_Post'
-'data.core.singlefile.SingleFileData.|' = 'aiida_restapi.models:Node_Post'
-'data.core.code.installed.InstalledCode.|' = 'aiida_restapi.models:Node_Post'
-'data.core.code.portable.PortableCode.|' = 'aiida_restapi.models:Node_Post'
-
 [tool.flit.module]
 name = 'aiida_restapi'
 
@@ -93,9 +77,6 @@ exclude = [
     '.pre-commit-config.yaml',
     '.readthedocs.yml',
     'codecov.yml',
-    'conftest.py',
-    'mypy.ini',
-    'tox.ini',
 ]
 
 [tool.isort]

@@ -45,9 +45,8 @@ import requests
 url = 'http://localhost:8000/api/v4/endpoint'
 
 body = {
-   "node_type": "data.int.Int.|",
+   "node_type": "core.int",
    "attributes": {"value": 6},
-   "label": "test_Int_1"
 }
 
 response = requests.post(url, data=body)
@@ -65,11 +64,10 @@ Request URL: http://127.0.0.1:8000/nodes
 Request Body:
 ```json
 {
-   "node_type": "data.code.Code.|",
+   "node_type": "core.code.installed",
    "dbcomputer_id": 2,
    "attributes": {
-      "is_local": false,
-      "remote_exec_path": "/bin/true"
+      "filepath_executable": "/bin/true"
    },
    "label": "test_code"
 }
@@ -80,7 +78,7 @@ Response Body:
 {
    "id": 62,
    "uuid": "e590fff6-46e3-4983-bb2b-1f4a335c5836",
-   "node_type": "data.code.Code.",
+   "node_type": "data.core.code.installed.InstalledCode.",
    "process_type": null,
    "label": "test_code",
    "description": "",
@@ -89,8 +87,7 @@ Response Body:
    "user_id": 1,
    "dbcomputer_id": null,
    "attributes": {
-      "is_local": false,
-      "remote_exec_path": "/bin/true"
+      "filepath_executable": "/bin/true"
    },
    "extras": {
       "_aiida_hash": "72864a25c6ebf290a12d522b8819fb858788bf81730e934dc95ca7a1ff8cce5c"
@@ -107,9 +104,8 @@ Request URL: http://127.0.0.1:8000/nodes
 Request Body:
 ```json
 {
-   "node_type": "data.int.Int.|",
+   "node_type": "core.int",
    "attributes": {"value": 6},
-   "label": "test_Int_1"
 }
 ```
 
@@ -118,9 +114,8 @@ Response Body:
 {
    "id": 63,
    "uuid": "4a1a5e4c-e6ea-4a85-b407-4989a292b442",
-   "node_type": "data.int.Int.",
+   "node_type": "data.core.int.Int.",
    "process_type": null,
-   "label": "test_Int_1",
    "description": "",
    "ctime": "2021-08-14T13:31:40.565835+00:00",
    "mtime": "2021-08-14T13:31:40.802201+00:00",

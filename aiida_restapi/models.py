@@ -13,7 +13,6 @@ from typing import ClassVar, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiida import orm
-from aiida.restapi.common.identifiers import load_entry_point_from_full_type
 from fastapi import Form
 from pydantic import BaseModel, Field
 
@@ -188,7 +187,7 @@ class Node(AiidaModel):
 class Node_Post(AiidaModel):
     """AiiDA model for posting Nodes."""
 
-    node_type: Optional[str] = Field(description="Node type")
+    entry_point: str = Field(description="Entry_point")
     process_type: Optional[str] = Field(description="Process type")
     label: Optional[str] = Field(description="Label of node")
     description: Optional[str] = Field(description="Description of node")
@@ -204,12 +203,10 @@ class Node_Post(AiidaModel):
     @classmethod
     def create_new_node(
         cls: Type[ModelType],
-        node_type: str,
+        orm_class: orm.Node,
         node_dict: dict,
     ) -> orm.Node:
-        "Create and Store new Node"
-
-        orm_class = load_entry_point_from_full_type(node_type)
+        """Create and Store new Node"""
         attributes = node_dict.pop("attributes", {})
         extras = node_dict.pop("extras", {})
         repository_metadata = node_dict.pop("repository_metadata", {})
@@ -238,7 +235,7 @@ class Node_Post(AiidaModel):
             )
             orm_object.label = node_dict.get("label")
         else:
-            orm_object = load_entry_point_from_full_type(node_type)(**node_dict)
+            orm_object = orm_class(**node_dict)
             orm_object.base.attributes.set_many(attributes)
 
         orm_object.base.extras.set_many(extras)
@@ -249,17 +246,15 @@ class Node_Post(AiidaModel):
     @classmethod
     def create_new_node_with_file(
         cls: Type[ModelType],
-        node_type: str,
+        orm_class: orm.Node,
         node_dict: dict,
         file: bytes,
     ) -> orm.Node:
-        "Create and Store new Node with file"
+        """Create and Store new Node with file"""
         attributes = node_dict.pop("attributes", {})
         extras = node_dict.pop("extras", {})
 
-        orm_object = load_entry_point_from_full_type(node_type)(
-            file=io.BytesIO(file), **node_dict, **attributes
-        )
+        orm_object = orm_class(file=io.BytesIO(file), **node_dict, **attributes)
 
         orm_object.base.extras.set_many(extras)
         orm_object.store()

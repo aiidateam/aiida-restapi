@@ -47,7 +47,7 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.dict.Dict.|",
+            "entry_point": "core.dict",
             "attributes": {"x": 1, "y": 2},
             "label": "test_dict",
         },
@@ -64,7 +64,7 @@ def test_create_code(
         response = client.post(
             "/nodes",
             json={
-                "node_type": "data.core.code.installed.InstalledCode.|",
+                "entry_point": "core.code.installed",
                 "dbcomputer_id": comp_id,
                 "attributes": {"filepath_executable": "/bin/true"},
                 "label": "test_code",
@@ -78,7 +78,7 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.list.List.|",
+            "entry_point": "core.list",
             "attributes": {"list": [2, 3]},
         },
     )
@@ -91,7 +91,7 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.int.Int.|",
+            "entry_point": "core.int",
             "attributes": {"value": 6},
         },
     )
@@ -103,7 +103,7 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.float.Float.|",
+            "entry_point": "core.float",
             "attributes": {"value": 6.6},
         },
     )
@@ -115,7 +115,7 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.str.Str.|",
+            "entry_point": "core.str",
             "attributes": {"value": "test_string"},
         },
     )
@@ -127,7 +127,7 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.bool.Bool.|",
+            "entry_point": "core.bool",
             "attributes": {"value": "True"},
         },
     )
@@ -139,7 +139,7 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.structure.StructureData.|",
+            "entry_point": "core.structure",
             "process_type": None,
             "description": "",
             "attributes": {
@@ -161,7 +161,7 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.orbital.OrbitalData.|",
+            "entry_point": "core.orbital",
             "process_type": None,
             "description": "",
             "attributes": {
@@ -201,7 +201,7 @@ def test_create_single_file_upload(
         )
     }
     params = {
-        "node_type": "data.core.singlefile.SingleFileData.|",
+        "entry_point": "core.singlefile",
         "process_type": None,
         "description": "Testing single upload file",
         "attributes": {},
@@ -219,7 +219,7 @@ def test_create_node_wrong_value(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.float.Float.|",
+            "entry_point": "core.float",
             "attributes": {"value": "tests"},
         },
     )
@@ -228,7 +228,7 @@ def test_create_node_wrong_value(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.int.Int.|",
+            "entry_point": "core.int",
             "attributes": {"value": "tests"},
         },
     )
@@ -242,40 +242,28 @@ def test_create_node_wrong_attribute(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.str.Str.|",
+            "entry_point": "core.str",
             "attributes": {"value1": 5},
         },
     )
     assert response.status_code == 400, response.content
 
 
-def test_wrong_entry_point(client, authenticate):  # pylint: disable=unused-argument
-    """Test adding node with wrong entry point."""
-    response = client.post(
-        "/nodes",
-        json={
-            "node_type": "data.core.float.wrong.|",
-            "attributes": {"value": 3},
-        },
-    )
-    assert response.status_code == 404, response.content
-
-
 def test_create_unknown_entry_point(
     default_computers, client, authenticate
 ):  # pylint: disable=unused-argument
-    """Test error message when specifying unknown ``node_type``."""
+    """Test error message when specifying unknown ``entry_point``."""
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.Unknown.|",
+            "entry_point": "core.not.existing.entry.point",
             "label": "test_code",
         },
     )
     assert response.status_code == 404, response.content
     assert (
         response.json()["detail"]
-        == "Entry point 'data.core.Unknown.|' not found in group 'aiida.rest.post'."
+        == "Entry point 'core.not.existing.entry.point' not found in group 'aiida.data'"
     )
 
 
@@ -289,7 +277,7 @@ def test_create_additional_attribute(
             "/nodes",
             json={
                 "uuid": "3",
-                "node_type": "data.core.code.installed.InstalledCode.|",
+                "entry_point": "core.code.installed",
                 "dbcomputer_id": comp_id,
                 "attributes": {"filepath_executable": "/bin/true"},
                 "label": "test_code",
@@ -305,7 +293,7 @@ def test_create_bool_with_extra(
     response = client.post(
         "/nodes",
         json={
-            "node_type": "data.core.bool.Bool.|",
+            "entry_point": "core.bool",
             "attributes": {"value": "True"},
             "extras": {"extra_one": "value_1", "extra_two": "value_2"},
         },
