@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Declaration of FastAPI router for processes."""
-
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
@@ -11,7 +10,7 @@ from aiida.orm.querybuilder import QueryBuilder
 from aiida.plugins import load_entry_point_from_string
 from fastapi import APIRouter, Depends, HTTPException
 
-from aiida_restapi.models import Process, Process_Post, User
+from aiida_restapi.models import Node, Process, Process_Post, User
 
 from .auth import get_current_active_user
 
@@ -63,13 +62,13 @@ async def get_processes_projectable_properties() -> List[str]:
     return Process.get_projectable_properties()
 
 
-@router.get("/processes/{proc_id}", response_model=Process)
+@router.get("/processes/{process_id}", response_model=Process)
 @with_dbenv()
-async def read_process(proc_id: int) -> Optional[Process]:
+async def read_process(process_id) -> Optional[Process]:
     """Get process by id."""
     qbobj = QueryBuilder()
     qbobj.append(
-        orm.ProcessNode, filters={"id": proc_id}, project="**", tag="process"
+        orm.ProcessNode, filters={"id": process_id}, project="**", tag="process"
     ).limit(1)
 
     return qbobj.dict()[0]["process"]
@@ -99,3 +98,18 @@ async def post_process(
     process_node = submit(entry_point_process, **inputs)
 
     return process_node
+
+
+@router.get("/processes/outputs/{process_id}", response_model=Dict[str, Node])
+@with_dbenv()
+async def process_outputs(process_id) -> Dict[str, Node]:
+    """Get mapping process outputs"""
+    try:
+        process = orm.load_node(process_id)
+    except NotExistent as exception:
+        raise HTTPException(
+            status_code=404,
+            detail="Process with identifier `{process_id}` was not found",
+        ) from exception
+
+    return process.get_outgoing().nested()
