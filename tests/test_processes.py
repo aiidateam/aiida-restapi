@@ -147,3 +147,14 @@ def test_add_process_nested_inputs(
         },
     )
     assert response.status_code == 200
+
+
+def test_process_outputs(arithmetic_add_process, client):
+    """Test the ``/processes/outputs`` end-point."""
+    process_pk = arithmetic_add_process.pk
+    outputs = arithmetic_add_process.get_outgoing().nested()
+
+    response = client.get(f"/processes/outputs/{process_pk}")
+    results = response.json()
+    assert response.status_code == 200
+    assert sorted(results.keys()) == sorted(list(outputs.keys()))

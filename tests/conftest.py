@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Test fixtures specific to this package."""
 # pylint: disable=too-many-arguments
-import tempfile
 from datetime import datetime
 from typing import Any, Callable, Mapping, MutableMapping, Optional, Union
 
@@ -9,7 +8,7 @@ import pytest
 import pytz
 from aiida import orm
 from aiida.common.exceptions import NotExistent
-from aiida.engine import ProcessState
+from aiida.engine import ProcessState, run_get_node
 from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
 
@@ -101,15 +100,12 @@ def example_processes():
 
 
 @pytest.fixture(scope="function")
-def default_test_add_process():
+def default_test_add_process(tmp_path):
     """Populate database with some node to test adding process"""
-
-    workdir = tempfile.mkdtemp()
-
     computer = orm.Computer(
         label="localhost",
         hostname="localhost",
-        workdir=workdir,
+        workdir=str(tmp_path),
         transport_type="core.local",
         scheduler_type="core.direct",
     )
@@ -128,6 +124,26 @@ def default_test_add_process():
     y = orm.Int(2).store()
 
     return [code.uuid, x.uuid, y.uuid]
+
+
+@pytest.fixture(scope="function")
+def arithmetic_add_process(aiida_localhost):
+    """Run an ``ArithmeticAddCalculation`` and return the node."""
+    code = orm.InstalledCode(
+        default_calc_job_plugin="core.arithmetic.add",
+        computer=aiida_localhost,
+        filepath_executable="/bin/bash",
+    ).store()
+
+    builder = code.get_builder()
+    builder.x = orm.Int(1)
+    builder.y = orm.Int(1)
+    builder.metadata = {"options": {"resources": {"num_machines": 1}}}
+
+    _, node = run_get_node(builder)
+    assert node.is_finished_ok, (node.process_state, node.exit_status)
+
+    return node
 
 
 @pytest.fixture(scope="function")
