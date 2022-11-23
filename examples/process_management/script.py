@@ -146,45 +146,6 @@ def get_code(default_calc_job_plugin: str) -> dict[str, t.Any] | None:
     return node
 
 
-def get_outputs(process_id: int) -> dict[str, t.Any]:
-    """Return a dictionary of the outputs of the process with the given ID.
-
-    :param process_id: The ID of the process.
-    :return: Dictionary of the outputs where keys are link labels and values are dictionaries containing the node's uuid
-        and attributes.
-    """
-    query = """
-        query function($process_id: Int) {
-            node(id: $process_id) {
-                outgoing {
-                    rows {
-                        node {
-                            uuid
-                            attributes
-                        }
-                        link {
-                            label
-                        }
-                    }
-                }
-            }
-        }
-    """
-    variables = {"process_id": process_id}
-    results = request("graphql", {"query": query, "variables": variables})
-
-    outputs = {}
-
-    for value in results["data"]["node"]["outgoing"]["rows"]:
-        link_label = value["link"]["label"]
-        outputs[link_label] = {
-            "uuid": value["node"]["uuid"],
-            "attributes": value["node"]["attributes"],
-        }
-
-    return outputs
-
-
 @click.command()
 def main():
     """Authenticate with the web API and submit an ``ArithmeticAddCalculation``."""
@@ -221,11 +182,11 @@ def main():
 
     click.echo(f"Calculation terminated with state `{process_state}`")
 
-    results = get_outputs(process_id)
+    results = request(f"processes/outputs/{process_id}", method="GET")
 
     click.echo("Output nodes:")
-    for key, value in results.items():
-        click.echo(f"* {key}: UUID<{value['uuid']}>")
+    for key, values in results.items():
+        click.echo(f"* {key}: UUID<{values['uuid']}>")
 
     click.echo(f"Computed sum: {results['sum']['attributes']['value']}")
 
