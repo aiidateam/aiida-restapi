@@ -28,6 +28,7 @@ repos:
       exclude: >
         (?x)^(
             docs/.*|
+            examples/.*|
             tests/.*|
             conftest.py
         )$
