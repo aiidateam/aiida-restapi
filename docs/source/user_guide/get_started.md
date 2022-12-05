@@ -16,3 +16,8 @@ Use the following commands to install the plugin:
 
 Then use ``verdi code setup`` with the ``restapi`` input plugin
 to set up an AiiDA code for aiida-restapi.
+
+## Examples
+
+The [examples](https://github.com/aiidateam/aiida-restapi/tree/master/examples) directory of the repository contains a number of examples.
+Each example contains a `README.md` with instructions to configure the server and a `script.py` to run on the client.

@@ -34,6 +34,10 @@ uvicorn aiida_restapi:app
 uvicorn aiida_restapi:app --reload
 ```
 
+## Examples
+
+See the [examples](https://github.com/aiidateam/aiida-restapi/tree/master/examples) directory.
+
 ## Development
 
 ```shell
