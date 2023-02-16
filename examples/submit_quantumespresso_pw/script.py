@@ -239,7 +239,7 @@ def main(workchain):
     structure_uuid = create_node("core.structure", structure)
     parameters_uuid = create_node("core.dict", parameters)
     kpoints_uuid = create_node("core.array.kpoints", kpoints)
-    pseudo_si_uuid = get_pseudo_for_element("SSSP/1.1/PBE/efficiency", "Si")["uuid"]
+    pseudo_si_uuid = get_pseudo_for_element("SSSP/1.2/PBE/efficiency", "Si")["uuid"]
 
     if workchain:
         # Inputs for a ``PwBaseWorkChain`` to compute SCF of Si crystal structure
