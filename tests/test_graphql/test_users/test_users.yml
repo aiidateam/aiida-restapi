@@ -2,11 +2,11 @@ data:
   users:
     count: 3
     rows:
-    - email: tests@aiida.mail
-      first_name: AiiDA
+    - email: test@aiida.local
+      first_name: ''
       id: int
-      institution: aiidateam
-      last_name: Plugintest
+      institution: ''
+      last_name: ''
     - email: a@b.com
       first_name: ''
       id: int
