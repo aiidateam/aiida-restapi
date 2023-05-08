@@ -8,6 +8,14 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     """Configuration settings for the application."""
 
+    # pylint: disable=too-few-public-methods
+
+    class Config:
+        """Config settings."""
+
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
     secret_key: str = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
     """The secret key used to create access tokens."""
 
@@ -16,6 +24,9 @@ class Settings(BaseSettings):
 
     access_token_expire_minutes: int = 30
     """The number of minutes an access token remains valid."""
+
+    read_only: bool = False
+    """Whether the instance is read-only. If set to ``True`` all DELETE, PATCH, POST and PUT methods will raise 405."""
 
 
 @lru_cache()
