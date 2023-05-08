@@ -34,6 +34,18 @@ uvicorn aiida_restapi:app
 uvicorn aiida_restapi:app --reload
 ```
 
+By default all endpoints of the REST API are available.
+The API can be made *read-only* by setting the `read_only` configuration settings to `True`.
+This can either be done by setting the environment variable:
+```bash
+export READ_ONLY=True
+```
+or by adding the following to the `.env` file:
+```ini
+read_only=true
+```
+When the API is read-only, all `DELETE`, `PATCH`, `POST` and `PUT` requests will result in a `405 - Method Not Allowed` response.
+
 ## Examples
 
 See the [examples](https://github.com/aiidateam/aiida-restapi/tree/master/examples) directory.
