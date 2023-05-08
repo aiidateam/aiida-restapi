@@ -103,12 +103,12 @@ def main():
         click.echo(f"The daemon is currently running with {num_workers} workers")
 
         click.echo("Stopping the daemon.")
-        response = request("daemon/stop", method="GET")
+        response = request("daemon/stop", method="POST")
 
     else:
         click.echo("The daemon is currently not running.")
         click.echo("Starting the daemon.")
-        response = request("daemon/start", method="GET")
+        response = request("daemon/start", method="POST")
         num_workers = response["num_workers"]
         click.echo(f"The daemon is currently running with {num_workers} workers")
 
