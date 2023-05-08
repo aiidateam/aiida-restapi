@@ -67,7 +67,6 @@ pygments_style = "sphinx"
 html_theme = "sphinx_book_theme"
 html_theme_options = {
     "home_page_in_toc": True,
-    "extra_navbar": "",
     "show_navbar_depth": 2,
     "path_to_docs": "docs/source",
 }
