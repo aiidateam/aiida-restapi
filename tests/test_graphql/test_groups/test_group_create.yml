@@ -1,0 +1,9 @@
+data:
+  groupCreate:
+    created: true
+    group:
+      description: hi
+      id: int
+      label: group1
+      type_string: core
+      uuid: str

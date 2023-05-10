@@ -210,6 +210,9 @@ def orm_regression(data_regression):
             data,
             {key: lambda k: type(k).__name__ for key in varfields},
         )
+        if "data" in data:
+            # for graphql mutations this is an ordered dict
+            data["data"] = dict(data["data"])
         data_regression.check(data)
 
     return _func
