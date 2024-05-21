@@ -20,11 +20,13 @@ repos:
     - id: black
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.812
+    rev: v1.10.0
     hooks:
     - id: mypy
       additional_dependencies:
       - pydantic~=1.10.0
+      - types-python-dateutil
+      - types-docutils
       exclude: >
         (?x)^(
             docs/.*|
