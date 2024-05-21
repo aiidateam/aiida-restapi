@@ -42,9 +42,9 @@ async def read_user(user_id: int) -> Optional[User]:
 @with_dbenv()
 async def create_user(
     user: User,
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> User:
     """Create new AiiDA user."""
     orm_user = orm.User(**user.dict(exclude_unset=True)).store()

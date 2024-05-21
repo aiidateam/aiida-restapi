@@ -33,7 +33,7 @@ def test_get_single_computers(
     """Test retrieving a single computer."""
 
     for comp_id in default_computers:
-        response = client.get("/computers/{}".format(comp_id))
+        response = client.get(f"/computers/{comp_id}")
         assert response.status_code == 200
 
 

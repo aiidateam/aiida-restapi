@@ -30,7 +30,7 @@ def test_get_single_group(default_groups, client):  # pylint: disable=unused-arg
     """Test retrieving a single group."""
 
     for group_id in default_groups:
-        response = client.get("/groups/{}".format(group_id))
+        response = client.get(f"/groups/{group_id}")
         assert response.status_code == 200
 
 

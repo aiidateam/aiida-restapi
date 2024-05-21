@@ -45,9 +45,9 @@ async def read_computer(comp_id: int) -> Optional[Computer]:
 @with_dbenv()
 async def create_computer(
     computer: Computer,
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> Computer:
     """Create new AiiDA computer."""
     orm_computer = orm.Computer(**computer.dict(exclude_unset=True)).store()

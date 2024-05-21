@@ -79,9 +79,9 @@ async def read_process(proc_id: int) -> Optional[Process]:
 @with_dbenv()
 async def post_process(
     process: Process_Post,
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> Optional[Process]:
     """Create new process."""
     process_dict = process.dict(exclude_unset=True, exclude_none=True)
@@ -93,7 +93,7 @@ async def post_process(
     except ValueError as exc:
         raise HTTPException(
             status_code=404,
-            detail="Entry point '{}' not recognized.".format(entry_point),
+            detail=f"Entry point '{entry_point}' not recognized.",
         ) from exc
 
     process_node = submit(entry_point_process, **inputs)

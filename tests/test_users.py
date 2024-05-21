@@ -5,7 +5,7 @@
 def test_get_single_user(default_users, client):  # pylint: disable=unused-argument
     """Test retrieving a single user."""
     for user_id in default_users:
-        response = client.get("/users/{}".format(user_id))
+        response = client.get(f"/users/{user_id}")
         assert response.status_code == 200
 
 

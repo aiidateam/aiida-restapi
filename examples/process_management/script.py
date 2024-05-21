@@ -45,7 +45,7 @@ def request(
     else:
         headers = {}
 
-    response = requests.request(
+    response = requests.request(  # pylint: disable=missing-timeout
         method, f"{BASE_URL}/{url}", json=json, data=data, headers=headers
     )
 
@@ -63,8 +63,7 @@ def request(
             click.echo(error["message"])
 
         return None
-    else:
-        return response.json()
+    return response.json()
 
 
 def authenticate(

@@ -31,7 +31,7 @@ def test_get_single_nodes(default_nodes, client):  # pylint: disable=unused-argu
     """Test retrieving a single nodes."""
 
     for nodes_id in default_nodes:
-        response = client.get("/nodes/{}".format(nodes_id))
+        response = client.get(f"/nodes/{nodes_id}")
         assert response.status_code == 200
 
 
@@ -299,7 +299,7 @@ def test_create_bool_with_extra(
         },
     )
 
-    check_response = client.get("/nodes/{}".format(response.json()["id"]))
+    check_response = client.get(f"/nodes/{response.json()['id']}")
 
     assert check_response.status_code == 200, response.content
     assert check_response.json()["extras"]["extra_one"] == "value_1"

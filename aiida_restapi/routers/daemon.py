@@ -41,9 +41,9 @@ async def get_daemon_status() -> DaemonStatusModel:
 @router.post("/daemon/start", response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_start(
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> DaemonStatusModel:
     """Start the daemon."""
     client = get_daemon_client()
@@ -64,9 +64,9 @@ async def get_daemon_start(
 @router.post("/daemon/stop", response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_stop(
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> DaemonStatusModel:
     """Stop the daemon."""
     client = get_daemon_client()

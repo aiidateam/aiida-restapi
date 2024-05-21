@@ -44,9 +44,9 @@ async def read_group(group_id: int) -> Optional[Group]:
 @with_dbenv()
 async def create_group(
     group: Group_Post,
-    current_user: User = Depends(
+    current_user: User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> Group:
     """Create new AiiDA group."""
     orm_group = orm.Group(**group.dict(exclude_unset=True)).store()
