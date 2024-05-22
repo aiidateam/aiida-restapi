@@ -43,9 +43,36 @@ See the [examples](https://github.com/aiidateam/aiida-restapi/tree/master/exampl
 ```shell
 git clone https://github.com/aiidateam/aiida-restapi .
 cd aiida-restapi
-pip install -e .[pre-commit,testing]  # install extra dependencies
-pre-commit install  # install pre-commit hooks
-pytest -v  # discover and run all tests
+```
+
+### Setting up pre-commit
+
+We use pre-commit to take care for the formatting, type checking and linting.
+```shell
+pip install -e .[pre-commit]  # install extra dependencies
+pre-commit run # running pre-commit on changes
+pre-commit run --all-files # running pre-commit on every file
+pre-commit run pylint --all-files # run only the linter on every file
+```
+One can also set up pre-commit to be run on every commit
+```shell
+pre-commit install
+# pre-commit uninstall # to disable it again
+```
+
+### Running tests
+
+With tox the tests can be run
+```shell
+pip install tox
+tox -e py311 # run all tests for Python 3.11
+tox -av # see all supported environments
+```
+tox will creat a custom environment to run the tests in. If you want to run the
+tests inside your current environment
+```shell
+pip install -e .[testing]  # install extra dependencies
+pytest -v
 ```
 
 See the [developer guide](http://aiida-restapi.readthedocs.io/en/latest/developer_guide/index.html) for more information.

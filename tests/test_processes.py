@@ -40,7 +40,7 @@ def test_get_single_processes(
 ):  # pylint: disable=unused-argument
     """Test retrieving a single processes."""
     for proc_id in example_processes:
-        response = client.get("/processes/{}".format(proc_id))
+        response = client.get(f"/processes/{proc_id}")
         assert response.status_code == 200
 
 

@@ -94,9 +94,7 @@ class AiidaModel(BaseModel):
                 order_by
             ), f"order_by not subset of projectable properties: {project!r}"
             query.order_by({"fields": order_by})
-        return [
-            cls(**result["fields"]) for result in query.dict()  # type: ignore[call-arg]
-        ]
+        return [cls(**result["fields"]) for result in query.dict()]
 
 
 class Comment(AiidaModel):

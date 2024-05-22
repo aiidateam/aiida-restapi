@@ -42,9 +42,9 @@ async def read_node(nodes_id: int) -> Optional[models.Node]:
 @with_dbenv()
 async def create_node(
     node: models.Node_Post,
-    current_user: models.User = Depends(
+    current_user: models.User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> models.Node:
     """Create new AiiDA node."""
     node_dict = node.dict(exclude_unset=True)
@@ -68,9 +68,9 @@ async def create_node(
 async def create_upload_file(
     upload_file: bytes = File(...),
     params: models.Node_Post = Depends(models.Node_Post.as_form),  # type: ignore # pylint: disable=maybe-no-member
-    current_user: models.User = Depends(
+    current_user: models.User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
-    ),  # pylint: disable=unused-argument
+    ),
 ) -> models.Node:
     """Endpoint for uploading file data"""
     node_dict = params.dict(exclude_unset=True, exclude_none=True)
