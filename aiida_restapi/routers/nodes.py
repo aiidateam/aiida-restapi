@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
@@ -32,6 +32,13 @@ async def get_nodes_projectable_properties() -> List[str]:
     """Get projectable properties for nodes endpoint"""
 
     return models.Node.get_projectable_properties()
+
+
+@router.get('/nodes/download_formats', response_model=dict[str, Any])
+async def get_nodes_download_formats() -> dict[str, Any]:
+    """Get download formats for nodes endpoint"""
+
+    return models.Node.get_all_download_formats()
 
 
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
