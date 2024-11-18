@@ -105,7 +105,6 @@ select = [
   'W',  # pydocstyle
   'F',  # pyflakes
   'I',  # isort
-  'N',  # pep8-naming
   'PLC',  # pylint-convention
   'PLE',  # pylint-error
   'PLR',  # pylint-refactor
