@@ -82,26 +82,36 @@ exclude = [
     'codecov.yml',
 ]
 
-[tool.isort]
-profile = 'black'
+[tool.ruff]
+line-length = 120
 
-[tool.pylint.master]
-extension-pkg-whitelist = ['pydantic']
+[tool.ruff.format]
+quote-style = 'single'
 
-[tool.pylint.format]
-max-line-length = 125
-
-[tool.pylint.messages_control]
-disable = [
-    'duplicate-code',
-    'fixme',
-    'invalid-name',
-    'too-many-ancestors',
-    'too-many-arguments',
+[tool.ruff.lint]
+ignore = [
+  'F403',  # Star imports unable to detect undefined names
+  'F405',  # Import may be undefined or defined from star imports
+  'PLR0911',  # Too many return statements
+  'PLR0912',  # Too many branches
+  'PLR0913',  # Too many arguments in function definition
+  'PLR0915',  # Too many statements
+  'PLR2004',  # Magic value used in comparison
+  'RUF005',  # Consider iterable unpacking instead of concatenation
+  'RUF012',  # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
-
-[tool.pylint.similarities]
-ignore-imports = 'yes'
+select = [
+  'E',  # pydocstyle
+  'W',  # pydocstyle
+  'F',  # pyflakes
+  'I',  # isort
+  'N',  # pep8-naming
+  'PLC',  # pylint-convention
+  'PLE',  # pylint-error
+  'PLR',  # pylint-refactor
+  'PLW',  # pylint-warning
+  'RUF'  # ruff
+]
 
 [tool.pytest.ini_options]
 python_files = 'test_*.py example_*.py'
