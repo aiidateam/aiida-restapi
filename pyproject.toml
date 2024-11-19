@@ -16,14 +16,13 @@ classifiers = [
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Topic :: Scientific/Engineering'
 ]
 keywords = ['aiida', 'workflows']
-requires-python = '>=3.8'
+requires-python = '>=3.9'
 dependencies = [
     'aiida-core~=2.0',
     'fastapi~=0.115.5',
