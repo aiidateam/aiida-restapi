@@ -330,3 +330,62 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
     assert check_response.status_code == 200, response.content
     assert check_response.json()['extras']['extra_one'] == 'value_1'
     assert check_response.json()['extras']['extra_two'] == 'value_2'
+
+
+def test_get_full_types(default_nodes, client):
+    """Test get full_types nodes."""
+    response = client.get('/nodes/full_types')
+
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        'namespace': 'node',
+        'full_type': 'node.%|',
+        'label': 'node',
+        'path': 'node',
+        'subspaces': [
+            {
+                'namespace': 'data',
+                'full_type': 'data.%|',
+                'label': 'Data',
+                'path': 'node.data',
+                'subspaces': [
+                    {
+                        'namespace': 'core',
+                        'full_type': 'data.core.%|',
+                        'label': 'core',
+                        'path': 'node.data.core',
+                        'subspaces': [
+                            {
+                                'namespace': 'bool',
+                                'full_type': 'data.core.bool.Bool.|',
+                                'label': 'Bool',
+                                'path': 'node.data.core.bool',
+                                'subspaces': [],
+                            },
+                            {
+                                'namespace': 'float',
+                                'full_type': 'data.core.float.Float.|',
+                                'label': 'Float',
+                                'path': 'node.data.core.float',
+                                'subspaces': [],
+                            },
+                            {
+                                'namespace': 'int',
+                                'full_type': 'data.core.int.Int.|',
+                                'label': 'Int',
+                                'path': 'node.data.core.int',
+                                'subspaces': [],
+                            },
+                            {
+                                'namespace': 'str',
+                                'full_type': 'data.core.str.Str.|',
+                                'label': 'Str',
+                                'path': 'node.data.core.str',
+                                'subspaces': [],
+                            },
+                        ],
+                    }
+                ],
+            }
+        ],
+    }

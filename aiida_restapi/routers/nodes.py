@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import ValidationError
 
 from aiida_restapi import models, resources
+from aiida_restapi.identifiers import get_node_namespace
 
 from .auth import get_current_active_user
 
@@ -39,6 +40,13 @@ async def get_nodes_download_formats() -> dict[str, Any]:
     """Get download formats for nodes endpoint"""
 
     return resources.get_all_download_formats()
+
+
+@router.get('/nodes/full_types', response_model=dict[str, Any])
+@with_dbenv()
+async def get_full_types() -> dict[str, Any]:
+    """Return full_types of the nodes"""
+    return get_node_namespace(user_pk=None, count_nodes=False).get_description()
 
 
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
