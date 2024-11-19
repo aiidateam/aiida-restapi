@@ -2,6 +2,7 @@
 """Test the /processes endpoint"""
 import io
 
+import pytest
 from aiida.orm import Dict, SinglefileData
 
 
@@ -44,12 +45,13 @@ def test_get_single_processes(
         assert response.status_code == 200
 
 
-def test_add_process(
-    default_test_add_process, client, authenticate
+@pytest.mark.anyio
+async def test_add_process(
+    default_test_add_process, async_client, authenticate
 ):  # pylint: disable=unused-argument
     """Test adding new process"""
     code_id, x_id, y_id = default_test_add_process
-    response = client.post(
+    response = await async_client.post(
         "/processes",
         json={
             "label": "test_new_process",
@@ -116,8 +118,9 @@ def test_add_process_invalid_node_id(
     }
 
 
-def test_add_process_nested_inputs(
-    default_test_add_process, client, authenticate
+@pytest.mark.anyio
+async def test_add_process_nested_inputs(
+    default_test_add_process, async_client, authenticate
 ):  # pylint: disable=unused-argument
     """Test adding new process that has nested inputs"""
     code_id, _, _ = default_test_add_process
@@ -128,7 +131,7 @@ def test_add_process_nested_inputs(
     ).store()
     single_file = SinglefileData(io.StringIO("content")).store()
 
-    response = client.post(
+    response = await async_client.post(
         "/processes",
         json={
             "label": "test_new_process",

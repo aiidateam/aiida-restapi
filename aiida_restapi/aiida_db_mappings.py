@@ -31,7 +31,7 @@ class Comment(BaseModel):
     uuid: UUID = Field(description="Universally unique id")
     ctime: datetime = Field(description="Creation time")
     mtime: datetime = Field(description="Last modification time")
-    content: Optional[str] = Field(description="Content of the comment")
+    content: Optional[str] = Field(None, description="Content of the comment")
     user_id: int = Field(description="Created by user id (pk)")
     dbnode_id: int = Field(description="Associated node id (pk)")
 
@@ -43,7 +43,7 @@ class Computer(BaseModel):
     uuid: UUID = Field(description="Universally unique id")
     label: str = Field(description="Computer name")
     hostname: str = Field(description="Identifier for the computer within the network")
-    description: Optional[str] = Field(description="Description of the computer")
+    description: Optional[str] = Field(None, description="Description of the computer")
     scheduler_type: str = Field(
         description="Scheduler plugin type, to manage compute jobs"
     )
@@ -61,7 +61,7 @@ class Group(BaseModel):
     label: str = Field(description="Label of group")
     type_string: str = Field(description="type of the group")
     time: datetime = Field(description="Created time")
-    description: Optional[str] = Field(description="Description of group")
+    description: Optional[str] = Field(None, description="Description of group")
     extras: Json = Field(description="extra data about for the group")
     user_id: int = Field(description="Created by user id (pk)")
 
@@ -74,7 +74,7 @@ class Log(BaseModel):
     time: datetime = Field(description="Creation time")
     loggername: str = Field(description="The loggers name")
     levelname: str = Field(description="The log level")
-    message: Optional[str] = Field(description="The log message")
+    message: Optional[str] = Field(None, description="The log message")
     metadata: Json = Field(description="Metadata associated with the log")
     dbnode_id: int = Field(description="Associated node id (pk)")
 
@@ -91,7 +91,9 @@ class Node(BaseModel):
     ctime: datetime = Field(description="Creation time")
     mtime: datetime = Field(description="Last modification time")
     user_id: int = Field(description="Created by user id (pk)")
-    dbcomputer_id: Optional[int] = Field(description="Associated computer id (pk)")
+    dbcomputer_id: Optional[int] = Field(
+        None, description="Associated computer id (pk)"
+    )
     attributes: Json = Field(
         description="Attributes of the node (immutable after storing the node)",
     )
@@ -105,10 +107,10 @@ class User(BaseModel):
 
     id: int = Field(description="Unique id (pk)")
     email: str = Field(description="Email address of the user")
-    first_name: Optional[str] = Field(description="First name of the user")
-    last_name: Optional[str] = Field(description="Last name of the user")
+    first_name: Optional[str] = Field(None, description="First name of the user")
+    last_name: Optional[str] = Field(None, description="Last name of the user")
     institution: Optional[str] = Field(
-        description="Host institution or workplace of the user"
+        None, description="Host institution or workplace of the user"
     )
 
 
@@ -118,7 +120,7 @@ class Link(BaseModel):
     id: int = Field(description="Unique id (pk)")
     input_id: int = Field(description="Unique id (pk) of the input node")
     output_id: int = Field(description="Unique id (pk) of the output node")
-    label: Optional[str] = Field(description="The label of the link")
+    label: Optional[str] = Field(None, description="The label of the link")
     type: str = Field(description="The type of link")
 
 

@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """Declaration of FastAPI application."""
+import json
+import os
+import tempfile
+from pathlib import Path
 from typing import List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.exceptions import EntryPointError
 from aiida.plugins.entry_point import load_entry_point
-from fastapi import APIRouter, Depends, File, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import ValidationError
 
 from aiida_restapi import models
 
@@ -66,14 +71,34 @@ async def create_node(
 @router.post("/nodes/singlefile", response_model=models.Node)
 @with_dbenv()
 async def create_upload_file(
-    upload_file: bytes = File(...),
-    params: models.Node_Post = Depends(models.Node_Post.as_form),  # type: ignore # pylint: disable=maybe-no-member
+    params: str = Form(...),
+    upload_file: UploadFile = File(...),
     current_user: models.User = Depends(  # pylint: disable=unused-argument
         get_current_active_user
     ),
 ) -> models.Node:
-    """Endpoint for uploading file data"""
-    node_dict = params.dict(exclude_unset=True, exclude_none=True)
+    """Endpoint for uploading file data
+
+    Note that in this multipart form case, json input can't be used.
+    Get the parameters as a string and manually pass through pydantic.
+    """
+    try:
+        # Parse the JSON string into a dictionary
+        params_dict = json.loads(params)
+        # Validate against the Pydantic model
+        params_obj = models.Node_Post(**params_dict)
+    except json.JSONDecodeError as exception:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid JSON format: {str(exception)}",
+        ) from exception
+    except ValidationError as exception:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Validation failed: {exception}",
+        ) from exception
+
+    node_dict = params_obj.dict(exclude_unset=True)
     entry_point = node_dict.pop("entry_point", None)
 
     try:
@@ -84,6 +109,18 @@ async def create_upload_file(
             detail=f"Could not load entry point: {exception}",
         ) from exception
 
-    orm_object = models.Node_Post.create_new_node_with_file(cls, node_dict, upload_file)
+    with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+        # Todo: read in chunks
+        content = await upload_file.read()
+        temp_file.write(content)
+        temp_path = temp_file.name
+
+    orm_object = models.Node_Post.create_new_node_with_file(
+        cls, node_dict, Path(temp_path)
+    )
+
+    # Clean up the temporary file
+    if os.path.exists(temp_path):
+        os.unlink(temp_path)
 
     return models.Node.from_orm(orm_object)

@@ -12,6 +12,7 @@ from aiida.common.exceptions import NotExistent
 from aiida.engine import ProcessState
 from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from aiida_restapi import app, config
 from aiida_restapi.routers.auth import UserInDB, get_current_user
@@ -28,6 +29,23 @@ def clear_database_auto(aiida_profile_clean):  # pylint: disable=unused-argument
 def client():
     """Return fastapi test client."""
     yield TestClient(app)
+
+
+@pytest.fixture
+def anyio_backend():
+    """Return the async IO backend to use for testing.
+
+    Returns:
+        str: The name of the backend to use
+    """
+    return "asyncio"
+
+
+@pytest.fixture(scope="function")
+async def async_client():
+    """Return fastapi async test client."""
+    async with AsyncClient(app=app, base_url="http://test") as async_test_client:
+        yield async_test_client
 
 
 @pytest.fixture(scope="function")

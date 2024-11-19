@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Test the /users endpoint"""
 
+import pytest
+
 
 def test_get_single_user(default_users, client):  # pylint: disable=unused-argument
     """Test retrieving a single user."""
@@ -20,14 +22,17 @@ def test_get_users(default_users, client):  # pylint: disable=unused-argument
     assert len(response.json()) == 2 + 1
 
 
-def test_create_user(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.anyio
+async def test_create_user(
+    async_client, authenticate
+):  # pylint: disable=unused-argument
     """Test creating a new user."""
-    response = client.post(
+    response = await async_client.post(
         "/users", json={"first_name": "New", "email": "aiida@localhost"}
     )
     assert response.status_code == 200, response.content
 
-    response = client.get("/users")
+    response = await async_client.get("/users")
     first_names = [user["first_name"] for user in response.json()]
     assert "New" in first_names
 

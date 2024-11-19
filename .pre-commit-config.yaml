@@ -24,7 +24,7 @@ repos:
     hooks:
     - id: mypy
       additional_dependencies:
-      - pydantic~=1.10.0
+      - pydantic~=2.0
       - types-python-dateutil
       - types-docutils
       exclude: >
@@ -41,10 +41,10 @@ repos:
     - id: pylint
       additional_dependencies:
       - aiida-core~=2.0
-      - fastapi~=0.65.1
+      - fastapi~=0.115.5
       - uvicorn[standard]~=0.19.0
-      - pydantic~=1.10.0
-      - graphene<3
+      - pydantic~=2.0
+      - graphene~=3.0
       - lark
       - python-dateutil~=2.0
       - python-jose

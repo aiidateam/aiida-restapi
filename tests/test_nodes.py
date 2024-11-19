@@ -3,6 +3,9 @@
 
 
 import io
+import json
+
+import pytest
 
 
 def test_get_nodes_projectable(client):
@@ -55,13 +58,14 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
-def test_create_code(
-    default_computers, client, authenticate
+@pytest.mark.anyio
+async def test_create_code(
+    default_computers, async_client, authenticate
 ):  # pylint: disable=unused-argument
     """Test creating a new Code."""
 
     for comp_id in default_computers:
-        response = client.post(
+        response = await async_client.post(
             "/nodes",
             json={
                 "entry_point": "core.code.installed",
@@ -200,16 +204,20 @@ def test_create_single_file_upload(
             "multipart/form-data",
         )
     }
-    params = {
-        "entry_point": "core.singlefile",
-        "process_type": None,
-        "description": "Testing single upload file",
-        "attributes": {},
+    data = {
+        "params": json.dumps(
+            {
+                "entry_point": "core.singlefile",
+                "process_type": None,
+                "description": "Testing single upload file",
+                "attributes": {},
+            }
+        )
     }
 
-    response = client.post("/nodes/singlefile", files=test_file, data=params)
+    response = client.post("/nodes/singlefile", files=test_file, data=data)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
 
 
 def test_create_node_wrong_value(
