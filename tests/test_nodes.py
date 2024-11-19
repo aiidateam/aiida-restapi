@@ -330,3 +330,24 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
     assert check_response.status_code == 200, response.content
     assert check_response.json()['extras']['extra_one'] == 'value_1'
     assert check_response.json()['extras']['extra_two'] == 'value_2'
+
+
+@pytest.mark.anyio
+async def test_get_download_node(array_data_node, async_client):
+    """Test download node /nodes/{nodes_id}/download.
+    The async client is needed to avoid an error caused by an I/O operation on closed file"""
+
+    # Test that array is correctly downloaded as json
+    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=json')
+    assert response.status_code == 200, response.json()
+    assert response.json().get('default', None) == array_data_node.get_array().tolist()
+
+    # Test exception when wrong download format given
+    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=cif')
+    assert response.status_code == 422, response.json()
+    assert 'format cif is not supported' in response.json()['detail']
+
+    # Test exception when no download format given
+    response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
+    assert response.status_code == 422, response.json()
+    assert 'Please specify the download format' in response.json()['detail']

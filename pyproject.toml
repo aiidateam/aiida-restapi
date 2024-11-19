@@ -60,7 +60,8 @@ testing = [
   'pytest-regressions',
   'pytest-cov',
   'requests',
-  'httpx'
+  'httpx',
+  'numpy~=1.21'
 ]
 
 [project.urls]

@@ -508,6 +508,10 @@ http://localhost:5000/api/v4/nodes/ffe11/repo/list
 ```html
 http://localhost:5000/api/v4/nodes/ffe11/repo/contents?filename="aiida.in"
 ```
+
+
+Not implemented for GraphQL, please use the REST API for this use case.
+
 ```html
 http://localhost:5000/api/v4/nodes/fafdsf/download?download_format=xsf
 ```

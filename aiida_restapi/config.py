@@ -17,3 +17,6 @@ fake_users_db = {
         'disabled': False,
     }
 }
+
+# The chunks size for streaming data for download
+DOWNLOAD_CHUNK_SIZE = 1024

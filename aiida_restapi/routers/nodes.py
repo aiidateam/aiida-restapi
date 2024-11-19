@@ -4,16 +4,18 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Generator, List, Optional
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import EntryPointError
+from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
 from aiida.plugins.entry_point import load_entry_point
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
 from aiida_restapi import models, resources
+from aiida_restapi.config import DOWNLOAD_CHUNK_SIZE
 
 from .auth import get_current_active_user
 
@@ -39,6 +41,50 @@ async def get_nodes_download_formats() -> dict[str, Any]:
     """Get download formats for nodes endpoint"""
 
     return resources.get_all_download_formats()
+
+
+@router.get('/nodes/{nodes_id}/download')
+@with_dbenv()
+async def download_node(nodes_id: int, download_format: Optional[str] = None) -> StreamingResponse:
+    """Get nodes by id."""
+    from aiida.orm import load_node
+
+    try:
+        node = load_node(nodes_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could no find any node with id {nodes_id}')
+
+    if download_format is None:
+        raise HTTPException(
+            status_code=422,
+            detail='Please specify the download format. '
+            'The available download formats can be '
+            'queried using the /nodes/download_formats/ endpoint.',
+        )
+
+    elif download_format in node.get_export_formats():
+        # byteobj, dict with {filename: filecontent}
+        import io
+
+        try:
+            exported_bytes, _ = node._exportcontent(download_format)
+        except LicensingException as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+
+        def stream() -> Generator[bytes, None, None]:
+            with io.BytesIO(exported_bytes) as handler:
+                while chunk := handler.read(DOWNLOAD_CHUNK_SIZE):
+                    yield chunk
+
+        return StreamingResponse(stream(), media_type=f'application/{download_format}')
+
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail='The format {} is not supported. '
+            'The available download formats can be '
+            'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
+        )
 
 
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
