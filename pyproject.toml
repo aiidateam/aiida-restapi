@@ -64,6 +64,7 @@ testing = [
     'pytest-regressions',
     'pytest-cov',
     'requests',
+    'httpx',
 ]
 
 [tool.flit.module]
