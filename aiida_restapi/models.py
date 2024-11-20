@@ -282,7 +282,7 @@ class Group(AiidaModel):
     user_id: int = Field(description="Created by user id (pk)")
 
     @classmethod
-    def from_orm(cls, obj: orm.Group) -> orm.Group:
+    def from_orm(cls, orm_entity: orm.Group) -> orm.Group:
         """Convert from ORM object.
 
         Args:
