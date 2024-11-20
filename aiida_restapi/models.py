@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Schemas for AiiDA REST API.
 
 Models in this module mirror those in
@@ -17,7 +16,7 @@ from fastapi import Form
 from pydantic import BaseModel, ConfigDict, Field
 
 # Template type for subclasses of `AiidaModel`
-ModelType = TypeVar("ModelType", bound="AiidaModel")
+ModelType = TypeVar('ModelType', bound='AiidaModel')
 
 
 def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
@@ -34,9 +33,7 @@ def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
             inspect.Parameter(
                 name=field_name,
                 kind=inspect.Parameter.POSITIONAL_ONLY,
-                default=Form(...)
-                if model_field.is_required()
-                else Form(model_field.default),
+                default=Form(...) if model_field.is_required() else Form(model_field.default),
                 annotation=model_field.annotation,
             )
         )
@@ -47,7 +44,7 @@ def as_form(cls: Type[BaseModel]) -> Type[BaseModel]:
     sig = inspect.signature(as_form_func)
     sig = sig.replace(parameters=new_parameters)
     as_form_func.__signature__ = sig  # type: ignore
-    setattr(cls, "as_form", as_form_func)
+    setattr(cls, 'as_form', as_form_func)
     return cls
 
 
@@ -55,12 +52,12 @@ class AiidaModel(BaseModel):
     """A mapping of an AiiDA entity to a pydantic model."""
 
     _orm_entity: ClassVar[Type[orm.entities.Entity]] = orm.entities.Entity
-    model_config = ConfigDict(from_attributes=True, extra="forbid")
+    model_config = ConfigDict(from_attributes=True, extra='forbid')
 
     @classmethod
     def get_projectable_properties(cls) -> List[str]:
         """Return projectable properties."""
-        return list(cls.schema()["properties"].keys())
+        return list(cls.schema()['properties'].keys())
 
     @classmethod
     def get_entities(
@@ -82,19 +79,17 @@ class AiidaModel(BaseModel):
         else:
             assert set(cls.get_projectable_properties()).issuperset(
                 project
-            ), f"projection not subset of projectable properties: {project!r}"
-        query = orm.QueryBuilder().append(
-            cls._orm_entity, tag="fields", project=project
-        )
+            ), f'projection not subset of projectable properties: {project!r}'
+        query = orm.QueryBuilder().append(cls._orm_entity, tag='fields', project=project)
         if page_size is not None:
             query.offset(page_size * (page - 1))
             query.limit(page_size)
         if order_by is not None:
             assert set(cls.get_projectable_properties()).issuperset(
                 order_by
-            ), f"order_by not subset of projectable properties: {project!r}"
-            query.order_by({"fields": order_by})
-        return [cls(**result["fields"]) for result in query.dict()]
+            ), f'order_by not subset of projectable properties: {project!r}'
+            query.order_by({'fields': order_by})
+        return [cls(**result['fields']) for result in query.dict()]
 
 
 class Comment(AiidaModel):
@@ -102,28 +97,26 @@ class Comment(AiidaModel):
 
     _orm_entity = orm.Comment
 
-    id: Optional[int] = Field(None, description="Unique comment id (pk)")
-    uuid: str = Field(description="Unique comment uuid")
-    ctime: Optional[datetime] = Field(None, description="Creation time")
-    mtime: Optional[datetime] = Field(None, description="Last modification time")
-    content: Optional[str] = Field(None, description="Comment content")
-    dbnode_id: Optional[int] = Field(None, description="Unique node id (pk)")
-    user_id: Optional[int] = Field(None, description="Unique user id (pk)")
+    id: Optional[int] = Field(None, description='Unique comment id (pk)')
+    uuid: str = Field(description='Unique comment uuid')
+    ctime: Optional[datetime] = Field(None, description='Creation time')
+    mtime: Optional[datetime] = Field(None, description='Last modification time')
+    content: Optional[str] = Field(None, description='Comment content')
+    dbnode_id: Optional[int] = Field(None, description='Unique node id (pk)')
+    user_id: Optional[int] = Field(None, description='Unique user id (pk)')
 
 
 class User(AiidaModel):
     """AiiDA User model."""
 
     _orm_entity = orm.User
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra='allow')
 
-    id: Optional[int] = Field(None, description="Unique user id (pk)")
-    email: str = Field(description="Email address of the user")
-    first_name: Optional[str] = Field(None, description="First name of the user")
-    last_name: Optional[str] = Field(None, description="Last name of the user")
-    institution: Optional[str] = Field(
-        None, description="Host institution or workplace of the user"
-    )
+    id: Optional[int] = Field(None, description='Unique user id (pk)')
+    email: str = Field(description='Email address of the user')
+    first_name: Optional[str] = Field(None, description='First name of the user')
+    last_name: Optional[str] = Field(None, description='Last name of the user')
+    institution: Optional[str] = Field(None, description='Host institution or workplace of the user')
 
 
 class Computer(AiidaModel):
@@ -131,27 +124,25 @@ class Computer(AiidaModel):
 
     _orm_entity = orm.Computer
 
-    id: Optional[int] = Field(None, description="Unique computer id (pk)")
-    uuid: Optional[str] = Field(None, description="Unique id for computer")
-    label: str = Field(description="Used to identify a computer. Must be unique")
-    hostname: Optional[str] = Field(
-        None, description="Label that identifies the computer within the network"
-    )
+    id: Optional[int] = Field(None, description='Unique computer id (pk)')
+    uuid: Optional[str] = Field(None, description='Unique id for computer')
+    label: str = Field(description='Used to identify a computer. Must be unique')
+    hostname: Optional[str] = Field(None, description='Label that identifies the computer within the network')
     scheduler_type: Optional[str] = Field(
         None,
-        description="The scheduler (and plugin) that the computer uses to manage jobs",
+        description='The scheduler (and plugin) that the computer uses to manage jobs',
     )
     transport_type: Optional[str] = Field(
         None,
-        description="The transport (and plugin) \
-                    required to copy files and communicate to and from the computer",
+        description='The transport (and plugin) \
+                    required to copy files and communicate to and from the computer',
     )
     metadata: Optional[dict] = Field(
         None,
-        description="General settings for these communication and management protocols",
+        description='General settings for these communication and management protocols',
     )
 
-    description: Optional[str] = Field(None, description="Description of node")
+    description: Optional[str] = Field(None, description='Description of node')
 
 
 class Node(AiidaModel):
@@ -159,29 +150,27 @@ class Node(AiidaModel):
 
     _orm_entity = orm.Node
 
-    id: Optional[int] = Field(None, description="Unique id (pk)")
-    uuid: Optional[UUID] = Field(None, description="Unique uuid")
-    node_type: Optional[str] = Field(None, description="Node type")
-    process_type: Optional[str] = Field(None, description="Process type")
-    label: str = Field(description="Label of node")
-    description: Optional[str] = Field(None, description="Description of node")
-    ctime: Optional[datetime] = Field(None, description="Creation time")
-    mtime: Optional[datetime] = Field(None, description="Last modification time")
-    user_id: Optional[int] = Field(None, description="Created by user id (pk)")
-    dbcomputer_id: Optional[int] = Field(
-        None, description="Associated computer id (pk)"
-    )
+    id: Optional[int] = Field(None, description='Unique id (pk)')
+    uuid: Optional[UUID] = Field(None, description='Unique uuid')
+    node_type: Optional[str] = Field(None, description='Node type')
+    process_type: Optional[str] = Field(None, description='Process type')
+    label: str = Field(description='Label of node')
+    description: Optional[str] = Field(None, description='Description of node')
+    ctime: Optional[datetime] = Field(None, description='Creation time')
+    mtime: Optional[datetime] = Field(None, description='Last modification time')
+    user_id: Optional[int] = Field(None, description='Created by user id (pk)')
+    dbcomputer_id: Optional[int] = Field(None, description='Associated computer id (pk)')
     attributes: Optional[Dict] = Field(
         None,
-        description="Variable attributes of the node",
+        description='Variable attributes of the node',
     )
     extras: Optional[Dict] = Field(
         None,
-        description="Variable extras (unsealed) of the node",
+        description='Variable extras (unsealed) of the node',
     )
     repository_metadata: Optional[Dict] = Field(
         None,
-        description="Metadata about file repository associated with this node",
+        description='Metadata about file repository associated with this node',
     )
 
 
@@ -189,21 +178,19 @@ class Node(AiidaModel):
 class Node_Post(AiidaModel):
     """AiiDA model for posting Nodes."""
 
-    entry_point: str = Field(description="Entry_point")
-    process_type: Optional[str] = Field(None, description="Process type")
-    label: Optional[str] = Field(None, description="Label of node")
-    description: Optional[str] = Field(None, description="Description of node")
-    user_id: Optional[int] = Field(None, description="Created by user id (pk)")
-    dbcomputer_id: Optional[int] = Field(
-        None, description="Associated computer id (pk)"
-    )
+    entry_point: str = Field(description='Entry_point')
+    process_type: Optional[str] = Field(None, description='Process type')
+    label: Optional[str] = Field(None, description='Label of node')
+    description: Optional[str] = Field(None, description='Description of node')
+    user_id: Optional[int] = Field(None, description='Created by user id (pk)')
+    dbcomputer_id: Optional[int] = Field(None, description='Associated computer id (pk)')
     attributes: Optional[Dict] = Field(
         None,
-        description="Variable attributes of the node",
+        description='Variable attributes of the node',
     )
     extras: Optional[Dict] = Field(
         None,
-        description="Variable extras (unsealed) of the node",
+        description='Variable extras (unsealed) of the node',
     )
 
     @classmethod
@@ -213,13 +200,13 @@ class Node_Post(AiidaModel):
         node_dict: dict,
     ) -> orm.Node:
         """Create and Store new Node"""
-        attributes = node_dict.pop("attributes", {})
-        extras = node_dict.pop("extras", {})
-        repository_metadata = node_dict.pop("repository_metadata", {})
+        attributes = node_dict.pop('attributes', {})
+        extras = node_dict.pop('extras', {})
+        repository_metadata = node_dict.pop('repository_metadata', {})
 
         if issubclass(orm_class, orm.BaseType):
             orm_object = orm_class(
-                attributes["value"],
+                attributes['value'],
                 **node_dict,
             )
         elif issubclass(orm_class, orm.Dict):
@@ -229,17 +216,17 @@ class Node_Post(AiidaModel):
             )
         elif issubclass(orm_class, orm.InstalledCode):
             orm_object = orm_class(
-                computer=orm.load_computer(pk=node_dict.get("dbcomputer_id")),
-                filepath_executable=attributes["filepath_executable"],
+                computer=orm.load_computer(pk=node_dict.get('dbcomputer_id')),
+                filepath_executable=attributes['filepath_executable'],
             )
-            orm_object.label = node_dict.get("label")
+            orm_object.label = node_dict.get('label')
         elif issubclass(orm_class, orm.PortableCode):
             orm_object = orm_class(
-                computer=orm.load_computer(pk=node_dict.get("dbcomputer_id")),
-                filepath_executable=attributes["filepath_executable"],
-                filepath_files=attributes["filepath_files"],
+                computer=orm.load_computer(pk=node_dict.get('dbcomputer_id')),
+                filepath_executable=attributes['filepath_executable'],
+                filepath_files=attributes['filepath_files'],
             )
-            orm_object.label = node_dict.get("label")
+            orm_object.label = node_dict.get('label')
         else:
             orm_object = orm_class(**node_dict)
             orm_object.base.attributes.set_many(attributes)
@@ -257,8 +244,8 @@ class Node_Post(AiidaModel):
         file: Path,
     ) -> orm.Node:
         """Create and Store new Node with file"""
-        attributes = node_dict.pop("attributes", {})
-        extras = node_dict.pop("extras", {})
+        attributes = node_dict.pop('attributes', {})
+        extras = node_dict.pop('extras', {})
 
         orm_object = orm_class(file=file, **node_dict, **attributes)
 
@@ -272,14 +259,14 @@ class Group(AiidaModel):
 
     _orm_entity = orm.Group
 
-    id: int = Field(description="Unique id (pk)")
-    uuid: UUID = Field(description="Universally unique id")
-    label: str = Field(description="Label of group")
-    type_string: str = Field(description="type of the group")
-    description: Optional[str] = Field(None, description="Description of group")
-    extras: Optional[Dict] = Field(None, description="extra data about for the group")
-    time: datetime = Field(description="Created time")
-    user_id: int = Field(description="Created by user id (pk)")
+    id: int = Field(description='Unique id (pk)')
+    uuid: UUID = Field(description='Universally unique id')
+    label: str = Field(description='Label of group')
+    type_string: str = Field(description='type of the group')
+    description: Optional[str] = Field(None, description='Description of group')
+    extras: Optional[Dict] = Field(None, description='extra data about for the group')
+    time: datetime = Field(description='Created time')
+    user_id: int = Field(description='Created by user id (pk)')
 
     @classmethod
     def from_orm(cls, orm_entity: orm.Group) -> orm.Group:
@@ -295,14 +282,14 @@ class Group(AiidaModel):
             orm.QueryBuilder()
             .append(
                 cls._orm_entity,
-                filters={"pk": orm_entity.id},
-                tag="fields",
-                project=["user_id", "time"],
+                filters={'pk': orm_entity.id},
+                tag='fields',
+                project=['user_id', 'time'],
             )
             .limit(1)
         )
-        orm_entity.user_id = query.dict()[0]["fields"]["user_id"]
-        orm_entity.time = query.dict()[0]["fields"]["time"]
+        orm_entity.user_id = query.dict()[0]['fields']['user_id']
+        orm_entity.time = query.dict()[0]['fields']['time']
 
         return super().from_orm(orm_entity)
 
@@ -312,11 +299,9 @@ class Group_Post(AiidaModel):
 
     _orm_entity = orm.Group
 
-    label: str = Field(description="Used to access the group. Must be unique.")
-    type_string: Optional[str] = Field(None, description="Type of the group")
-    description: Optional[str] = Field(
-        None, description="Short description of the group."
-    )
+    label: str = Field(description='Used to access the group. Must be unique.')
+    type_string: Optional[str] = Field(None, description='Type of the group')
+    description: Optional[str] = Field(None, description='Short description of the group.')
 
 
 class Process(AiidaModel):
@@ -324,35 +309,33 @@ class Process(AiidaModel):
 
     _orm_entity = orm.ProcessNode
 
-    id: Optional[int] = Field(None, description="Unique id (pk)")
-    uuid: Optional[UUID] = Field(None, description="Universally unique identifier")
-    node_type: Optional[str] = Field(None, description="Node type")
-    process_type: Optional[str] = Field(None, description="Process type")
-    label: str = Field(description="Label of node")
-    description: Optional[str] = Field(None, description="Description of node")
-    ctime: Optional[datetime] = Field(None, description="Creation time")
-    mtime: Optional[datetime] = Field(None, description="Last modification time")
-    user_id: Optional[int] = Field(None, description="Created by user id (pk)")
-    dbcomputer_id: Optional[int] = Field(
-        None, description="Associated computer id (pk)"
-    )
+    id: Optional[int] = Field(None, description='Unique id (pk)')
+    uuid: Optional[UUID] = Field(None, description='Universally unique identifier')
+    node_type: Optional[str] = Field(None, description='Node type')
+    process_type: Optional[str] = Field(None, description='Process type')
+    label: str = Field(description='Label of node')
+    description: Optional[str] = Field(None, description='Description of node')
+    ctime: Optional[datetime] = Field(None, description='Creation time')
+    mtime: Optional[datetime] = Field(None, description='Last modification time')
+    user_id: Optional[int] = Field(None, description='Created by user id (pk)')
+    dbcomputer_id: Optional[int] = Field(None, description='Associated computer id (pk)')
     attributes: Optional[Dict] = Field(
         None,
-        description="Variable attributes of the node",
+        description='Variable attributes of the node',
     )
     extras: Optional[Dict] = Field(
         None,
-        description="Variable extras (unsealed) of the node",
+        description='Variable extras (unsealed) of the node',
     )
     repository_metadata: Optional[Dict] = Field(
         None,
-        description="Metadata about file repository associated with this node",
+        description='Metadata about file repository associated with this node',
     )
 
 
 class Process_Post(AiidaModel):
     """AiiDA Process Post Model"""
 
-    label: str = Field(description="Label of node")
-    inputs: dict = Field(description="Input parmeters")
-    process_entry_point: str = Field(description="Entry Point for process")
+    label: str = Field(description='Label of node')
+    inputs: dict = Field(description='Input parmeters')
+    process_entry_point: str = Field(description='Entry Point for process')

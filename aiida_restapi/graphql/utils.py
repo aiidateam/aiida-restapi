@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """Utility functions for graphql."""
 # pylint: disable=unused-argument,too-many-arguments
 
-
-from typing import Any, Iterator
+from typing import Iterator
 
 import graphene as gr
 from graphene.types.scalars import Scalar
@@ -35,8 +33,6 @@ def selected_field_names_naive(selection_set: ast.SelectionSetNode) -> Iterator[
             yield node.name.value
         # Fragment spread (`... fragmentName`)
         elif isinstance(node, (ast.FragmentSpreadNode, ast.InlineFragmentNode)):
-            raise NotImplementedError(
-                "Fragments are not supported by this simplistic function"
-            )
+            raise NotImplementedError('Fragments are not supported by this simplistic function')
         else:
             raise NotImplementedError(str(type(node)))

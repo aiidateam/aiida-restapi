@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Tests for user plugins."""
+
 from graphene.test import Client
 
 from aiida_restapi.graphql.orm_factories import field_names_from_orm
@@ -13,16 +13,16 @@ def test_user(create_user, orm_regression):
     fields = field_names_from_orm(type(user))
     schema = create_schema([UserQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ user(id: %r) { %s } }" % (user.id, " ".join(fields)))
+    executed = client.execute('{ user(id: %r) { %s } }' % (user.id, ' '.join(fields)))
     orm_regression(executed)
 
 
 def test_users(create_user, orm_regression):
     """Test Users query, for all fields."""
-    create_user(email="a@b.com")
-    user = create_user(email="c@d.com")
+    create_user(email='a@b.com')
+    user = create_user(email='c@d.com')
     fields = field_names_from_orm(type(user))
     schema = create_schema([UsersQueryPlugin])
     client = Client(schema)
-    executed = client.execute("{ users {  count rows { %s } } }" % " ".join(fields))
+    executed = client.execute('{ users {  count rows { %s } } }' % ' '.join(fields))
     orm_regression(executed)

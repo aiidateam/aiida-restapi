@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Main module that generates the full Graphql App."""
+
 from starlette_graphene3 import GraphQLApp
 
 from .basic import aiidaVersionPlugin, rowLimitMaxPlugin

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for AiiDA groups."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
@@ -29,10 +28,10 @@ class GroupQuery(single_cls_factory(Group)):  # type: ignore[misc]
     def resolve_nodes(parent: Any, info: gr.ResolveInfo) -> dict:
         """Resolution function."""
         # pass group specification to NodesQuery
-        return {"group_id": parent["id"]}
+        return {'group_id': parent['id']}
 
 
-class GroupsQuery(multirow_cls_factory(GroupQuery, Group, "groups")):  # type: ignore[misc]
+class GroupsQuery(multirow_cls_factory(GroupQuery, Group, 'groups')):  # type: ignore[misc]
     """Query all AiiDA Groups"""
 
 
@@ -47,30 +46,28 @@ def resolve_Group(
     return resolve_entity(Group, info, id, uuid, label)
 
 
-def resolve_Groups(
-    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
-) -> dict:
+def resolve_Groups(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
     """Resolution function."""
     # pass filter to GroupsQuery
-    return {"filters": parse_filter_str(filters)}
+    return {'filters': parse_filter_str(filters)}
 
 
 GroupQueryPlugin = QueryPlugin(
-    "group",
+    'group',
     gr.Field(
         GroupQuery,
         id=gr.Int(),
         uuid=gr.String(),
         label=gr.String(),
-        description="Query for a single Group",
+        description='Query for a single Group',
     ),
     resolve_Group,
 )
 GroupsQueryPlugin = QueryPlugin(
-    "groups",
+    'groups',
     gr.Field(
         GroupsQuery,
-        description="Query for multiple Groups",
+        description='Query for multiple Groups',
         filters=FilterString(),
     ),
     resolve_Groups,

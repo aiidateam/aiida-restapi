@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for retrieving entry-point group and name lists."""
+
 # pylint: disable=too-few-public-methods,unused-argument
 from typing import Any, Dict, List
 
@@ -24,23 +24,21 @@ def resolve_aiidaEntryPointGroups(parent: Any, info: gr.ResolveInfo) -> List[str
     return list(ENTRY_POINT_GROUP_TO_MODULE_PATH_MAP.keys())
 
 
-def resolve_aiidaEntryPoints(
-    parent: Any, info: gr.ResolveInfo, group: str
-) -> Dict[str, Any]:
+def resolve_aiidaEntryPoints(parent: Any, info: gr.ResolveInfo, group: str) -> Dict[str, Any]:
     """Resolution function."""
-    return {"group": group, "names": get_entry_point_names(group)}
+    return {'group': group, 'names': get_entry_point_names(group)}
 
 
 aiidaEntryPointGroupsPlugin = QueryPlugin(
-    "aiidaEntryPointGroups",
-    gr.List(gr.String, description="List of the entrypoint group names"),
+    'aiidaEntryPointGroups',
+    gr.List(gr.String, description='List of the entrypoint group names'),
     resolve_aiidaEntryPointGroups,
 )
 aiidaEntryPointsPlugin = QueryPlugin(
-    "aiidaEntryPoints",
+    'aiidaEntryPoints',
     gr.Field(
         EntryPoints,
-        description="List of the entrypoint names in a group",
+        description='List of the entrypoint names in a group',
         group=gr.String(required=True),
     ),
     resolve_aiidaEntryPoints,

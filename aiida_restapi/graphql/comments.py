@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for AiiDA comments."""
 # pylint: disable=too-few-public-methods,redefined-builtin,unused-argument
 
@@ -23,7 +22,7 @@ class CommentQuery(single_cls_factory(Comment)):  # type: ignore[misc]
     """Query an AiiDA Comment"""
 
 
-class CommentsQuery(multirow_cls_factory(CommentQuery, Comment, "comments")):  # type: ignore[misc]
+class CommentsQuery(multirow_cls_factory(CommentQuery, Comment, 'comments')):  # type: ignore[misc]
     """Query all AiiDA Comments."""
 
 
@@ -37,28 +36,24 @@ def resolve_Comment(
     return resolve_entity(Comment, info, id, uuid)
 
 
-def resolve_Comments(
-    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
-) -> dict:
+def resolve_Comments(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
     """Resolution function."""
     # pass filter to CommentsQuery
-    return {"filters": parse_filter_str(filters)}
+    return {'filters': parse_filter_str(filters)}
 
 
 CommentQueryPlugin = QueryPlugin(
-    "comment",
+    'comment',
     gr.Field(
         CommentQuery,
         id=gr.Int(),
         uuid=gr.String(),
-        description="Query for a single Comment",
+        description='Query for a single Comment',
     ),
     resolve_Comment,
 )
 CommentsQueryPlugin = QueryPlugin(
-    "comments",
-    gr.Field(
-        CommentsQuery, description="Query for multiple Comments", filters=FilterString()
-    ),
+    'comments',
+    gr.Field(CommentsQuery, description='Query for multiple Comments', filters=FilterString()),
     resolve_Comments,
 )

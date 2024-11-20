@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """General utility functions."""
+
 import datetime
 
 from dateutil.parser import parser as date_parser

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for AiiDA computers."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
@@ -26,17 +25,15 @@ class ComputerQuery(single_cls_factory(Computer)):  # type: ignore[misc]
     nodes = gr.Field(NodesQuery, filters=FilterString())
 
     @staticmethod
-    def resolve_nodes(
-        parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
-    ) -> dict:
+    def resolve_nodes(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
         """Resolution function."""
         # pass filter specification to NodesQuery
         parsed_filters = parse_filter_str(filters)
-        parsed_filters["dbcomputer_id"] = parent["id"]
-        return {"filters": parsed_filters}
+        parsed_filters['dbcomputer_id'] = parent['id']
+        return {'filters': parsed_filters}
 
 
-class ComputersQuery(multirow_cls_factory(ComputerQuery, Computer, "computers")):  # type: ignore[misc]
+class ComputersQuery(multirow_cls_factory(ComputerQuery, Computer, 'computers')):  # type: ignore[misc]
     """Query all AiiDA Computers"""
 
 
@@ -50,29 +47,27 @@ def resolve_Computer(
     return resolve_entity(Computer, info, id, uuid)
 
 
-def resolve_Computers(
-    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
-) -> dict:
+def resolve_Computers(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
     """Resolution function."""
     # pass filter to ComputersQuery
-    return {"filters": parse_filter_str(filters)}
+    return {'filters': parse_filter_str(filters)}
 
 
 ComputerQueryPlugin = QueryPlugin(
-    "computer",
+    'computer',
     gr.Field(
         ComputerQuery,
         id=gr.Int(),
         uuid=gr.String(),
-        description="Query for a single Computer",
+        description='Query for a single Computer',
     ),
     resolve_Computer,
 )
 ComputersQueryPlugin = QueryPlugin(
-    "computers",
+    'computers',
     gr.Field(
         ComputersQuery,
-        description="Query for multiple Computers",
+        description='Query for multiple Computers',
         filters=FilterString(),
     ),
     resolve_Computers,
