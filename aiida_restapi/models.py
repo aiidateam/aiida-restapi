@@ -301,8 +301,8 @@ class Group(AiidaModel):
             )
             .limit(1)
         )
-        obj.user_id = query.dict()[0]["fields"]["user_id"]
-        obj.time = query.dict()[0]["fields"]["time"]
+        orm_entity.user_id = query.dict()[0]["fields"]["user_id"]
+        orm_entity.time = query.dict()[0]["fields"]["time"]
 
         return super().from_orm(obj)
 
