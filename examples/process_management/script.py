@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """Example script to demonstrate process management over the web API."""
+
 from __future__ import annotations
 
 import os
@@ -10,7 +10,7 @@ import typing as t
 import click
 import requests
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = 'http://127.0.0.1:8000'
 
 
 def echo_error(message: str) -> None:
@@ -18,7 +18,7 @@ def echo_error(message: str) -> None:
 
     :param message: The error message to echo.
     """
-    click.echo(click.style("Error: ", fg="red", bold=True), nl=False)
+    click.echo(click.style('Error: ', fg='red', bold=True), nl=False)
     click.echo(message)
 
 
@@ -26,7 +26,7 @@ def request(
     url,
     json: dict[str, t.Any] | None = None,
     data: dict[str, t.Any] | None = None,
-    method="POST",
+    method='POST',
 ) -> dict[str, t.Any] | None:
     """Perform a request to the web API of ``aiida-restapi``.
 
@@ -38,15 +38,15 @@ def request(
     :param method: The request method, POST by default.
     :returns: The response in JSON or ``None``.
     """
-    access_token = os.getenv("ACCESS_TOKEN", None)
+    access_token = os.getenv('ACCESS_TOKEN', None)
 
     if access_token:
-        headers = {"Authorization": f"Bearer {access_token}"}
+        headers = {'Authorization': f'Bearer {access_token}'}
     else:
         headers = {}
 
     response = requests.request(  # pylint: disable=missing-timeout
-        method, f"{BASE_URL}/{url}", json=json, data=data, headers=headers
+        method, f'{BASE_URL}/{url}', json=json, data=data, headers=headers
     )
 
     try:
@@ -54,21 +54,19 @@ def request(
     except requests.HTTPError:
         results = response.json()
 
-        echo_error(f"{response.status_code} {response.reason}")
+        echo_error(f'{response.status_code} {response.reason}')
 
-        if "detail" in results:
-            echo_error(results["detail"])
+        if 'detail' in results:
+            echo_error(results['detail'])
 
-        for error in results.get("errors", []):
-            click.echo(error["message"])
+        for error in results.get('errors', []):
+            click.echo(error['message'])
 
         return None
     return response.json()
 
 
-def authenticate(
-    username: str = "johndoe@example.com", password: str = "secret"
-) -> str | None:
+def authenticate(username: str = 'johndoe@example.com', password: str = 'secret') -> str | None:
     """Authenticate with the web API to obtain an access token.
 
     Note that if authentication is successful, the access token is stored in the ``ACCESS_TOKEN`` environment variable.
@@ -77,11 +75,11 @@ def authenticate(
     :param password: The password.
     :returns: The access token or ``None`` if authentication was unsuccessful.
     """
-    results = request("token", data={"username": username, "password": password})
+    results = request('token', data={'username': username, 'password': password})
 
     if results:
-        access_token = results["access_token"]
-        os.environ["ACCESS_TOKEN"] = access_token
+        access_token = results['access_token']
+        os.environ['ACCESS_TOKEN'] = access_token
         return access_token
 
     return None
@@ -95,13 +93,13 @@ def create_node(entry_point: str, attributes: dict[str, t.Any]) -> str | None:
     :returns: The UUID of the created node or ``None`` if it failed.
     """
     data = {
-        "entry_point": entry_point,
-        "attributes": attributes,
+        'entry_point': entry_point,
+        'attributes': attributes,
     }
-    result = request("nodes", data)
+    result = request('nodes', data)
 
     if result:
-        return result["uuid"]
+        return result['uuid']
 
     return None
 
@@ -114,7 +112,7 @@ def get_code(default_calc_job_plugin: str) -> dict[str, t.Any] | None:
     :param default_calc_job_plugin: The default calculation job plugin the code should have.
     :raises ValueError: If no code could be found.
     """
-    variables = {"default_calc_job_plugin": default_calc_job_plugin}
+    variables = {'default_calc_job_plugin': default_calc_job_plugin}
     query = """
         {
             nodes(filters: "node_type ILIKE 'data.core.code.installed.InstalledCode%'") {
@@ -126,21 +124,19 @@ def get_code(default_calc_job_plugin: str) -> dict[str, t.Any] | None:
             }
         }
     """
-    results = request("graphql", {"query": query, "variables": variables})
+    results = request('graphql', {'query': query, 'variables': variables})
 
     if results is None:
         return None
 
     node = None
 
-    for row in results["data"]["nodes"]["rows"]:
-        if row["attributes"]["input_plugin"] == default_calc_job_plugin:
+    for row in results['data']['nodes']['rows']:
+        if row['attributes']['input_plugin'] == default_calc_job_plugin:
             node = row
 
     if node is None:
-        raise ValueError(
-            f"No code with default calculation job plugin `{default_calc_job_plugin}` found."
-        )
+        raise ValueError(f'No code with default calculation job plugin `{default_calc_job_plugin}` found.')
 
     return node
 
@@ -169,16 +165,16 @@ def get_outputs(process_id: int) -> dict[str, t.Any]:
             }
         }
     """
-    variables = {"process_id": process_id}
-    results = request("graphql", {"query": query, "variables": variables})
+    variables = {'process_id': process_id}
+    results = request('graphql', {'query': query, 'variables': variables})
 
     outputs = {}
 
-    for value in results["data"]["node"]["outgoing"]["rows"]:
-        link_label = value["link"]["label"]
+    for value in results['data']['node']['outgoing']['rows']:
+        link_label = value['link']['label']
         outputs[link_label] = {
-            "uuid": value["node"]["uuid"],
-            "attributes": value["node"]["attributes"],
+            'uuid': value['node']['uuid'],
+            'attributes': value['node']['attributes'],
         }
 
     return outputs
@@ -190,44 +186,44 @@ def main():
     token = authenticate()
 
     if token is None:
-        echo_error("Could not authenticate with the API, aborting")
+        echo_error('Could not authenticate with the API, aborting')
         return
 
     # Inputs for a ``ArithmeticAddCalculation``
     inputs = {
-        "label": "Launched over the web API",
-        "process_entry_point": "aiida.calculations:core.arithmetic.add",
-        "inputs": {
-            "code.uuid": get_code("core.arithmetic.add")["uuid"],
-            "x.uuid": create_node("core.int", {"value": 1}),
-            "y.uuid": create_node("core.int", {"value": 1}),
+        'label': 'Launched over the web API',
+        'process_entry_point': 'aiida.calculations:core.arithmetic.add',
+        'inputs': {
+            'code.uuid': get_code('core.arithmetic.add')['uuid'],
+            'x.uuid': create_node('core.int', {'value': 1}),
+            'y.uuid': create_node('core.int', {'value': 1}),
         },
     }
 
-    results = request("processes", json=inputs)
+    results = request('processes', json=inputs)
     click.echo(f'Successfuly submitted process with pk<{results["id"]}>')
 
-    process_id = results["id"]
+    process_id = results['id']
 
     while True:
-        results = request(f"processes/{process_id}", method="GET")
-        process_state = results["attributes"]["process_state"]
+        results = request(f'processes/{process_id}', method='GET')
+        process_state = results['attributes']['process_state']
 
-        if process_state in ["finished", "excepted", "killed"]:
+        if process_state in ['finished', 'excepted', 'killed']:
             break
 
         time.sleep(2)
 
-    click.echo(f"Calculation terminated with state `{process_state}`")
+    click.echo(f'Calculation terminated with state `{process_state}`')
 
     results = get_outputs(process_id)
 
-    click.echo("Output nodes:")
+    click.echo('Output nodes:')
     for key, value in results.items():
         click.echo(f"* {key}: UUID<{value['uuid']}>")
 
     click.echo(f"Computed sum: {results['sum']['attributes']['value']}")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()  # pylint: disable=no-value-for-parameter

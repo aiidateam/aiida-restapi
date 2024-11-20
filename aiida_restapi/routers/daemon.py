@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Declaration of FastAPI router for daemon endpoints."""
+
 from __future__ import annotations
 
 import typing as t
@@ -18,13 +18,11 @@ router = APIRouter()
 class DaemonStatusModel(BaseModel):
     """Response model for daemon status."""
 
-    running: bool = Field(description="Whether the daemon is running or not.")
-    num_workers: t.Optional[int] = Field(
-        description="The number of workers if the daemon is running."
-    )
+    running: bool = Field(description='Whether the daemon is running or not.')
+    num_workers: t.Optional[int] = Field(description='The number of workers if the daemon is running.')
 
 
-@router.get("/daemon/status", response_model=DaemonStatusModel)
+@router.get('/daemon/status', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_status() -> DaemonStatusModel:
     """Return the daemon status."""
@@ -35,10 +33,10 @@ async def get_daemon_status() -> DaemonStatusModel:
 
     response = client.get_numprocesses()
 
-    return DaemonStatusModel(running=True, num_workers=response["numprocesses"])
+    return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post("/daemon/start", response_model=DaemonStatusModel)
+@router.post('/daemon/start', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_start(
     current_user: User = Depends(  # pylint: disable=unused-argument
@@ -49,7 +47,7 @@ async def get_daemon_start(
     client = get_daemon_client()
 
     if client.is_daemon_running:
-        raise HTTPException(status_code=400, detail="The daemon is already running.")
+        raise HTTPException(status_code=400, detail='The daemon is already running.')
 
     try:
         client.start_daemon()
@@ -58,10 +56,10 @@ async def get_daemon_start(
 
     response = client.get_numprocesses()
 
-    return DaemonStatusModel(running=True, num_workers=response["numprocesses"])
+    return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post("/daemon/stop", response_model=DaemonStatusModel)
+@router.post('/daemon/stop', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_stop(
     current_user: User = Depends(  # pylint: disable=unused-argument
@@ -72,7 +70,7 @@ async def get_daemon_stop(
     client = get_daemon_client()
 
     if not client.is_daemon_running:
-        raise HTTPException(status_code=400, detail="The daemon is not running.")
+        raise HTTPException(status_code=400, detail='The daemon is not running.')
 
     try:
         client.stop_daemon()

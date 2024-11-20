@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for AiiDA process node logs."""
 # pylint: disable=too-few-public-methods,redefined-builtin,,unused-argument
 
@@ -23,7 +22,7 @@ class LogQuery(single_cls_factory(Log)):  # type: ignore[misc]
     """Query an AiiDA Log"""
 
 
-class LogsQuery(multirow_cls_factory(LogQuery, Log, "logs")):  # type: ignore[misc]
+class LogsQuery(multirow_cls_factory(LogQuery, Log, 'logs')):  # type: ignore[misc]
     """Query all AiiDA Logs."""
 
 
@@ -37,26 +36,22 @@ def resolve_Log(
     return resolve_entity(Log, info, id, uuid)
 
 
-def resolve_Logs(
-    parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None
-) -> dict:
+def resolve_Logs(parent: Any, info: gr.ResolveInfo, filters: Optional[str] = None) -> dict:
     """Resolution function."""
     # pass filter to LogsQuery
-    return {"filters": parse_filter_str(filters)}
+    return {'filters': parse_filter_str(filters)}
 
 
 LogQueryPlugin = QueryPlugin(
-    "log",
-    gr.Field(
-        LogQuery, id=gr.Int(), uuid=gr.String(), description="Query for a single Log"
-    ),
+    'log',
+    gr.Field(LogQuery, id=gr.Int(), uuid=gr.String(), description='Query for a single Log'),
     resolve_Log,
 )
 LogsQueryPlugin = QueryPlugin(
-    "logs",
+    'logs',
     gr.Field(
         LogsQuery,
-        description="Query for multiple Logs",
+        description='Query for multiple Logs',
         filters=FilterString(),
     ),
     resolve_Logs,

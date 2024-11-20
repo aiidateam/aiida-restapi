@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Configuration for Graphql."""
 
 ENTITY_LIMIT = 100

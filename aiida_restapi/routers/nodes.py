@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Declaration of FastAPI application."""
+
 import json
 import os
 import tempfile
@@ -20,30 +20,30 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
-@router.get("/nodes", response_model=List[models.Node])
+@router.get('/nodes', response_model=List[models.Node])
 @with_dbenv()
 async def read_nodes() -> List[models.Node]:
     """Get list of all nodes"""
     return models.Node.get_entities()
 
 
-@router.get("/nodes/projectable_properties", response_model=List[str])
+@router.get('/nodes/projectable_properties', response_model=List[str])
 async def get_nodes_projectable_properties() -> List[str]:
     """Get projectable properties for nodes endpoint"""
 
     return models.Node.get_projectable_properties()
 
 
-@router.get("/nodes/{nodes_id}", response_model=models.Node)
+@router.get('/nodes/{nodes_id}', response_model=models.Node)
 @with_dbenv()
 async def read_node(nodes_id: int) -> Optional[models.Node]:
     """Get nodes by id."""
     qbobj = orm.QueryBuilder()
-    qbobj.append(orm.Node, filters={"id": nodes_id}, project="**", tag="node").limit(1)
-    return qbobj.dict()[0]["node"]
+    qbobj.append(orm.Node, filters={'id': nodes_id}, project='**', tag='node').limit(1)
+    return qbobj.dict()[0]['node']
 
 
-@router.post("/nodes", response_model=models.Node)
+@router.post('/nodes', response_model=models.Node)
 @with_dbenv()
 async def create_node(
     node: models.Node_Post,
@@ -53,10 +53,10 @@ async def create_node(
 ) -> models.Node:
     """Create new AiiDA node."""
     node_dict = node.dict(exclude_unset=True)
-    entry_point = node_dict.pop("entry_point", None)
+    entry_point = node_dict.pop('entry_point', None)
 
     try:
-        cls = load_entry_point(group="aiida.data", name=entry_point)
+        cls = load_entry_point(group='aiida.data', name=entry_point)
     except EntryPointError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
 
@@ -68,7 +68,7 @@ async def create_node(
     return models.Node.from_orm(orm_object)
 
 
-@router.post("/nodes/singlefile", response_model=models.Node)
+@router.post('/nodes/singlefile', response_model=models.Node)
 @with_dbenv()
 async def create_upload_file(
     params: str = Form(...),
@@ -90,34 +90,32 @@ async def create_upload_file(
     except json.JSONDecodeError as exception:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid JSON format: {str(exception)}",
+            detail=f'Invalid JSON format: {exception!s}',
         ) from exception
     except ValidationError as exception:
         raise HTTPException(
             status_code=422,
-            detail=f"Validation failed: {exception}",
+            detail=f'Validation failed: {exception}',
         ) from exception
 
     node_dict = params_obj.dict(exclude_unset=True)
-    entry_point = node_dict.pop("entry_point", None)
+    entry_point = node_dict.pop('entry_point', None)
 
     try:
-        cls = load_entry_point(group="aiida.data", name=entry_point)
+        cls = load_entry_point(group='aiida.data', name=entry_point)
     except EntryPointError as exception:
         raise HTTPException(
             status_code=404,
-            detail=f"Could not load entry point: {exception}",
+            detail=f'Could not load entry point: {exception}',
         ) from exception
 
-    with tempfile.NamedTemporaryFile(mode="wb", delete=False) as temp_file:
+    with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
         # Todo: read in chunks
         content = await upload_file.read()
         temp_file.write(content)
         temp_path = temp_file.name
 
-    orm_object = models.Node_Post.create_new_node_with_file(
-        cls, node_dict, Path(temp_path)
-    )
+    orm_object = models.Node_Post.create_new_node_with_file(cls, node_dict, Path(temp_path))
 
     # Clean up the temporary file
     if os.path.exists(temp_path):

@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Defines plugins for basic information about aiida etc."""
+
 # pylint: disable=too-few-public-methods,unused-argument
 from typing import Any
 
@@ -22,15 +22,13 @@ def resolve_aiidaVersion(parent: Any, info: gr.ResolveInfo) -> str:
 
 
 rowLimitMaxPlugin = QueryPlugin(
-    "rowLimitMax",
-    gr.Int(
-        description="Maximum number of entity rows allowed to be returned from a query"
-    ),
+    'rowLimitMax',
+    gr.Int(description='Maximum number of entity rows allowed to be returned from a query'),
     resolve_rowLimitMax,
 )
 
 aiidaVersionPlugin = QueryPlugin(
-    "aiidaVersion",
-    gr.String(description="Version of aiida-core"),
+    'aiidaVersion',
+    gr.String(description='Version of aiida-core'),
     resolve_aiidaVersion,
 )

@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """Sphinx extension for documenting the GraphQL schema."""
+
 # pylint: disable=import-outside-toplevel
 from typing import TYPE_CHECKING, List
 
@@ -8,11 +8,10 @@ from graphql.utils.schema_printer import print_schema
 from .main import SCHEMA
 
 if TYPE_CHECKING:
-    from docutils.nodes import literal_block
     from sphinx.application import Sphinx
 
 
-def setup(app: "Sphinx") -> None:
+def setup(app: 'Sphinx') -> None:
     """Setup the sphinx extension."""
     from docutils.nodes import Element, literal_block
     from sphinx.util.docutils import SphinxDirective
@@ -29,4 +28,4 @@ def setup(app: "Sphinx") -> None:
             self.set_source_info(code_node)
             return [code_node]
 
-    app.add_directive("aiida-graphql-schema", SchemaDirective)
+    app.add_directive('aiida-graphql-schema', SchemaDirective)
