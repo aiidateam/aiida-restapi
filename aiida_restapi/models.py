@@ -304,7 +304,7 @@ class Group(AiidaModel):
         orm_entity.user_id = query.dict()[0]["fields"]["user_id"]
         orm_entity.time = query.dict()[0]["fields"]["time"]
 
-        return super().from_orm(obj)
+        return super().from_orm(orm_entity)
 
 
 class Group_Post(AiidaModel):
