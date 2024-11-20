@@ -62,7 +62,8 @@ def validate_full_type(full_type: str) -> None:
 
 
 def construct_full_type(node_type: str, process_type: str) -> str:
-    """Return the full type, which fully identifies the type of any `Node` with the given `node_type` and `process_type`.
+    """Return the full type, which fully identifies the type of any `Node` with the given `node_type` and
+    `process_type`.
 
     :param node_type: the `node_type` of the `Node`
     :param process_type: the `process_type` of the `Node`
