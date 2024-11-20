@@ -16,20 +16,20 @@ classifiers = [
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Topic :: Scientific/Engineering'
 ]
 keywords = ['aiida', 'workflows']
-requires-python = '>=3.8'
+requires-python = '>=3.9'
 dependencies = [
     'aiida-core~=2.0',
-    'fastapi~=0.65.1',
+    'fastapi~=0.115.5',
     'uvicorn[standard]~=0.19.0',
-    'pydantic~=1.10',
-    'graphene~=2.0',
+    'pydantic~=2.0',
+    'starlette-graphene3~=0.6.0',
+    'graphene~=3.0',
     'python-dateutil~=2.0',
     'lark~=0.11.0',
 ]
@@ -63,6 +63,7 @@ testing = [
     'pytest-regressions',
     'pytest-cov',
     'requests',
+    'httpx',
 ]
 
 [tool.flit.module]

@@ -8,7 +8,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 fake_users_db = {
     "johndoe@example.com": {
-        "id": 23,
+        "pk": 23,
         "first_name": "John",
         "last_name": "Doe",
         "institution": "EPFL",

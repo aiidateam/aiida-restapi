@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Classes and functions to auto-generate base ObjectTypes for aiida orm entities."""
 # pylint: disable=unused-argument,redefined-builtin
+import typing
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Set, Type, Union
 from uuid import UUID
@@ -9,6 +10,7 @@ import graphene as gr
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from graphql import GraphQLError
+from pydantic import Json
 
 from aiida_restapi.aiida_db_mappings import ORM_MAPPING, get_model_from_orm
 
@@ -22,8 +24,20 @@ _type_mapping = {
     bool: gr.Boolean,
     datetime: gr.DateTime,
     UUID: gr.ID,
+    Json: JSON,
     Any: JSON,
 }
+
+
+def get_pydantic_type_name(annotation: Any) -> Any:
+    """
+    In pydantic v1, one could do field.type_,
+    but in v2, one has to go though field.annotation
+    """
+    args = typing.get_args(annotation)
+    if args:
+        return args[0]
+    return annotation
 
 
 def fields_from_orm(
@@ -31,11 +45,12 @@ def fields_from_orm(
 ) -> Dict[str, gr.Scalar]:
     """Extract the fields from an AIIDA ORM class and convert them to graphene objects."""
     output = {}
-    for name, field in get_model_from_orm(cls).__fields__.items():
+    for name, field in get_model_from_orm(cls).model_fields.items():
         if name in exclude_fields:
             continue
-        gr_type = _type_mapping[field.type_]
-        output[name] = gr_type(description=field.field_info.description)
+        field_type = get_pydantic_type_name(field.annotation)
+        gr_type = _type_mapping[field_type]
+        output[name] = gr_type(description=field.description)
     return output
 
 
@@ -44,17 +59,18 @@ def fields_from_name(
 ) -> Dict[str, gr.Scalar]:
     """Extract the fields from an AIIDA ORM class name and convert them to graphene objects."""
     output = {}
-    for name, field in ORM_MAPPING[cls].__fields__.items():
+    for name, field in ORM_MAPPING[cls].model_fields.items():
         if name in exclude_fields:
             continue
-        gr_type = _type_mapping[field.type_]
-        output[name] = gr_type(description=field.field_info.description)
+        field_type = get_pydantic_type_name(field.annotation)
+        gr_type = _type_mapping[field_type]
+        output[name] = gr_type(description=field.description)
     return output
 
 
 def field_names_from_orm(cls: Type[orm.Entity]) -> Set[str]:
     """Extract the field names from an AIIDA ORM class."""
-    return set(get_model_from_orm(cls).__fields__.keys())
+    return set(get_model_from_orm(cls).model_fields.keys())
 
 
 def get_projection(
@@ -71,7 +87,7 @@ def get_projection(
         # TODO here we need to look deeper under the "node" field
         return "**"
     try:
-        selected = set(selected_field_names_naive(info.field_asts[0].selection_set))
+        selected = set(selected_field_names_naive(info.field_nodes[0].selection_set))
         fields = db_fields.intersection(selected)
         joins = db_fields.difference(selected)
         if joins:
