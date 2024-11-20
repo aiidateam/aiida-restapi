@@ -28,6 +28,43 @@ def test_get_nodes_projectable(client):
     ]
 
 
+def test_get_download_formats(client):
+    """Test get download formats for nodes."""
+    response = client.get('/nodes/download_formats')
+
+    assert response.status_code == 200
+
+    reference = {
+        'data.core.array.ArrayData.|': ['json'],
+        'data.core.array.bands.BandsData.|': [
+            'agr',
+            'agr_batch',
+            'dat_blocks',
+            'dat_multicolumn',
+            'gnuplot',
+            'json',
+            'mpl_pdf',
+            'mpl_png',
+            'mpl_singlefile',
+            'mpl_withjson',
+        ],
+        'data.core.array.kpoints.KpointsData.|': ['json'],
+        'data.core.array.projection.ProjectionData.|': ['json'],
+        'data.core.array.trajectory.TrajectoryData.|': ['cif', 'json', 'xsf'],
+        'data.core.array.xy.XyData.|': ['json'],
+        'data.core.cif.CifData.|': ['cif'],
+        'data.core.structure.StructureData.|': ['chemdoodle', 'cif', 'xsf', 'xyz'],
+        'data.core.upf.UpfData.|': ['json', 'upf'],
+    }
+    response_json = response.json()
+
+    for key, value in reference.items():
+        if key not in response_json:
+            raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
+        if not set(value) <= set(response_json[key]):
+            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
+
+
 def test_get_single_nodes(default_nodes, client):  # pylint: disable=unused-argument
     """Test retrieving a single nodes."""
 
