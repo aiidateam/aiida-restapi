@@ -286,7 +286,7 @@ class Group(AiidaModel):
         """Convert from ORM object.
 
         Args:
-            obj: The ORM object to convert
+            obj: The ORM entity to convert
 
         Returns:
             The converted Group object
