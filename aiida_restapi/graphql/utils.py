@@ -16,44 +16,6 @@ class JSON(Scalar):
     String, Boolean, Int, Float, List or Object.
     """
 
-    @staticmethod
-    def serialize(value: Any) -> Any:
-        """Serialize the value to JSON format.
-
-        Args:
-            value: The value to serialize
-
-        Returns:
-            The serialized value
-        """
-        return value
-
-    @staticmethod
-    def parse_literal(node: ast.ValueNode) -> Any:
-        """Parse a literal value from a GraphQL AST node.
-
-        Args:
-            node: The AST node to parse
-
-        Returns:
-            The parsed value, or None if parsing fails
-        """
-        if isinstance(node, ast.StringValue):
-            return node.value
-        return None
-
-    @staticmethod
-    def parse_value(value: Any) -> Any:
-        """Parse a value from a GraphQL input.
-
-        Args:
-            value: The value to parse
-
-        Returns:
-            The parsed value
-        """
-        return value
-
 
 class FilterString(gr.String):
     """A string adhering to the AiiDA filter syntax."""
