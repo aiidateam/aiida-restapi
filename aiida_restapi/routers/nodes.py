@@ -13,7 +13,7 @@ from aiida.plugins.entry_point import load_entry_point
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import ValidationError
 
-from aiida_restapi import models
+from aiida_restapi import models, resources
 
 from .auth import get_current_active_user
 
@@ -38,7 +38,7 @@ async def get_nodes_projectable_properties() -> List[str]:
 async def get_nodes_download_formats() -> dict[str, Any]:
     """Get download formats for nodes endpoint"""
 
-    return models.Node.get_all_download_formats()
+    return resources.get_all_download_formats()
 
 
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
