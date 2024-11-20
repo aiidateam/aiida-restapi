@@ -378,9 +378,6 @@ http://localhost:5000/api/v4/nodes/download_formats
 ```
 
 Not implemented for GraphQL, please use the REST API for this use case.
-```html
-http://localhost:5000/nodes/download_formats
-```
 
 
 ```html
