@@ -295,7 +295,7 @@ class Group(AiidaModel):
             orm.QueryBuilder()
             .append(
                 cls._orm_entity,
-                filters={"pk": obj.id},
+                filters={"pk": orm_entity.id},
                 tag="fields",
                 project=["user_id", "time"],
             )
