@@ -15,7 +15,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
 from aiida_restapi import models, resources
-from aiida_restapi.config import DOWNLOAD_CHUNK_SIZE
 
 from .auth import get_current_active_user
 
@@ -73,8 +72,7 @@ async def download_node(nodes_id: int, download_format: Optional[str] = None) ->
 
         def stream() -> Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
-                while chunk := handler.read(DOWNLOAD_CHUNK_SIZE):
-                    yield chunk
+                yield from handler
 
         return StreamingResponse(stream(), media_type=f'application/{download_format}')
 
