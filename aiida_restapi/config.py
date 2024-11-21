@@ -1,5 +1,7 @@
 """Configuration of API"""
 
+from importlib.metadata import version
+
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = '09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7'
@@ -17,4 +19,12 @@ fake_users_db = {
         'hashed_password': PASSWORD_HASH,
         'disabled': False,
     }
+}
+
+# The chunks size for streaming data for download
+DOWNLOAD_CHUNK_SIZE = 1024
+
+API_CONFIG = {
+    'PREFIX': version('aiida_restapi'),  # prefix for all URLs
+    'VERSION': '0.1.0a',
 }

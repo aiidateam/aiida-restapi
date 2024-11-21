@@ -320,32 +320,39 @@ def create_computer():
     return _func
 
 
+def _create_node(
+    *,
+    label: str = '',
+    description: str = '',
+    attributes: Optional[dict] = None,
+    extras: Optional[dict] = None,
+    process_type: Optional[str] = None,
+    computer: Optional[orm.Computer] = None,
+    store: bool = True,
+) -> orm.nodes.Node:
+    node = orm.CalcJobNode(computer=computer) if process_type else orm.Data(computer=computer)
+    node.label = label
+    node.description = description
+    node.base.attributes.reset(attributes or {})
+    node.base.extras.reset(extras or {})
+    if process_type is not None:
+        node.process_type = process_type
+    if store:
+        node.store()
+    return node
+
+
 @pytest.fixture
 def create_node():
     """Create and store an AiiDA Node."""
+    return _create_node
 
-    def _func(
-        *,
-        label: str = '',
-        description: str = '',
-        attributes: Optional[dict] = None,
-        extras: Optional[dict] = None,
-        process_type: Optional[str] = None,
-        computer: Optional[orm.Computer] = None,
-        store: bool = True,
-    ) -> orm.nodes.Node:
-        node = orm.CalcJobNode(computer=computer) if process_type else orm.Data(computer=computer)
-        node.label = label
-        node.description = description
-        node.base.attributes.reset(attributes or {})
-        node.base.extras.reset(extras or {})
-        if process_type is not None:
-            node.process_type = process_type
-        if store:
-            node.store()
-        return node
 
-    return _func
+@pytest.fixture
+def calcjob_nodes():
+    """Populate database with calcjob nodes."""
+    nodes = [_create_node(label=f'node {i}', process_type='', store=False) for i in range(4)]
+    return nodes
 
 
 @pytest.fixture
