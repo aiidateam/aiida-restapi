@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from aiida_restapi import models, resources
 from aiida_restapi.config import DOWNLOAD_CHUNK_SIZE
+from aiida_restapi.identifiers import get_node_namespace
 
 from .auth import get_current_active_user
 
@@ -85,6 +86,13 @@ async def download_node(nodes_id: int, download_format: Optional[str] = None) ->
             'The available download formats can be '
             'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
         )
+
+
+@router.get('/nodes/full_types', response_model=dict[str, Any])
+@with_dbenv()
+async def get_full_types() -> dict[str, Any]:
+    """Return full_types of the nodes"""
+    return get_node_namespace(user_pk=None, count_nodes=False).get_description()
 
 
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
