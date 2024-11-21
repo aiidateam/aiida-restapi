@@ -42,6 +42,16 @@ async def get_nodes_download_formats() -> dict[str, Any]:
     return resources.get_all_download_formats()
 
 
+@router.get('/nodes/statistics', response_model=dict[str, Any])
+async def get_nodes_statistics(user: Optional[int] = None) -> dict[str, Any]:
+    """Get statistics for nodes endpoint"""
+
+    from aiida.manage import get_manager
+
+    backend = get_manager().get_profile_storage()
+    return backend.query().get_creation_statistics(user_pk=user)
+
+
 @router.get('/nodes/{nodes_id}/download')
 @with_dbenv()
 async def download_node(nodes_id: int, download_format: Optional[str] = None) -> StreamingResponse:
