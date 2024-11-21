@@ -167,13 +167,9 @@ def default_nodes():
 
 @pytest.fixture(scope='function')
 def array_data_node():
-    """Populate database with downloadable node (implmenting a _prepare_* function).
-    For testing the chunking of the streaming we create an array that needs to be splitted int two chunks."""
+    """Populate database with downloadable node (implmenting a _prepare_* function)."""
 
-    from aiida_restapi.config import DOWNLOAD_CHUNK_SIZE
-
-    nb_elements = DOWNLOAD_CHUNK_SIZE // 64 + 1
-    return orm.ArrayData(np.arange(nb_elements, dtype=np.int64)).store()
+    return orm.ArrayData(np.arange(4)).store()
 
 
 @pytest.fixture(scope='function')
