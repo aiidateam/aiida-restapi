@@ -332,7 +332,7 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
     assert check_response.json()['extras']['extra_two'] == 'value_2'
 
 
-def test_get_full_types(default_nodes, client):
+def test_get_full_types(default_computers, example_processes, default_groups, default_nodes, client):
     """Test get full_types nodes."""
     response = client.get('/nodes/full_types')
 
