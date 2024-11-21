@@ -85,6 +85,16 @@ async def get_node_projectable_properties(
         raise HTTPException(status_code=422, detail=str(err)) from err
 
 
+@read_router.get('/nodes/statistics', response_model=dict[str, t.Any])
+async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
+    """Get statistics for nodes endpoint"""
+
+    from aiida.manage import get_manager
+
+    backend = get_manager().get_profile_storage()
+    return backend.query().get_creation_statistics(user_pk=user)
+
+
 @read_router.get('/nodes/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes.
