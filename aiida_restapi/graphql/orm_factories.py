@@ -31,9 +31,10 @@ _type_mapping = {
 
 def get_pydantic_type_name(annotation: Any) -> Any:
     """
-    In pydantic v1, one could do field.type_,
+    In pydantic v1, one could do `field.type_`,
     but in v2, one has to go though field.annotation
     """
+
     args = typing.get_args(annotation)
     if args:
         return args[0]
