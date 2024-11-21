@@ -259,7 +259,7 @@ class Namespace(MutableMapping):
         if full_type_.startswith('process.'):
             for basepath, full_type_template in self.process_full_type_mapping.items():
                 if full_type_.startswith(basepath):
-                    plugin_name = strip_prefix(full_type, basepath)
+                    plugin_name = strip_prefix(full_type_, basepath)
                     if plugin_name.startswith(DEFAULT_NAMESPACE_LABEL):
                         temp_type_template = self.process_full_type_mapping_unplugged[basepath]
                         plugin_name = strip_prefix(plugin_name, DEFAULT_NAMESPACE_LABEL + '.')

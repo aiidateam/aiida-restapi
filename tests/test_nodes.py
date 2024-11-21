@@ -338,54 +338,84 @@ def test_get_full_types(default_computers, example_processes, default_groups, de
 
     assert response.status_code == 200, response.json()
     assert response.json() == {
-        'namespace': 'node',
         'full_type': 'node.%|',
         'label': 'node',
+        'namespace': 'node',
         'path': 'node',
         'subspaces': [
             {
-                'namespace': 'data',
                 'full_type': 'data.%|',
                 'label': 'Data',
+                'namespace': 'data',
                 'path': 'node.data',
                 'subspaces': [
                     {
-                        'namespace': 'core',
                         'full_type': 'data.core.%|',
                         'label': 'core',
+                        'namespace': 'core',
                         'path': 'node.data.core',
                         'subspaces': [
                             {
-                                'namespace': 'bool',
                                 'full_type': 'data.core.bool.Bool.|',
                                 'label': 'Bool',
+                                'namespace': 'bool',
                                 'path': 'node.data.core.bool',
                                 'subspaces': [],
                             },
                             {
-                                'namespace': 'float',
                                 'full_type': 'data.core.float.Float.|',
                                 'label': 'Float',
+                                'namespace': 'float',
                                 'path': 'node.data.core.float',
                                 'subspaces': [],
                             },
                             {
-                                'namespace': 'int',
                                 'full_type': 'data.core.int.Int.|',
                                 'label': 'Int',
+                                'namespace': 'int',
                                 'path': 'node.data.core.int',
                                 'subspaces': [],
                             },
                             {
-                                'namespace': 'str',
                                 'full_type': 'data.core.str.Str.|',
                                 'label': 'Str',
+                                'namespace': 'str',
                                 'path': 'node.data.core.str',
                                 'subspaces': [],
                             },
                         ],
                     }
                 ],
-            }
+            },
+            {
+                'full_type': 'process.%|%',
+                'label': 'Process',
+                'namespace': 'process',
+                'path': 'node.process',
+                'subspaces': [
+                    {
+                        'full_type': 'process.workflow.%|%',
+                        'label': 'Workflow',
+                        'namespace': 'workflow',
+                        'path': 'node.process.workflow',
+                        'subspaces': [
+                            {
+                                'full_type': 'process.workflow.workchain.WorkChainNode.|',
+                                'label': 'WorkChainNode',
+                                'namespace': 'workchain',
+                                'path': 'node.process.workflow.workchain',
+                                'subspaces': [],
+                            },
+                            {
+                                'full_type': 'process.workflow.workfunction.WorkFunctionNode.|',
+                                'label': 'WorkFunctionNode',
+                                'namespace': 'workfunction',
+                                'path': 'node.process.workflow.workfunction',
+                                'subspaces': [],
+                            },
+                        ],
+                    }
+                ],
+            },
         ],
     }
