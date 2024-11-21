@@ -49,6 +49,13 @@ async def get_full_types() -> dict[str, Any]:
     return get_node_namespace(user_pk=None, count_nodes=False).get_description()
 
 
+@router.get('/nodes/full_types_count', response_model=dict[str, Any])
+@with_dbenv()
+async def get_full_types_count(user: Optional[int] = None) -> dict[str, Any]:
+    """Return full_types_count of the nodes"""
+    return get_node_namespace(user_pk=user, count_nodes=True).get_description()
+
+
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
 @with_dbenv()
 async def read_node(nodes_id: int) -> Optional[models.Node]:

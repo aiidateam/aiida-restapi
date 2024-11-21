@@ -419,3 +419,92 @@ def test_get_full_types(default_computers, example_processes, default_groups, de
             },
         ],
     }
+
+
+@pytest.mark.anyio
+async def test_get_full_types_count(default_nodes, async_client):
+    """Test get full_types_count nodes."""
+
+    default_user_reference_json = {
+        'namespace': 'node',
+        'full_type': 'node.%|',
+        'label': 'node',
+        'path': 'node',
+        'subspaces': [
+            {
+                'namespace': 'data',
+                'full_type': 'data.%|',
+                'label': 'Data',
+                'path': 'node.data',
+                'subspaces': [
+                    {
+                        'namespace': 'core',
+                        'full_type': 'data.core.%|',
+                        'label': 'core',
+                        'path': 'node.data.core',
+                        'subspaces': [
+                            {
+                                'namespace': 'bool',
+                                'full_type': 'data.core.bool.Bool.|',
+                                'label': 'Bool',
+                                'path': 'node.data.core.bool',
+                                'subspaces': [],
+                                'counter': 1,
+                            },
+                            {
+                                'namespace': 'float',
+                                'full_type': 'data.core.float.Float.|',
+                                'label': 'Float',
+                                'path': 'node.data.core.float',
+                                'subspaces': [],
+                                'counter': 1,
+                            },
+                            {
+                                'namespace': 'int',
+                                'full_type': 'data.core.int.Int.|',
+                                'label': 'Int',
+                                'path': 'node.data.core.int',
+                                'subspaces': [],
+                                'counter': 1,
+                            },
+                            {
+                                'namespace': 'str',
+                                'full_type': 'data.core.str.Str.|',
+                                'label': 'Str',
+                                'path': 'node.data.core.str',
+                                'subspaces': [],
+                                'counter': 1,
+                            },
+                        ],
+                        'counter': 4,
+                    }
+                ],
+                'counter': 4,
+            }
+        ],
+        'counter': 4,
+    }
+
+    # Test without specifiying user, should use default user
+    response = await async_client.get('/nodes/full_types_count')
+    assert response.status_code == 200, response.json()
+    assert response.json() == default_user_reference_json
+
+    # Test that the output is the same when we use the pk of the default user
+    from aiida import orm
+
+    default_user_pk = orm.User(email='').collection.get_default().pk
+    response = await async_client.get(f'/nodes/full_types_count?user={default_user_pk}')
+    assert response.status_code == 200, response.json()
+    assert response.json() == default_user_reference_json
+
+    # Test empty response for nonexisting user
+    response = await async_client.get('/nodes/full_types_count?user=99999')
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        'namespace': 'node',
+        'full_type': 'node.%|',
+        'label': 'node',
+        'path': 'node',
+        'subspaces': [],
+    }
