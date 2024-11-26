@@ -3,7 +3,7 @@
 # pylint: disable=import-outside-toplevel
 from typing import TYPE_CHECKING, List
 
-from graphql.utils.schema_printer import print_schema
+from graphql.utilities import print_schema
 
 from .main import SCHEMA
 
@@ -21,7 +21,7 @@ def setup(app: 'Sphinx') -> None:
 
         def run(self) -> List[Element]:
             """Run the directive."""
-            text = print_schema(SCHEMA)
+            text = print_schema(SCHEMA.graphql_schema)
             # TODO for lexing tried: https://gitlab.com/marcogiusti/pygments-graphql/-/blob/master/src/pygments_graphql.py
             # but it failed
             code_node = literal_block(text, text)  # , language="graphql")
