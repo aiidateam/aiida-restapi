@@ -85,6 +85,13 @@ async def download_node(nodes_id: int, download_format: Optional[str] = None) ->
         )
 
 
+@router.get('/nodes/full_types', response_model=dict[str, Any])
+@with_dbenv()
+async def get_full_types() -> dict[str, Any]:
+    """Return full_types of the nodes"""
+    return get_node_namespace(user_pk=None, count_nodes=False).get_description()
+
+
 @router.get('/nodes/{nodes_id}', response_model=models.Node)
 @with_dbenv()
 async def read_node(nodes_id: int) -> Optional[models.Node]:
