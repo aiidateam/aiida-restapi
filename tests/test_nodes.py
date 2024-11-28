@@ -351,3 +351,92 @@ async def test_get_download_node(array_data_node, async_client):
     response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
     assert response.status_code == 422, response.json()
     assert 'Please specify the download format' in response.json()['detail']
+
+
+def test_get_full_types(default_computers, example_processes, default_groups, default_nodes, client):
+    """Test get full_types nodes."""
+    response = client.get('/nodes/full_types')
+
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        'full_type': 'node.%|',
+        'label': 'node',
+        'namespace': 'node',
+        'path': 'node',
+        'subspaces': [
+            {
+                'full_type': 'data.%|',
+                'label': 'Data',
+                'namespace': 'data',
+                'path': 'node.data',
+                'subspaces': [
+                    {
+                        'full_type': 'data.core.%|',
+                        'label': 'core',
+                        'namespace': 'core',
+                        'path': 'node.data.core',
+                        'subspaces': [
+                            {
+                                'full_type': 'data.core.bool.Bool.|',
+                                'label': 'Bool',
+                                'namespace': 'bool',
+                                'path': 'node.data.core.bool',
+                                'subspaces': [],
+                            },
+                            {
+                                'full_type': 'data.core.float.Float.|',
+                                'label': 'Float',
+                                'namespace': 'float',
+                                'path': 'node.data.core.float',
+                                'subspaces': [],
+                            },
+                            {
+                                'full_type': 'data.core.int.Int.|',
+                                'label': 'Int',
+                                'namespace': 'int',
+                                'path': 'node.data.core.int',
+                                'subspaces': [],
+                            },
+                            {
+                                'full_type': 'data.core.str.Str.|',
+                                'label': 'Str',
+                                'namespace': 'str',
+                                'path': 'node.data.core.str',
+                                'subspaces': [],
+                            },
+                        ],
+                    }
+                ],
+            },
+            {
+                'full_type': 'process.%|%',
+                'label': 'Process',
+                'namespace': 'process',
+                'path': 'node.process',
+                'subspaces': [
+                    {
+                        'full_type': 'process.workflow.%|%',
+                        'label': 'Workflow',
+                        'namespace': 'workflow',
+                        'path': 'node.process.workflow',
+                        'subspaces': [
+                            {
+                                'full_type': 'process.workflow.workchain.WorkChainNode.|',
+                                'label': 'WorkChainNode',
+                                'namespace': 'workchain',
+                                'path': 'node.process.workflow.workchain',
+                                'subspaces': [],
+                            },
+                            {
+                                'full_type': 'process.workflow.workfunction.WorkFunctionNode.|',
+                                'label': 'WorkFunctionNode',
+                                'namespace': 'workfunction',
+                                'path': 'node.process.workflow.workfunction',
+                                'subspaces': [],
+                            },
+                        ],
+                    }
+                ],
+            },
+        ],
+    }
