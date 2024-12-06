@@ -3,9 +3,7 @@ build-backend = 'flit_core.buildapi'
 requires = ['flit_core>=3.4,<4']
 
 [project]
-authors = [
-  {name = 'The AiiDA Team', email = 'developers@aiida.net'}
-]
+authors = [{name = 'The AiiDA Team', email = 'developers@aiida.net'}]
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Framework :: AiiDA',
@@ -18,9 +16,9 @@ classifiers = [
   'Topic :: Scientific/Engineering'
 ]
 dependencies = [
-  'aiida-core~=2.0',
+  'aiida-core~=2.5',
   'fastapi~=0.115.5',
-  'uvicorn[standard]~=0.19.0',
+  'uvicorn[standard]~=0.32.1',
   'pydantic~=2.0',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
@@ -35,11 +33,7 @@ readme = 'README.md'
 requires-python = '>=3.9'
 
 [project.optional-dependencies]
-auth = [
-  'python-jose',
-  'python-multipart',
-  'passlib'
-]
+auth = ['python-jose', 'python-multipart', 'passlib']
 docs = [
   'sphinx',
   'myst-parser[linkify]>=0.13.7',
@@ -48,9 +42,7 @@ docs = [
   'sphinx-panels',
   'pygments-graphql'
 ]
-pre-commit = [
-  'pre-commit~=2.12'
-]
+pre-commit = ['pre-commit~=2.12']
 testing = [
   'aiida-restapi[auth]',
   'pgtest~=1.3.1',
@@ -60,7 +52,7 @@ testing = [
   'pytest-regressions',
   'pytest-cov',
   'requests',
-  'httpx',
+  'httpx~=0.27.2',
   'numpy~=1.21'
 ]
 
