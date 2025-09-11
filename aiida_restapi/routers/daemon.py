@@ -22,6 +22,25 @@ class DaemonStatusModel(BaseModel):
     num_workers: t.Optional[int] = Field(description='The number of workers if the daemon is running.')
 
 
+class WorkerInfo(BaseModel):
+    """Details for a single daemon worker (per PID)."""
+
+    mem_info1: str = Field(..., description='Resident memory.')
+    mem_info2: str = Field(..., description='Virtual memory.')
+    cpu: float = Field(..., description='CPU usage percent.')
+    mem: float = Field(..., description='Memory usage percent.')
+    ctime: str = Field(..., description='CPU time as string.')
+    pid: int
+    username: str
+    nice: int
+    create_time: float = Field(..., description='Process creation time.')
+    age: float = Field(..., description='Process age in seconds.')
+    cmdline: str
+    children: t.List[t.Union[int, str]] = Field(default_factory=list, description='Child PIDs.')
+    started: float = Field(..., description='Worker start time.')
+    wid: int = Field(..., description='AiiDA worker id.')
+
+
 @router.get('/daemon/status', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_status() -> DaemonStatusModel:
@@ -74,6 +93,55 @@ async def get_daemon_stop(
 
     try:
         client.stop_daemon()
+    except DaemonException as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
+
+    return DaemonStatusModel(running=False, num_workers=None)
+
+
+@router.get('/daemon/worker', response_model=t.Dict[str, WorkerInfo])
+@with_dbenv()
+async def get_daemon_worker() -> t.Dict[str, WorkerInfo]:
+    """Return the daemon status."""
+    client = get_daemon_client()
+
+    if not client.is_daemon_running:
+        return {}
+
+    response = client.get_worker_info()
+    print(response['info'])
+
+    return response['info']
+
+
+@router.post('/daemon/increase', response_model=DaemonStatusModel)
+@with_dbenv()
+async def increase_daemon_worker() -> DaemonStatusModel:
+    """increase the daemon worker."""
+    client = get_daemon_client()
+
+    if not client.is_daemon_running:
+        raise HTTPException(status_code=400, detail='The daemon is not running.')
+
+    try:
+        client.increase_workers(1)
+    except DaemonException as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
+
+    return DaemonStatusModel(running=False, num_workers=None)
+
+
+@router.post('/daemon/decrease', response_model=DaemonStatusModel)
+@with_dbenv()
+async def decrease_daemon_worker() -> DaemonStatusModel:
+    """decrease the daemon worker."""
+    client = get_daemon_client()
+
+    if not client.is_daemon_running:
+        raise HTTPException(status_code=400, detail='The daemon is not running.')
+
+    try:
+        client.decrease_workers(1)
     except DaemonException as exception:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
