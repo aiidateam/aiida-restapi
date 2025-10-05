@@ -1,51 +1,61 @@
 """Declaration of FastAPI application."""
 
-from typing import List, Optional
+from __future__ import annotations
+
+import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends
 
-from aiida_restapi.models import Group, Group_Post, User
+from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
 
 from .auth import get_current_active_user
 
 router = APIRouter()
 
+repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
 
-@router.get('/groups', response_model=List[Group])
+
+@router.get('/groups/projectable_properties', response_model=list[str])
+async def get_group_projectable_properties() -> list[str]:
+    """Get projectable properties for AiiDA groups."""
+    return repository.get_projectable_properties()
+
+
+@router.get(
+    '/groups',
+    response_model=PaginatedResults[orm.Group.Model],
+    response_model_exclude_none=True,
+)
 @with_dbenv()
-async def read_groups() -> List[Group]:
-    """Get list of all groups"""
-
-    return Group.get_entities()
-
-
-@router.get('/groups/projectable_properties', response_model=List[str])
-async def get_groups_projectable_properties() -> List[str]:
-    """Get projectable properties for groups endpoint"""
-
-    return Group.get_projectable_properties()
+async def get_groups(
+    queries: t.Annotated[QueryParams, Depends(query_params)],
+) -> PaginatedResults[orm.Group.Model]:
+    """Get AiiDA groups with optional filtering, sorting, and/or pagination."""
+    return repository.get_entities(queries)
 
 
-@router.get('/groups/{group_id}', response_model=Group)
+@router.get(
+    '/groups/{group_id}',
+    response_model=orm.Group.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
-async def read_group(group_id: int) -> Optional[Group]:
-    """Get group by id."""
-    qbobj = orm.QueryBuilder()
-
-    qbobj.append(orm.Group, filters={'id': group_id}, project='**', tag='group').limit(1)
-    return qbobj.dict()[0]['group']
+async def get_group(group_id: int) -> orm.Group.Model:
+    """Get AiiDA group by id."""
+    return repository.get_entity_by_id(group_id)
 
 
-@router.post('/groups', response_model=Group)
+@router.post(
+    '/groups',
+    response_model=orm.Group.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
 async def create_group(
-    group: Group_Post,
-    current_user: User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> Group:
+    group_model: orm.Group.Model,
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+) -> orm.Group.Model:
     """Create new AiiDA group."""
-    orm_group = orm.Group(**group.dict(exclude_unset=True)).store()
-    return Group.from_orm(orm_group)
+    return repository.create_entity(group_model)

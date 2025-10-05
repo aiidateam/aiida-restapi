@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import typing as t
 
+from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.engine.daemon.client import DaemonException, get_daemon_client
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..models import User
 from .auth import get_current_active_user
 
 router = APIRouter()
@@ -39,7 +39,7 @@ async def get_daemon_status() -> DaemonStatusModel:
 @router.post('/daemon/start', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_start(
-    current_user: User = Depends(  # pylint: disable=unused-argument
+    current_user: orm.User.Model = Depends(  # pylint: disable=unused-argument
         get_current_active_user
     ),
 ) -> DaemonStatusModel:
@@ -62,7 +62,7 @@ async def get_daemon_start(
 @router.post('/daemon/stop', response_model=DaemonStatusModel)
 @with_dbenv()
 async def get_daemon_stop(
-    current_user: User = Depends(  # pylint: disable=unused-argument
+    current_user: orm.User.Model = Depends(  # pylint: disable=unused-argument
         get_current_active_user
     ),
 ) -> DaemonStatusModel:

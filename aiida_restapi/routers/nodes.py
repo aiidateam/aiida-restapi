@@ -1,57 +1,120 @@
-"""Declaration of FastAPI application."""
+"""Declaration of FastAPI router for nodes."""
 
+from __future__ import annotations
+
+import io
 import json
-import os
 import tempfile
+import typing as t
 from pathlib import Path
-from typing import Any, Generator, List, Optional
 
+import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
-from aiida.plugins.entry_point import load_entry_point
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from aiida.common import EntryPointError
+from aiida.common.exceptions import LicensingException, NotExistent
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
 
-from aiida_restapi import models, resources
+from aiida_restapi import resources
+from aiida_restapi.common import NodeModelRegistry, NodeRepository, PaginatedResults, QueryParams, query_params
 
 from .auth import get_current_active_user
 
 router = APIRouter()
 
 
-@router.get('/nodes', response_model=List[models.Node])
+repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
+model_registry = NodeModelRegistry()
+
+
+@router.get(
+    '/nodes',
+    response_model=PaginatedResults[orm.Node.Model],
+    response_model_exclude_none=True,
+)
 @with_dbenv()
-async def read_nodes() -> List[models.Node]:
-    """Get list of all nodes"""
-    return models.Node.get_entities()
+async def get_nodes(
+    queries: t.Annotated[QueryParams, Depends(query_params)],
+) -> PaginatedResults[orm.Node.Model]:
+    """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
+    return repository.get_entities(queries)
 
 
-@router.get('/nodes/projectable_properties', response_model=List[str])
-async def get_nodes_projectable_properties() -> List[str]:
-    """Get projectable properties for nodes endpoint"""
+@router.get('/nodes/projectable_properties')
+@with_dbenv()
+async def get_node_projectable_properties() -> list[str]:
+    """Get projectable properties for AiiDA nodes."""
+    return repository.get_projectable_properties()
 
-    return models.Node.get_projectable_properties()
+
+@router.get('/nodes/types')
+async def get_nodes_types() -> list[str]:
+    """Get available AiiDA node class names."""
+    return sorted(model_registry.get_node_types())
 
 
-@router.get('/nodes/download_formats', response_model=dict[str, Any])
-async def get_nodes_download_formats() -> dict[str, Any]:
-    """Get download formats for nodes endpoint"""
+@router.get(
+    '/nodes/types/{node_class}',
+    response_model=PaginatedResults[orm.Node.Model],
+    response_model_exclude_none=True,
+)
+@with_dbenv()
+async def get_nodes_by_type(
+    node_class: str,
+    queries: t.Annotated[QueryParams, Depends(query_params)],
+) -> PaginatedResults[orm.Node.Model]:
+    """Get AiiDA nodes by node type with optional filtering, sorting, and/or pagination."""
+    if (node_type := model_registry.get_node_type(node_class)) is None:
+        raise HTTPException(status_code=404, detail=f'Node class `{node_class}` is not recognized.')
+    queries.filters['node_type'] = {'like': node_type}
+    return repository.get_entities(queries)
 
+
+@router.get('/nodes/types/{node_class}/projectable_properties')
+@with_dbenv()
+async def get_node_class_projectable_properties(node_class: str) -> list[str]:
+    """Get projectable properties of a given AiiDA node class."""
+    return repository.get_projectable_properties(node_class)
+
+
+@router.get('/nodes/types/{node_class}/schema')
+@with_dbenv()
+async def get_node_class_schema(node_class: str) -> dict[str, t.Any]:
+    """Get JSON schema for a given AiiDA node class."""
+    if (NodeModel := model_registry.get_model(node_class)) is None:
+        raise HTTPException(status_code=404, detail=f'Node class `{node_class}` is not recognized.')
+    return NodeModel.model_json_schema()
+
+
+@router.get(
+    '/nodes/{node_id}',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+)
+@with_dbenv()
+async def get_node(node_id: int) -> orm.Node.Model:
+    """Get AiiDA node by id."""
+    return repository.get_entity_by_id(node_id)
+
+
+@router.get('/nodes/download_formats')
+async def get_nodes_download_formats() -> dict[str, t.Any]:
+    """Get download formats for AiiDA nodes."""
     return resources.get_all_download_formats()
 
 
-@router.get('/nodes/{nodes_id}/download')
+@router.get('/nodes/{node_id}/download')
 @with_dbenv()
-async def download_node(nodes_id: int, download_format: Optional[str] = None) -> StreamingResponse:
-    """Get nodes by id."""
-    from aiida.orm import load_node
-
+async def download_node(
+    node_id: int,
+    download_format: str | None = Query(None, description='Format to download the node in'),
+) -> StreamingResponse:
+    """Download AiiDA node by id in a given download format (provided as a query parameter)."""
     try:
-        node = load_node(nodes_id)
+        node = orm.load_node(node_id)
     except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could no find any node with id {nodes_id}')
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
 
     if download_format is None:
         raise HTTPException(
@@ -63,14 +126,13 @@ async def download_node(nodes_id: int, download_format: Optional[str] = None) ->
 
     elif download_format in node.get_export_formats():
         # byteobj, dict with {filename: filecontent}
-        import io
 
         try:
             exported_bytes, _ = node._exportcontent(download_format)
         except LicensingException as exc:
             raise HTTPException(status_code=500, detail=str(exc))
 
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
                 yield from handler
 
@@ -85,49 +147,37 @@ async def download_node(nodes_id: int, download_format: Optional[str] = None) ->
         )
 
 
-@router.get('/nodes/{nodes_id}', response_model=models.Node)
-@with_dbenv()
-async def read_node(nodes_id: int) -> Optional[models.Node]:
-    """Get nodes by id."""
-    qbobj = orm.QueryBuilder()
-    qbobj.append(orm.Node, filters={'id': nodes_id}, project='**', tag='node').limit(1)
-    return qbobj.dict()[0]['node']
-
-
-@router.post('/nodes', response_model=models.Node)
+@router.post(
+    '/nodes',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
 async def create_node(
-    node: models.Node_Post,
-    current_user: models.User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> models.Node:
+    node_model: model_registry.ModelUnion,  # type: ignore
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+) -> orm.Node.Model:
     """Create new AiiDA node."""
-    node_dict = node.dict(exclude_unset=True)
-    entry_point = node_dict.pop('entry_point', None)
-
     try:
-        cls = load_entry_point(group='aiida.data', name=entry_point)
+        return repository.create_entity(node_model)
     except EntryPointError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
-
-    try:
-        orm_object = models.Node_Post.create_new_node(cls, node_dict)
     except (TypeError, ValueError, KeyError) as exception:
         raise HTTPException(status_code=400, detail=str(exception)) from exception
 
-    return models.Node.from_orm(orm_object)
 
-
-@router.post('/nodes/singlefile', response_model=models.Node)
+# TODO what about folderdata?
+@router.post(
+    '/nodes/singlefile',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
 async def create_upload_file(
-    params: str = Form(...),
-    upload_file: UploadFile = File(...),
-    current_user: models.User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> models.Node:
+    params: t.Annotated[str, Form()],
+    upload_file: UploadFile,
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+) -> orm.Node.Model:
     """Endpoint for uploading file data
 
     Note that in this multipart form case, json input can't be used.
@@ -137,23 +187,20 @@ async def create_upload_file(
         # Parse the JSON string into a dictionary
         params_dict = json.loads(params)
         # Validate against the Pydantic model
-        params_obj = models.Node_Post(**params_dict)
+        params_model = orm.Node.Model(**params_dict)
     except json.JSONDecodeError as exception:
         raise HTTPException(
             status_code=400,
             detail=f'Invalid JSON format: {exception!s}',
         ) from exception
-    except ValidationError as exception:
+    except pdt.ValidationError as exception:
         raise HTTPException(
             status_code=422,
             detail=f'Validation failed: {exception}',
         ) from exception
 
-    node_dict = params_obj.dict(exclude_unset=True)
-    entry_point = node_dict.pop('entry_point', None)
-
     try:
-        cls = load_entry_point(group='aiida.data', name=entry_point)
+        cls = orm.utils.load_node_class(params_model.node_type)
     except EntryPointError as exception:
         raise HTTPException(
             status_code=404,
@@ -166,10 +213,12 @@ async def create_upload_file(
         temp_file.write(content)
         temp_path = temp_file.name
 
-    orm_object = models.Node_Post.create_new_node_with_file(cls, node_dict, Path(temp_path))
+    temp_file_path = Path(temp_path)
+    node_dict = params_model.model_dump(exclude_unset=True, exclude_none=True)
+    orm_entity = repository.create_node_with_file(cls, node_dict, temp_file_path)
 
     # Clean up the temporary file
-    if os.path.exists(temp_path):
-        os.unlink(temp_path)
+    if temp_file_path.exists():
+        temp_file_path.unlink()
 
-    return models.Node.from_orm(orm_object)
+    return orm_entity.to_model()

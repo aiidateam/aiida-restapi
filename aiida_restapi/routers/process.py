@@ -1,16 +1,15 @@
 """Declaration of FastAPI router for processes."""
 
-from typing import List, Optional
+from __future__ import annotations
 
-from aiida import orm
+import typing as t
+
+import pydantic as pdt
+from aiida import engine, orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.exceptions import NotExistent
-from aiida.engine import submit
-from aiida.orm.querybuilder import QueryBuilder
-from aiida.plugins import load_entry_point_from_string
+from aiida.plugins.entry_point import load_entry_point_from_string
 from fastapi import APIRouter, Depends, HTTPException
-
-from aiida_restapi.models import Process, Process_Post, User
 
 from .auth import get_current_active_user
 
@@ -46,52 +45,31 @@ def process_inputs(inputs: dict) -> dict:
     return results
 
 
-@router.get('/processes', response_model=List[Process])
+class ProcessSubmitModel(orm.ProcessNode.Model):
+    inputs: dict = pdt.Field(..., description='The inputs of the process.')
+
+
+@router.post(
+    '/submit',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
-async def read_processes() -> List[Process]:
-    """Get list of all processes"""
-
-    return Process.get_entities()
-
-
-@router.get('/processes/projectable_properties', response_model=List[str])
-async def get_processes_projectable_properties() -> List[str]:
-    """Get projectable properties for processes endpoint"""
-
-    return Process.get_projectable_properties()
-
-
-@router.get('/processes/{proc_id}', response_model=Process)
-@with_dbenv()
-async def read_process(proc_id: int) -> Optional[Process]:
-    """Get process by id."""
-    qbobj = QueryBuilder()
-    qbobj.append(orm.ProcessNode, filters={'id': proc_id}, project='**', tag='process').limit(1)
-
-    return qbobj.dict()[0]['process']
-
-
-@router.post('/processes', response_model=Process)
-@with_dbenv()
-async def post_process(
-    process: Process_Post,
-    current_user: User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> Optional[Process]:
+async def submit_process(
+    process: ProcessSubmitModel,
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+) -> orm.Node.Model:
     """Create new process."""
-    process_dict = process.dict(exclude_unset=True, exclude_none=True)
+    process_dict = process.model_dump(exclude_unset=True, exclude_none=True)
     inputs = process_inputs(process_dict['inputs'])
-    entry_point = process_dict.get('process_entry_point')
 
     try:
-        entry_point_process = load_entry_point_from_string(entry_point)
+        entry_point_process = load_entry_point_from_string(process.process_type)
     except ValueError as exc:
         raise HTTPException(
             status_code=404,
-            detail=f"Entry point '{entry_point}' not recognized.",
+            detail=f"Entry point '{process.process_type}' not recognized.",
         ) from exc
 
-    process_node = submit(entry_point_process, **inputs)
-
-    return process_node
+    process_node = engine.submit(entry_point_process, **inputs)
+    return process_node.to_model()

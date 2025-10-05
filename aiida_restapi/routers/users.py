@@ -1,51 +1,61 @@
 """Declaration of FastAPI application."""
 
-from typing import List, Optional
+from __future__ import annotations
+
+import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.orm.querybuilder import QueryBuilder
 from fastapi import APIRouter, Depends
 
-from aiida_restapi.models import User
+from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
 
 from .auth import get_current_active_user
 
 router = APIRouter()
 
 
-@router.get('/users', response_model=List[User])
+repository = EntityRepository[orm.User, orm.User.Model](orm.User)
+
+
+@router.get('/users/projectable_properties', response_model=list[str])
+async def get_user_projectable_properties() -> list[str]:
+    """Get projectable properties for AiiDA user."""
+    return repository.get_projectable_properties()
+
+
+@router.get(
+    '/users',
+    response_model=PaginatedResults[orm.User.Model],
+    response_model_exclude_none=True,
+)
 @with_dbenv()
-async def read_users() -> List[User]:
-    """Get list of all users"""
-    return User.get_entities()
+async def get_users(
+    queries: t.Annotated[QueryParams, Depends(query_params)],
+) -> PaginatedResults[orm.User.Model]:
+    """Get AiiDA users with optional filtering, sorting, and/or pagination."""
+    return repository.get_entities(queries)
 
 
-@router.get('/users/projectable_properties', response_model=List[str])
-async def get_users_projectable_properties() -> List[str]:
-    """Get projectable properties for users endpoint"""
-
-    return User.get_projectable_properties()
-
-
-@router.get('/users/{user_id}', response_model=User)
+@router.get(
+    '/users/{user_id}',
+    response_model=orm.User.Model,
+)
 @with_dbenv()
-async def read_user(user_id: int) -> Optional[User]:
-    """Get user by id."""
-    qbobj = QueryBuilder()
-    qbobj.append(orm.User, filters={'id': user_id}, project='**', tag='user').limit(1)
-
-    return qbobj.dict()[0]['user']
+async def get_user(user_id: int) -> orm.User.Model:
+    """Get AiiDA user by id."""
+    return repository.get_entity_by_id(user_id)
 
 
-@router.post('/users', response_model=User)
+@router.post(
+    '/users',
+    response_model=orm.User.Model,
+    response_model_exclude_none=True,
+)
 @with_dbenv()
 async def create_user(
-    user: User,
-    current_user: User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> User:
+    user_model: orm.User.Model,
+    current_user: t.Annotated[orm.User, Depends(get_current_active_user)],
+) -> orm.User.Model:
     """Create new AiiDA user."""
-    orm_user = orm.User(**user.dict(exclude_unset=True)).store()
-    return User.from_orm(orm_user)
+    return repository.create_entity(user_model)
