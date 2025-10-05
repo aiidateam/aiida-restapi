@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import typing as t
-from pathlib import Path
 
 from aiida import orm
 from fastapi import HTTPException
@@ -85,49 +84,28 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
     def get_projectable_properties(self, node_type: str | None = None) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 
-        :param node_type: The node type name of the AiiDA entity.
-        :return: The list of projectable properties for the AiiDA entity.
-        :raises HTTPException: If the node type is unknown.
+        :param node_type: The AiiDA node type.
+        :return: The list of projectable properties for the AiiDA node.
         """
         if not node_type:
             return super().get_projectable_properties()
         else:
-            try:
-                node_cls = orm.utils.load_node_class(node_type)
-                return sorted(node_cls.fields.keys())
-            except KeyError:
-                raise HTTPException(status_code=404, detail='Unknown node type')
+            node_cls = orm.utils.load_node_class(node_type)
+            return sorted(node_cls.fields.keys())
 
-    def create_entity(self, model: NodeModelType) -> NodeModelType:
+    def create_entity(self, model: NodeModelType, node_type: str | None) -> NodeModelType:  # type: ignore[override]
         """Create new AiiDA node from its model.
 
-        :param node_model: The Pydantic model of the node to create.
-        :return: The created and stored AiiDA `Node` instance.
+        :param node_model: The AiiDA ORM model of the node to create.
+        :param node_type: The AiiDA node type.
+        :return: The created and stored AiiDA node instance.
         """
-        node_cls = orm.utils.load_node_class(model.node_type)
+        if node_type is None:
+            raise ValueError('Node type is required')
+        node_cls = orm.utils.load_node_class(node_type)
         node = node_cls.from_model(model)
         node.base.attributes.set_many(model.attributes or {})
         node.base.extras.set_many(model.extras or {})
         node.base.repository.repository_metadata = model.repository_metadata
-        node.store()
-        return t.cast(NodeModelType, node.to_model())
-
-    def create_node_with_file(
-        self,
-        node_cls: type[NodeType],
-        node_dict: dict,
-        file: Path,
-    ) -> NodeModelType:
-        """Create and store `Node` with file.
-
-        :param node_cls: The AiiDA ORM Node class to instantiate.
-        :param node_dict: The dictionary of node attributes, extras, and repository metadata.
-        :param file: The file to be uploaded to the node's repository.
-        :return: The created and stored AiiDA Node instance.
-        """
-        attributes = node_dict.pop('attributes', {})
-        extras = node_dict.pop('extras', {})
-        node = node_cls(file=file, **node_dict, **attributes)
-        node.base.extras.set_many(extras)
         node.store()
         return t.cast(NodeModelType, node.to_model())

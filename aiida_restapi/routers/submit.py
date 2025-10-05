@@ -46,6 +46,7 @@ def process_inputs(inputs: dict) -> dict:
 
 
 class ProcessSubmitModel(orm.ProcessNode.Model):
+    entry_point: str = pdt.Field(..., description='The entry point of the process.')
     inputs: dict = pdt.Field(..., description='The inputs of the process.')
 
 
@@ -64,11 +65,11 @@ async def submit_process(
     inputs = process_inputs(process_dict['inputs'])
 
     try:
-        entry_point_process = load_entry_point_from_string(process.process_type)
+        entry_point_process = load_entry_point_from_string(process.entry_point)
     except ValueError as exc:
         raise HTTPException(
             status_code=404,
-            detail=f"Entry point '{process.process_type}' not recognized.",
+            detail=f"Entry point '{process.entry_point}' not recognized.",
         ) from exc
 
     process_node = engine.submit(entry_point_process, **inputs)

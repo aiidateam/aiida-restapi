@@ -24,7 +24,7 @@ class NodeModelRegistry:
         self._types, self._models = self.build_node_mappings()
         self.ModelUnion = t.Annotated[
             t.Union[tuple(self._models.values())],
-            pdt.Field(discriminator='node_type'),
+            pdt.Field(discriminator='orm_class'),
         ]
 
     def get_node_types(self) -> list[str]:
@@ -34,34 +34,43 @@ class NodeModelRegistry:
         """
         return list(self._types.keys())
 
-    def get_node_type(self, node_class_name: str) -> str | None:
+    def get_node_type(self, node_class: str) -> str:
         """Get the node type string for a given node class name.
 
-        :param node_class_name: The name of the AiiDA node class.
+        :param node_class: The name of the AiiDA node class.
         :return: The corresponding node type string.
         """
-        return self._types.get(node_class_name)
+        if (node_type := self._types.get(node_class)) is None:
+            raise KeyError(f'Unknown node class: {node_class}')
+        return node_type
 
-    def get_model(self, node_class_name: str) -> type[orm.Node.Model] | None:
+    def get_model(self, node_class: str) -> type[orm.Node.Model]:
         """Get the Pydantic model class for a given node type.
 
-        :param node_class_name: The name of the AiiDA node class.
+        :param node_class: The name of the AiiDA node class.
         :return: The corresponding Pydantic model class.
         """
-        return self._models.get(node_class_name, None)
+        if (model := self._models.get(node_class)) is None:
+            raise KeyError(f'Unknown node class: {node_class}')
+        return model
 
-    def literalize_node_model(self, node_cls: orm.Node, node_type: str) -> type[orm.Node.Model]:
-        """Extend the given node class's model with a literal node type field.
+    def get_patched_node_model(self, node_cls: orm.Node) -> type[orm.Node.Model]:
+        """Return a patched Model for the given node class with a literal `orm_class` field.
 
         :param node_cls: The AiiDA node class.
-        :param node_type: The node type name of the node class.
-        :return: The extended Pydantic model class.
+        :return: The patched ORM Node model.
         """
-        return pdt.create_model(
-            f'{node_cls.__name__}RestModel',
+        model = pdt.create_model(
+            f'{node_cls.__name__}Model',
             __base__=node_cls.Model,
-            node_type=(t.Literal[node_type], node_type),
         )
+        # Here we patch in the `orm_class` field for use in the descriminated union.
+        # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema
+        model.model_fields['orm_class'] = pdt.fields.FieldInfo(
+            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_cls.__name__]],  # type: ignore[misc,valid-type]
+            default=node_cls.__name__,
+        )
+        return model
 
     def build_node_mappings(self) -> tuple[dict[str, str], dict[str, type[orm.Node.Model]]]:
         """Build node mappings to node types and node models.
@@ -84,5 +93,5 @@ class NodeModelRegistry:
             if node_cls_name in models:
                 continue
             types[node_cls_name] = node_type
-            models[node_cls_name] = self.literalize_node_model(node_cls, node_type)
+            models[node_cls_name] = self.get_patched_node_model(node_cls)
         return types, models
