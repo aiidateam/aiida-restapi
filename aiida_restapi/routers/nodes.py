@@ -18,14 +18,15 @@ from aiida_restapi.common import NodeModelRegistry, NodeRepository, PaginatedRes
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 
 repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
 model_registry = NodeModelRegistry()
 
 
-@router.get('/nodes/schema')
+@read_router.get('/nodes/schema')
 async def get_nodes_schema(
     which: t.Literal['get', 'post'] | None = Query(
         None,
@@ -57,7 +58,7 @@ async def get_nodes_schema(
     )
 
 
-@router.get('/nodes/projectable_properties')
+@read_router.get('/nodes/projectable_properties')
 @with_dbenv()
 async def get_node_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA nodes.
@@ -67,7 +68,7 @@ async def get_node_projectable_properties() -> list[str]:
     return repository.get_projectable_properties()
 
 
-@router.get('/nodes/download_formats')
+@read_router.get('/nodes/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes.
 
@@ -76,7 +77,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
     return resources.get_all_download_formats()
 
 
-@router.get(
+@read_router.get(
     '/nodes',
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
@@ -93,7 +94,7 @@ async def get_nodes(
     return repository.get_entities(queries)
 
 
-@router.get('/nodes/types')
+@read_router.get('/nodes/types')
 async def get_nodes_types() -> list:
     """
     Return all node types in a machine-actionable format:
@@ -123,7 +124,7 @@ async def get_nodes_types() -> list:
     ]
 
 
-@router.get(
+@read_router.get(
     '/nodes/types/{node_type}',
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
@@ -149,7 +150,7 @@ async def get_nodes_by_type(
         raise HTTPException(status_code=400, detail=str(exception)) from exception
 
 
-@router.get('/nodes/types/{node_type}/projectable_properties')
+@read_router.get('/nodes/types/{node_type}/projectable_properties')
 @with_dbenv()
 async def get_node_class_projectable_properties(node_type: str) -> list[str]:
     """Get projectable properties of a given AiiDA node class.
@@ -166,7 +167,7 @@ async def get_node_class_projectable_properties(node_type: str) -> list[str]:
         raise HTTPException(status_code=400, detail=str(exception)) from exception
 
 
-@router.get('/nodes/types/{node_type}/schema')
+@read_router.get('/nodes/types/{node_type}/schema')
 async def get_node_class_schema(
     node_type: str,
     which: t.Literal['get', 'post'] | None = Query(
@@ -199,7 +200,7 @@ async def get_node_class_schema(
     raise HTTPException(status_code=404, detail='Parameter "which" must be either "get" or "post"')
 
 
-@router.get(
+@read_router.get(
     '/nodes/{node_id}',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
@@ -218,7 +219,7 @@ async def get_node(node_id: int) -> orm.Node.Model:
         raise HTTPException(status_code=404, detail=f'Could not find any Node with id {node_id}')
 
 
-@router.get('/nodes/{node_id}/download')
+@read_router.get('/nodes/{node_id}/download')
 @with_dbenv()
 async def download_node(
     node_id: int,
@@ -269,7 +270,7 @@ async def download_node(
         )
 
 
-@router.get('/nodes/{node_id}/repo/contents')
+@write_router.get('/nodes/{node_id}/repo/contents')
 @with_dbenv()
 async def get_node_repo_file_contents(
     node_id: int,
@@ -315,7 +316,7 @@ async def get_node_repo_file_contents(
         return StreamingResponse(zip_stream(), media_type='application/zip')
 
 
-@router.post(
+@write_router.post(
     '/nodes',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
@@ -342,7 +343,7 @@ async def create_node(
 
 
 # TODO what about folderdata?
-@router.post(
+@write_router.post(
     '/nodes/file-upload',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,

@@ -12,12 +12,13 @@ from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
 
 
-@router.get('/groups/schema')
+@read_router.get('/groups/schema')
 async def get_groups_schema(
     which: t.Literal['get', 'post'] | None = Query(
         None,
@@ -42,7 +43,7 @@ async def get_groups_schema(
     raise HTTPException(status_code=400, detail='Parameter "which" must be either "get" or "post"')
 
 
-@router.get('/groups/projectable_properties', response_model=list[str])
+@read_router.get('/groups/projectable_properties', response_model=list[str])
 async def get_group_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA groups.
 
@@ -51,7 +52,7 @@ async def get_group_projectable_properties() -> list[str]:
     return repository.get_projectable_properties()
 
 
-@router.get(
+@read_router.get(
     '/groups',
     response_model=PaginatedResults[orm.Group.Model],
     response_model_exclude_none=True,
@@ -68,7 +69,7 @@ async def get_groups(
     return repository.get_entities(queries)
 
 
-@router.get(
+@read_router.get(
     '/groups/{group_id}',
     response_model=orm.Group.Model,
     response_model_exclude_none=True,
@@ -87,7 +88,7 @@ async def get_group(group_id: int) -> orm.Group.Model:
         raise HTTPException(status_code=404, detail=f'Could not find any Group with id {group_id}')
 
 
-@router.post(
+@write_router.post(
     '/groups',
     response_model=orm.Group.Model,
     response_model_exclude_none=True,

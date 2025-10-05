@@ -15,10 +15,23 @@ from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
-from aiida_restapi import app, config
+from aiida_restapi import config
+from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
 
 pytest_plugins = ['aiida.tools.pytest_fixtures']
+
+
+@pytest.fixture(scope='session')
+def app():
+    """Return fastapi app."""
+    yield create_app()
+
+
+@pytest.fixture(scope='function')
+def read_only_app():
+    """Return fastapi app read-only mode."""
+    yield create_app(read_only=True)
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -34,7 +47,7 @@ def clear_database_auto(aiida_profile_clean):  # pylint: disable=unused-argument
 
 
 @pytest.fixture(scope='function')
-def client():
+def client(app):
     """Return fastapi test client."""
     yield TestClient(app)
 
@@ -50,7 +63,7 @@ def anyio_backend():
 
 
 @pytest.fixture(scope='function')
-async def async_client():
+async def async_client(app):
     """Return fastapi async test client."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as async_test_client:
         yield async_test_client
@@ -180,7 +193,7 @@ def array_data_node():
 
 
 @pytest.fixture(scope='function')
-def authenticate():
+def authenticate(app):
     """Authenticate user.
 
     Since this goes via modifying the app, undo modifications afterwards.

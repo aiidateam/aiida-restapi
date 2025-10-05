@@ -12,13 +12,14 @@ from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 
 repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
 
 
-@router.get('/computers/schema')
+@read_router.get('/computers/schema')
 async def get_computers_schema(
     which: t.Literal['get', 'post'] | None = Query(
         None,
@@ -43,7 +44,7 @@ async def get_computers_schema(
     raise HTTPException(status_code=400, detail='Parameter "which" must be either "get" or "post"')
 
 
-@router.get('/computers/projectable_properties', response_model=list[str])
+@read_router.get('/computers/projectable_properties', response_model=list[str])
 async def get_computer_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA computers.
 
@@ -52,7 +53,7 @@ async def get_computer_projectable_properties() -> list[str]:
     return repository.get_projectable_properties()
 
 
-@router.get(
+@read_router.get(
     '/computers',
     response_model=PaginatedResults[orm.Computer.Model],
     response_model_exclude_none=True,
@@ -69,7 +70,7 @@ async def get_computers(
     return repository.get_entities(queries)
 
 
-@router.get(
+@read_router.get(
     '/computers/{comp_id}',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
@@ -88,7 +89,7 @@ async def get_computer(comp_id: int) -> orm.Computer.Model:
         raise HTTPException(status_code=404, detail=f'Could not find any Computer with id {comp_id}')
 
 
-@router.post(
+@write_router.post(
     '/computers',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
