@@ -25,16 +25,34 @@ repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
 model_registry = NodeModelRegistry()
 
 
+@router.get('/nodes/schema')
+async def get_nodes_schema() -> dict[str, dict[str, t.Any]]:
+    """Get JSON schema for AiiDA nodes.
+
+    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    """
+    return {
+        'get': orm.Node.Model.model_json_schema(),
+        'post': {model.__name__: model.model_json_schema() for model in model_registry.get_models()},
+    }
+
+
 @router.get('/nodes/projectable_properties')
 @with_dbenv()
 async def get_node_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA nodes."""
+    """Get projectable properties for AiiDA nodes.
+
+    :return: The list of projectable properties for AiiDA nodes.
+    """
     return repository.get_projectable_properties()
 
 
 @router.get('/nodes/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
-    """Get download formats for AiiDA nodes."""
+    """Get download formats for AiiDA nodes.
+
+    :return: A dictionary with available download formats as keys and their descriptions as values.
+    """
     return resources.get_all_download_formats()
 
 
@@ -47,13 +65,20 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 async def get_nodes(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Node.Model]:
-    """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
+    """Get AiiDA nodes with optional filtering, sorting, and/or pagination.
+
+    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :return: The paginated results, including total count, current page, page size, and list of node models.
+    """
     return repository.get_entities(queries)
 
 
 @router.get('/nodes/types')
 async def get_nodes_types() -> list[str]:
-    """Get available AiiDA node class names."""
+    """Get available AiiDA node class names.
+
+    :return: List of available AiiDA node class names.
+    """
     return sorted(model_registry.get_node_types())
 
 
@@ -67,10 +92,16 @@ async def get_nodes_by_type(
     node_class: str,
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Node.Model]:
-    """Get AiiDA nodes by node type with optional filtering, sorting, and/or pagination."""
+    """Get AiiDA nodes by node type with optional filtering, sorting, and/or pagination.
+
+    :param node_class: The name of the AiiDA node class.
+    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :return: The paginated results, including total count, current page, page size, and list of node models.
+    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    """
     try:
         node_type = model_registry.get_node_type(node_class)
-        queries.filters['node_type'] = {'like': node_type}
+        queries.filters['node_type'] = {'like': f'%{node_type}%'}
         return repository.get_entities(queries)
     except KeyError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
@@ -81,7 +112,12 @@ async def get_nodes_by_type(
 @router.get('/nodes/types/{node_class}/projectable_properties')
 @with_dbenv()
 async def get_node_class_projectable_properties(node_class: str) -> list[str]:
-    """Get projectable properties of a given AiiDA node class."""
+    """Get projectable properties of a given AiiDA node class.
+
+    :param node_class: The name of the AiiDA node class.
+    :return: The list of projectable properties for the given AiiDA node class.
+    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    """
     try:
         node_type = model_registry.get_node_type(node_class)
         return repository.get_projectable_properties(node_type)
@@ -92,12 +128,19 @@ async def get_node_class_projectable_properties(node_class: str) -> list[str]:
 
 
 @router.get('/nodes/types/{node_class}/schema')
-@with_dbenv()
 async def get_node_class_schema(node_class: str) -> dict[str, t.Any]:
-    """Get JSON schema for a given AiiDA node class."""
+    """Get JSON schema for a given AiiDA node class.
+
+    :param node_class: The name of the AiiDA node class.
+    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    """
     try:
         NodeModel = model_registry.get_model(node_class)
-        return NodeModel.model_json_schema()
+        return {
+            'get': orm.Node.Model.model_json_schema(),
+            'post': NodeModel.model_json_schema(),
+        }
     except KeyError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -111,8 +154,16 @@ async def get_node_class_schema(node_class: str) -> dict[str, t.Any]:
 )
 @with_dbenv()
 async def get_node(node_id: int) -> orm.Node.Model:
-    """Get AiiDA node by id."""
-    return repository.get_entity_by_id(node_id)
+    """Get AiiDA node by id.
+
+    :param node_id: The id of the node to retrieve.
+    :return: The AiiDA node model, e.g. `orm.Node.Model`,
+    :raises HTTPException: If the node with the given id does not exist.
+    """
+    try:
+        return repository.get_entity_by_id(node_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f'Could not find any Node with id {node_id}')
 
 
 @router.get('/nodes/{node_id}/download')
@@ -121,7 +172,15 @@ async def download_node(
     node_id: int,
     download_format: str | None = Query(None, description='Format to download the node in'),
 ) -> StreamingResponse:
-    """Download AiiDA node by id in a given download format (provided as a query parameter)."""
+    """Download AiiDA node by id in a given download format provided as a query parameter.
+
+    :param node_id: The id of the node to retrieve.
+    :param download_format: The format to download the node in.
+    :return: StreamingResponse with the exported node content.
+    :raises HTTPException: If the node with the given id does not exist (404),
+        if the download format is not specified (422),
+        or if the download format is not supported (422).
+    """
     try:
         node = orm.load_node(node_id)
     except NotExistent:
@@ -168,7 +227,14 @@ async def create_node(
     node_model: model_registry.ModelUnion,  # type: ignore
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Create new AiiDA node."""
+    """Create new AiiDA node.
+
+    :param node_model: The AiiDA ORM model of the node to create.
+    :param current_user: The current authenticated user.
+    :return: The created AiiDA node.
+    :raises HTTPException: If the node class is not recognized (404),
+        or if creation fails (400).
+    """
     try:
         node_type = model_registry.get_node_type(node_model.orm_class)
         return repository.create_entity(node_model, node_type)
@@ -180,7 +246,7 @@ async def create_node(
 
 # TODO what about folderdata?
 @router.post(
-    '/nodes/singlefile',
+    '/nodes/file-upload',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
 )
@@ -190,24 +256,31 @@ async def create_upload_file(
     upload_file: UploadFile,
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Endpoint for uploading file data
+    """Create new AiiDA node with uploaded file.
 
-    Note that in this multipart form case, json input can't be used.
-    Get the parameters as a string and manually pass through pydantic.
+    :param params: JSON string of the node parameters.
+    :param upload_file: The file to upload.
+    :param current_user: The current authenticated user.
+    :return: The created AiiDA node model.
+    :raises HTTPException: If the JSON is invalid (400), if the node class is not recognized (404),
+        or if validation fails (422).
     """
+    # Note that in this multipart form case, json input can't be used.
+    # Here instead we get the parameters as a string and manually pass through pydantic.
     try:
         params_dict = t.cast(dict, json.loads(params))
         params_dict['content'] = await upload_file.read()  # TODO: read in chunks
-        node_model = model_registry.get_model(params_dict.get('orm_class', 'SinglefileData'))
-        node_type = model_registry.get_node_type(params_dict['orm_class'])
+        node_class = params_dict.get('orm_class', 'SinglefileData')
+        node_model = model_registry.get_model(node_class)
         model = node_model(**params_dict)
-    except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        node_type = model_registry.get_node_type(node_class)
     except json.JSONDecodeError as exception:
         raise HTTPException(
             status_code=400,
             detail=f'Invalid JSON format: {exception!s}',
         ) from exception
+    except KeyError as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
     except pdt.ValidationError as exception:
         raise HTTPException(
             status_code=422,

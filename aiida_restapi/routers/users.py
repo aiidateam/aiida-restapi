@@ -1,4 +1,4 @@
-"""Declaration of FastAPI application."""
+"""Declaration of FastAPI router for users."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
 
@@ -17,10 +17,27 @@ router = APIRouter()
 
 repository = EntityRepository[orm.User, orm.User.Model](orm.User)
 
+UserPostModel = orm.User.Model.as_input_model()
+
+
+@router.get('/users/schema')
+async def get_users_schema() -> dict[str, dict[str, t.Any]]:
+    """Get JSON schema for AiiDA users.
+
+    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    """
+    return {
+        'get': orm.User.Model.model_json_schema(),
+        'post': UserPostModel.model_json_schema(),
+    }
+
 
 @router.get('/users/projectable_properties', response_model=list[str])
 async def get_user_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA user."""
+    """Get projectable properties for AiiDA user.
+
+    :return: The list of projectable properties for AiiDA user.
+    """
     return repository.get_projectable_properties()
 
 
@@ -33,7 +50,11 @@ async def get_user_projectable_properties() -> list[str]:
 async def get_users(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.User.Model]:
-    """Get AiiDA users with optional filtering, sorting, and/or pagination."""
+    """Get AiiDA users with optional filtering, sorting, and/or pagination.
+
+    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :return: The paginated results, including total count, current page, page size, and list of user models.
+    """
     return repository.get_entities(queries)
 
 
@@ -43,8 +64,16 @@ async def get_users(
 )
 @with_dbenv()
 async def get_user(user_id: int) -> orm.User.Model:
-    """Get AiiDA user by id."""
-    return repository.get_entity_by_id(user_id)
+    """Get AiiDA user by id.
+
+    :param user_id: The id of the user to retrieve.
+    :return: The AiiDA user model.
+    :raises HTTPException: If the user with the given id does not exist (404).
+    """
+    try:
+        return repository.get_entity_by_id(user_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f'Could not find any User with id {user_id}')
 
 
 @router.post(
@@ -54,8 +83,13 @@ async def get_user(user_id: int) -> orm.User.Model:
 )
 @with_dbenv()
 async def create_user(
-    user_model: orm.User.Model,
+    user_model: UserPostModel,  # type: ignore[valid-type]
     current_user: t.Annotated[orm.User, Depends(get_current_active_user)],
 ) -> orm.User.Model:
-    """Create new AiiDA user."""
+    """Create new AiiDA user.
+
+    :param user_model: The Pydantic model of the user to create.
+    :param current_user: The current authenticated user.
+    :return: The created AiiDA User model.
+    """
     return repository.create_entity(user_model)

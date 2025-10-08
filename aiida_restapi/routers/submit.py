@@ -1,4 +1,4 @@
-"""Declaration of FastAPI router for processes."""
+"""Declaration of FastAPI router for submission."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from .auth import get_current_active_user
 router = APIRouter()
 
 
-def process_inputs(inputs: dict) -> dict:
+def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
     """Process the inputs dictionary converting each node UUID into the corresponding node by loading it.
 
     A node UUID is indicated by the key ending with the suffix ``.uuid``.
@@ -45,9 +45,20 @@ def process_inputs(inputs: dict) -> dict:
     return results
 
 
-class ProcessSubmitModel(orm.ProcessNode.Model):
-    entry_point: str = pdt.Field(..., description='The entry point of the process.')
-    inputs: dict = pdt.Field(..., description='The inputs of the process.')
+class ProcessSubmitModel(pdt.BaseModel):
+    label: str = pdt.Field(default='', description='The label of the process')
+    entry_point: str = pdt.Field(description='The entry point of the process')
+    inputs: dict[str, t.Any] = pdt.Field(description='The inputs of the process')
+
+    @pdt.field_validator('inputs')
+    @classmethod
+    def validate_inputs(cls, inputs: dict[str, t.Any]) -> dict[str, t.Any]:
+        """Process the inputs dictionary.
+
+        :param inputs: The inputs to validate.
+        :returns: The validated inputs.
+        """
+        return process_inputs(inputs)
 
 
 @router.post(
@@ -60,10 +71,13 @@ async def submit_process(
     process: ProcessSubmitModel,
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Create new process."""
-    process_dict = process.model_dump(exclude_unset=True, exclude_none=True)
-    inputs = process_inputs(process_dict['inputs'])
+    """Submit new AiiDA process.
 
+    :param process: The Pydantic model of the process to create.
+    :param current_user: The current authenticated user.
+    :return: The created process node model.
+    :raises HTTPException: If the entry point is not recognized or if any input node UUID does not exist.
+    """
     try:
         entry_point_process = load_entry_point_from_string(process.entry_point)
     except ValueError as exc:
@@ -72,5 +86,5 @@ async def submit_process(
             detail=f"Entry point '{process.entry_point}' not recognized.",
         ) from exc
 
-    process_node = engine.submit(entry_point_process, **inputs)
-    return process_node.to_model()
+    process_node = engine.submit(entry_point_process, **process.inputs)
+    return t.cast(orm.Node.Model, process_node.to_model())

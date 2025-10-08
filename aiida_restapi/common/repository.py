@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
-from fastapi import HTTPException
+from aiida.common.pydantic import get_metadata
 
 from .pagination import PaginatedResults
 from .query import QueryParams
@@ -55,18 +55,8 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
 
         :param entity_id: The id of the entity to retrieve.
         :return: The AiiDA entity model, e.g. `orm.User.Model`, `orm.Node.Model`, etc.
-        :raises HTTPException: If the entity with the given id does not exist.
         """
-        try:
-            return t.cast(
-                EntityModelType,
-                self.entity_cls.collection.get(pk=entity_id).to_model(),
-            )
-        except Exception:
-            raise HTTPException(
-                status_code=404,
-                detail=f'Could not find any {self.entity_cls.__name__.lower()} with id {entity_id}',
-            )
+        return t.cast(EntityModelType, self.entity_cls.collection.get(pk=entity_id).to_model())
 
     def create_entity(self, model: EntityModelType) -> EntityModelType:
         """Create new AiiDA entity from its model.
@@ -103,9 +93,14 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         if node_type is None:
             raise ValueError('Node type is required')
         node_cls = orm.utils.load_node_class(node_type)
-        node = node_cls.from_model(model)
-        node.base.attributes.set_many(model.attributes or {})
+        node = t.cast(NodeType, node_cls.from_model(model))
+        node.base.attributes.set_many(
+            {
+                key: getattr(model, key)
+                for key, field in model.model_fields.items()
+                if key != 'orm_class' and get_metadata(field, 'is_attribute')
+            }
+        )
         node.base.extras.set_many(model.extras or {})
-        node.base.repository.repository_metadata = model.repository_metadata
         node.store()
         return t.cast(NodeModelType, node.to_model())

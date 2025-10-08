@@ -117,6 +117,7 @@ async def get_current_active_user(
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> dict[str, t.Any]:
+    """Login to get access token."""
     user = authenticate_user(config.fake_users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -133,4 +134,5 @@ async def login_for_access_token(
 async def read_users_me(
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.User.Model:
+    """Get the current authenticated user."""
     return current_user

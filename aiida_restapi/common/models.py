@@ -44,6 +44,13 @@ class NodeModelRegistry:
             raise KeyError(f'Unknown node class: {node_class}')
         return node_type
 
+    def get_models(self) -> list[type[orm.Node.Model]]:
+        """Get the list of registered Pydantic model classes.
+
+        :return: List of Pydantic model classes.
+        """
+        return list(self._models.values())
+
     def get_model(self, node_class: str) -> type[orm.Node.Model]:
         """Get the Pydantic model class for a given node type.
 
@@ -54,18 +61,15 @@ class NodeModelRegistry:
             raise KeyError(f'Unknown node class: {node_class}')
         return model
 
-    def get_patched_node_model(self, node_cls: orm.Node) -> type[orm.Node.Model]:
+    def get_node_post_model(self, node_cls: orm.Node) -> type[orm.Node.Model]:
         """Return a patched Model for the given node class with a literal `orm_class` field.
 
         :param node_cls: The AiiDA node class.
         :return: The patched ORM Node model.
         """
-        model = pdt.create_model(
-            f'{node_cls.__name__}Model',
-            __base__=node_cls.Model,
-        )
-        # Here we patch in the `orm_class` field for use in the descriminated union.
-        # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema
+        model = node_cls.Model.as_input_model()
+        # Here we patch in the `orm_class` union descriminator field.
+        # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema.
         model.model_fields['orm_class'] = pdt.fields.FieldInfo(
             annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_cls.__name__]],  # type: ignore[misc,valid-type]
             default=node_cls.__name__,
@@ -93,5 +97,5 @@ class NodeModelRegistry:
             if node_cls_name in models:
                 continue
             types[node_cls_name] = node_type
-            models[node_cls_name] = self.get_patched_node_model(node_cls)
+            models[node_cls_name] = self.get_node_post_model(node_cls)
         return types, models

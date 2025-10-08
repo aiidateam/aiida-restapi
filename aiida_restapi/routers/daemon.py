@@ -22,10 +22,16 @@ class DaemonStatusModel(BaseModel):
     num_workers: t.Optional[int] = Field(description='The number of workers if the daemon is running.')
 
 
-@router.get('/daemon/status', response_model=DaemonStatusModel)
+@router.get(
+    '/daemon/status',
+    response_model=DaemonStatusModel,
+)
 @with_dbenv()
 async def get_daemon_status() -> DaemonStatusModel:
-    """Return the daemon status."""
+    """Return the daemon status.
+
+    :return: The daemon status.
+    """
     client = get_daemon_client()
 
     if not client.is_daemon_running:
@@ -36,14 +42,19 @@ async def get_daemon_status() -> DaemonStatusModel:
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post('/daemon/start', response_model=DaemonStatusModel)
+@router.post(
+    '/daemon/start',
+    response_model=DaemonStatusModel,
+)
 @with_dbenv()
 async def get_daemon_start(
-    current_user: orm.User.Model = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
-    """Start the daemon."""
+    """Start the daemon.
+
+    :return: The daemon status after starting.
+    :raises HTTPException: If the daemon is already running (400) or if there was an error starting it (500).
+    """
     client = get_daemon_client()
 
     if client.is_daemon_running:
@@ -59,14 +70,19 @@ async def get_daemon_start(
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post('/daemon/stop', response_model=DaemonStatusModel)
+@router.post(
+    '/daemon/stop',
+    response_model=DaemonStatusModel,
+)
 @with_dbenv()
 async def get_daemon_stop(
-    current_user: orm.User.Model = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
-    """Stop the daemon."""
+    """Stop the daemon.
+
+    :return: The daemon status after stopping.
+    :raises HTTPException: If the daemon is not running (400) or if there was an error stopping it (500).
+    """
     client = get_daemon_client()
 
     if not client.is_daemon_running:
