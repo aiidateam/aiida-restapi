@@ -57,9 +57,9 @@ class NodeModelRegistry:
         :param node_class: The name of the AiiDA node class.
         :return: The corresponding Pydantic model class.
         """
-        if (model := self._models.get(node_class)) is None:
+        if (Model := self._models.get(node_class)) is None:
             raise KeyError(f'Unknown node class: {node_class}')
-        return model
+        return Model
 
     def get_node_post_model(self, node_cls: orm.Node) -> type[orm.Node.Model]:
         """Return a patched Model for the given node class with a literal `orm_class` field.
@@ -67,14 +67,14 @@ class NodeModelRegistry:
         :param node_cls: The AiiDA node class.
         :return: The patched ORM Node model.
         """
-        model = node_cls.Model.as_input_model()
+        Model = node_cls.InputModel
         # Here we patch in the `orm_class` union descriminator field.
         # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema.
-        model.model_fields['orm_class'] = pdt.fields.FieldInfo(
+        Model.model_fields['orm_class'] = pdt.fields.FieldInfo(
             annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_cls.__name__]],  # type: ignore[misc,valid-type]
             default=node_cls.__name__,
         )
-        return model
+        return t.cast(type[orm.Node.Model], Model)
 
     def build_node_mappings(self) -> tuple[dict[str, str], dict[str, type[orm.Node.Model]]]:
         """Build node mappings to node types and node models.

@@ -16,7 +16,7 @@ router = APIRouter()
 
 repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
 
-GroupPostModel = orm.Group.Model.as_input_model()
+GroupPostModel = orm.Group.InputModel
 
 
 @router.get('/groups/schema')

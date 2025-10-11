@@ -17,7 +17,7 @@ router = APIRouter()
 
 repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
 
-ComputerPostModel = orm.Computer.Model.as_input_model()
+ComputerPostModel = orm.Computer.InputModel
 
 
 @router.get('/computers/schema')

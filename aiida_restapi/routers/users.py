@@ -17,7 +17,7 @@ router = APIRouter()
 
 repository = EntityRepository[orm.User, orm.User.Model](orm.User)
 
-UserPostModel = orm.User.Model.as_input_model()
+UserPostModel = orm.User.InputModel
 
 
 @router.get('/users/schema')
