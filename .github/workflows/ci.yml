@@ -18,7 +18,7 @@ jobs:
       with:
         python-version: '3.9'
 
-    - uses: pre-commit/action@v2.0.0
+    - uses: pre-commit/action@v3.0.1
 
   tests:
     # runs only on pull request when from foreign repo, prevents duplicate runs
