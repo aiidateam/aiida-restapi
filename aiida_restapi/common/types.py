@@ -6,7 +6,7 @@ import typing as t
 
 from aiida import orm
 
-EntityType = t.TypeVar('EntityType', bound='orm.Entity')
+EntityType = t.TypeVar('EntityType', bound='orm.Entity[t.Any, t.Any]')
 EntityModelType = t.TypeVar('EntityModelType', bound='orm.Entity.Model')
 
 NodeType = t.TypeVar('NodeType', bound='orm.Node')
