@@ -84,7 +84,7 @@ async def get_computer(comp_id: int) -> orm.Computer.Model:
 )
 @with_dbenv()
 async def create_computer(
-    computer_model: orm.Computer.Model,
+    computer_model: ComputerPostModel,  # type: ignore[valid-type]
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.Computer.Model:
     """Create new AiiDA computer.
