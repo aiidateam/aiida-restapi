@@ -169,6 +169,24 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
             'pbc1': True,
             'pbc2': True,
             'pbc3': True,
+            'kinds': [
+                {
+                    'name': 'H',
+                    'mass': 1.00784,
+                    'symbols': ['H'],
+                    'weights': [1.0],
+                }
+            ],
+            'sites': [
+                {
+                    'position': [0.0, 0.0, 0.0],
+                    'kind_name': 'H',
+                },
+                {
+                    'position': [0.5, 0.5, 0.5],
+                    'kind_name': 'H',
+                },
+            ],
         },
     )
     assert response.status_code == 200, response.content
@@ -224,7 +242,7 @@ def test_create_single_file_upload(client, authenticate):  # pylint: disable=unu
         )
     }
 
-    response = client.post('/nodes/singlefile', files=test_file, data=data)
+    response = client.post('/nodes/file-upload', files=test_file, data=data)
     assert response.status_code == 200, response.json()
 
 
