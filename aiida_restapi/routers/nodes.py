@@ -217,6 +217,52 @@ async def download_node(
         )
 
 
+@router.get('/nodes/{node_id}/repo/contents')
+@with_dbenv()
+async def get_node_repo_file_contents(
+    node_id: int,
+    filename: str | None = Query(None, description='Filename of repository content to retrieve'),
+) -> StreamingResponse:
+    """Get the repository contents of a node.
+
+    :param node_id: The id of the node to retrieve the repository contents for.
+    :param filename: The filename of the repository content to retrieve. If None, retrieves all contents.
+    :return: StreamingResponse with the requested file content.
+    :raises HTTPException: If the node with the given id does not exist (404),
+        or if the requested file does not exist in the node's repository (404).
+    """
+    try:
+        node = orm.load_node(node_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+
+    repo = node.base.repository
+
+    if filename:
+        if filename not in repo.list_object_names():
+            raise HTTPException(
+                status_code=404,
+                detail=f'Could not find file {filename} in the repository of node with id {node_id}',
+            )
+
+        file_content = repo.get_object_content(filename, mode='rb')
+
+        def file_stream() -> t.Generator[bytes, None, None]:
+            with io.BytesIO(file_content) as handler:
+                yield from handler
+
+        return StreamingResponse(file_stream(), media_type='application/octet-stream')
+
+    else:
+        zip_bytes = repo.get_zipped_objects()
+
+        def zip_stream() -> t.Generator[bytes, None, None]:
+            with io.BytesIO(zip_bytes) as handler:
+                yield from handler
+
+        return StreamingResponse(zip_stream(), media_type='application/zip')
+
+
 @router.post(
     '/nodes',
     response_model=orm.Node.Model,

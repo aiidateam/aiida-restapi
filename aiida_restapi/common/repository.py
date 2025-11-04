@@ -83,7 +83,19 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
             node_cls = orm.utils.load_node_class(node_type)
             return sorted(node_cls.fields.keys())
 
-    def create_entity(self, model: NodeModelType, node_type: str | None) -> NodeModelType:  # type: ignore[override]
+    def get_entities(self, queries: QueryParams) -> PaginatedResults[NodeModelType]:
+        """Get nodes with optional filtering, sorting, and/or pagination and augment repository content."""
+        paginated_results = super().get_entities(queries)
+        for model in paginated_results.results:
+            self._patch_repository_metadata(model)
+        return paginated_results
+
+    def get_entity_by_id(self, entity_id: int) -> NodeModelType:
+        """Get a single node by id and augment repository content."""
+        model = super().get_entity_by_id(entity_id)
+        return self._patch_repository_metadata(model)
+
+    def create_entity(self, model: NodeModelType, node_type: str | None = None) -> NodeModelType:
         """Create new AiiDA node from its model.
 
         :param node_model: The AiiDA ORM model of the node to create.
@@ -103,4 +115,37 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         )
         node.base.extras.set_many(model.extras or {})
         node.store()
-        return t.cast(NodeModelType, node.to_model())
+        created_model = node.to_model()
+        patched_model = self._patch_repository_metadata(created_model)
+        return patched_model
+
+    def _patch_repository_metadata(self, model: NodeModelType) -> NodeModelType:
+        """Add download URLs to the repository content of the node model.
+
+        :param model: The AiiDA node model.
+        :return: The patched AiiDA node model with download URLs in the repository metadata.
+        """
+
+        repo_metadata: dict[str, t.Any] = getattr(model, 'repository_metadata')
+        if not repo_metadata:
+            return model
+
+        node = self.entity_cls.collection.get(pk=model.pk)
+
+        total_size = 0
+        for path in repo_metadata['o']:
+            size = node.base.repository.get_object_size(path)
+            total_size += size
+            repo_metadata['o'][path] |= {
+                'size': size,
+                'download': f'/nodes/{model.pk}/repo/contents?filename={path}',
+            }
+
+        repo_metadata['o']['zipped'] = {
+            'size': total_size,
+            'download': f'/nodes/{model.pk}/repo/contents',
+        }
+
+        setattr(model, 'repository_metadata', repo_metadata)
+
+        return model
