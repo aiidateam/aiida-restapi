@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import typing as t
 
-from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.engine.daemon.client import DaemonException, get_daemon_client
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
@@ -37,7 +36,10 @@ async def get_daemon_status() -> DaemonStatusModel:
     if not client.is_daemon_running:
         return DaemonStatusModel(running=False, num_workers=None)
 
-    response = client.get_numprocesses()
+    try:
+        response = client.get_numprocesses()
+    except DaemonException as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
@@ -48,7 +50,7 @@ async def get_daemon_status() -> DaemonStatusModel:
 )
 @with_dbenv()
 async def get_daemon_start(
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
     """Start the daemon.
 
@@ -62,10 +64,9 @@ async def get_daemon_start(
 
     try:
         client.start_daemon()
+        response = client.get_numprocesses()
     except DaemonException as exception:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
-
-    response = client.get_numprocesses()
 
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
@@ -76,7 +77,7 @@ async def get_daemon_start(
 )
 @with_dbenv()
 async def get_daemon_stop(
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
     """Stop the daemon.
 

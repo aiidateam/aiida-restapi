@@ -6,29 +6,40 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
 repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
 
-GroupPostModel = orm.Group.InputModel
-
 
 @router.get('/groups/schema')
-async def get_groups_schema() -> dict[str, dict[str, t.Any]]:
+async def get_groups_schema(
+    which: t.Literal['get', 'post'] | None = Query(
+        None,
+        description='Type of schema to retrieve: "get" or "post"',
+    ),
+) -> dict:
     """Get JSON schema for AiiDA groups.
 
+    :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    :raises HTTPException: If the 'which' parameter is not 'get' or 'post'.
     """
-    return {
-        'get': orm.Group.Model.model_json_schema(),
-        'post': GroupPostModel.model_json_schema(),
-    }
+    if not which:
+        return {
+            'get': orm.Group.Model.model_json_schema(),
+            'post': orm.Group.CreateModel.model_json_schema(),
+        }
+    elif which == 'get':
+        return orm.Group.Model.model_json_schema()
+    elif which == 'post':
+        return orm.Group.CreateModel.model_json_schema()
+    raise HTTPException(status_code=400, detail='Parameter "which" must be either "get" or "post"')
 
 
 @router.get('/groups/projectable_properties', response_model=list[str])
@@ -83,8 +94,8 @@ async def get_group(group_id: int) -> orm.Group.Model:
 )
 @with_dbenv()
 async def create_group(
-    group_model: GroupPostModel,  # type: ignore[valid-type]
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    group_model: orm.Group.CreateModel,
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Group.Model:
     """Create new AiiDA group.
 

@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from aiida_restapi import resources
 from aiida_restapi.common import NodeModelRegistry, NodeRepository, PaginatedResults, QueryParams, query_params
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
@@ -26,15 +26,35 @@ model_registry = NodeModelRegistry()
 
 
 @router.get('/nodes/schema')
-async def get_nodes_schema() -> dict[str, dict[str, t.Any]]:
+async def get_nodes_schema(
+    which: t.Literal['get', 'post'] | None = Query(
+        None,
+        description='Type of schema to retrieve: "get" or "post"',
+    ),
+) -> dict:
     """Get JSON schema for AiiDA nodes.
 
+    :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    :raises: HTTPException: If the 'which' parameter is not 'get' or 'post'.
     """
-    return {
-        'get': orm.Node.Model.model_json_schema(),
-        'post': {model.__name__: model.model_json_schema() for model in model_registry.get_models()},
-    }
+
+    def generate_create_models() -> dict[str, dict[str, t.Any]]:
+        return {model.__name__: model.model_json_schema() for model in model_registry.get_models()}
+
+    if which is None:
+        return {
+            'get': orm.Node.Model.model_json_schema(),
+            'post': generate_create_models(),
+        }
+    if which == 'get':
+        return orm.Node.Model.model_json_schema()
+    if which == 'post':
+        return generate_create_models()
+    raise HTTPException(
+        status_code=404,
+        detail=f'Schema type "{which}" not supported; expected "get" or "post"',
+    )
 
 
 @router.get('/nodes/projectable_properties')
@@ -128,23 +148,36 @@ async def get_node_class_projectable_properties(node_class: str) -> list[str]:
 
 
 @router.get('/nodes/types/{node_class}/schema')
-async def get_node_class_schema(node_class: str) -> dict[str, t.Any]:
+async def get_node_class_schema(
+    node_class: str,
+    which: t.Literal['get', 'post'] | None = Query(
+        None,
+        description='Type of schema to retrieve: "get" or "post"',
+    ),
+) -> dict[str, t.Any]:
     """Get JSON schema for a given AiiDA node class.
 
     :param node_class: The name of the AiiDA node class.
+    :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    :raises HTTPException: If the node class (or `which` parameter) is not recognized (404), or on failure (400).
     """
     try:
         NodeModel = model_registry.get_model(node_class)
-        return {
-            'get': orm.Node.Model.model_json_schema(),
-            'post': NodeModel.model_json_schema(),
-        }
+        if which is None:
+            return {
+                'get': orm.Node.Model.model_json_schema(),
+                'post': NodeModel.model_json_schema(),
+            }
+        if which == 'get':
+            return orm.Node.Model.model_json_schema()
+        if which == 'post':
+            return NodeModel.model_json_schema()
     except KeyError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
         raise HTTPException(status_code=400, detail=str(exception)) from exception
+    raise HTTPException(status_code=404, detail='Parameter "which" must be either "get" or "post"')
 
 
 @router.get(
@@ -271,7 +304,7 @@ async def get_node_repo_file_contents(
 @with_dbenv()
 async def create_node(
     node_model: model_registry.ModelUnion,  # type: ignore
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
     """Create new AiiDA node.
 
@@ -300,7 +333,7 @@ async def create_node(
 async def create_upload_file(
     params: t.Annotated[str, Form()],
     upload_file: UploadFile,
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
     """Create new AiiDA node with uploaded file.
 

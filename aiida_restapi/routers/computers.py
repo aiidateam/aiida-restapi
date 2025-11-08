@@ -6,30 +6,41 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
 
 repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
 
-ComputerPostModel = orm.Computer.InputModel
-
 
 @router.get('/computers/schema')
-async def get_computers_schema() -> dict[str, dict[str, t.Any]]:
+async def get_computers_schema(
+    which: t.Literal['get', 'post'] | None = Query(
+        None,
+        description='Type of schema to retrieve: "get" or "post"',
+    ),
+) -> dict:
     """Get JSON schema for AiiDA computers.
 
+    :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+    :raises HTTPException: If the 'which' parameter is not 'get' or 'post'.
     """
-    return {
-        'get': orm.Computer.Model.model_json_schema(),
-        'post': ComputerPostModel.model_json_schema(),
-    }
+    if not which:
+        return {
+            'get': orm.Computer.Model.model_json_schema(),
+            'post': orm.Computer.CreateModel.model_json_schema(),
+        }
+    elif which == 'get':
+        return orm.Computer.Model.model_json_schema()
+    elif which == 'post':
+        return orm.Computer.CreateModel.model_json_schema()
+    raise HTTPException(status_code=400, detail='Parameter "which" must be either "get" or "post"')
 
 
 @router.get('/computers/projectable_properties', response_model=list[str])
@@ -84,8 +95,8 @@ async def get_computer(comp_id: int) -> orm.Computer.Model:
 )
 @with_dbenv()
 async def create_computer(
-    computer_model: ComputerPostModel,  # type: ignore[valid-type]
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    computer_model: orm.Computer.CreateModel,
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Computer.Model:
     """Create new AiiDA computer.
 

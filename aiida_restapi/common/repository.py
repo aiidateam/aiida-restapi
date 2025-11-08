@@ -5,7 +5,6 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
-from aiida.common.pydantic import get_metadata
 
 from .pagination import PaginatedResults
 from .query import QueryParams
@@ -106,14 +105,6 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
             raise ValueError('Node type is required')
         node_cls = orm.utils.load_node_class(node_type)
         node = t.cast(NodeType, node_cls.from_model(model))
-        node.base.attributes.set_many(
-            {
-                key: getattr(model, key)
-                for key, field in model.model_fields.items()
-                if key != 'orm_class' and get_metadata(field, 'is_attribute')
-            }
-        )
-        node.base.extras.set_many(model.extras or {})
         node.store()
         created_model = node.to_model()
         patched_model = self._patch_repository_metadata(created_model)

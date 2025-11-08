@@ -11,7 +11,7 @@ from aiida.common.exceptions import NotExistent
 from aiida.plugins.entry_point import load_entry_point_from_string
 from fastapi import APIRouter, Depends, HTTPException
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
@@ -69,7 +69,7 @@ class ProcessSubmitModel(pdt.BaseModel):
 @with_dbenv()
 async def submit_process(
     process: ProcessSubmitModel,
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
     """Submit new AiiDA process.
 

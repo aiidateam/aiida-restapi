@@ -67,7 +67,7 @@ class NodeModelRegistry:
         :param node_cls: The AiiDA node class.
         :return: The patched ORM Node model.
         """
-        Model = node_cls.InputModel
+        Model = node_cls.CreateModel
         # Here we patch in the `orm_class` union descriminator field.
         # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema.
         Model.model_fields['orm_class'] = pdt.fields.FieldInfo(
