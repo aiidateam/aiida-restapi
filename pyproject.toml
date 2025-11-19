@@ -13,7 +13,7 @@ classifiers = [
   'Programming Language :: Python :: 3.9',
   'Programming Language :: Python :: 3.10',
   'Programming Language :: Python :: 3.11',
-  'Topic :: Scientific/Engineering'
+  'Topic :: Scientific/Engineering',
 ]
 dependencies = [
   'aiida-core~=2.5',
@@ -23,7 +23,7 @@ dependencies = [
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
   'python-dateutil~=2.0',
-  'lark~=0.11.0'
+  'lark~=0.11.0',
 ]
 dynamic = ['description', 'version']
 keywords = ['aiida', 'workflows']
@@ -40,7 +40,7 @@ docs = [
   'sphinx-external-toc',
   'sphinx-book-theme',
   'sphinx-panels',
-  'pygments-graphql'
+  'pygments-graphql',
 ]
 pre-commit = ['pre-commit~=2.12']
 testing = [
@@ -54,7 +54,7 @@ testing = [
   'requests',
   'httpx~=0.27.2',
   'numpy~=1.21',
-  'anyio~=4.6.0'
+  'anyio~=4.6.0',
 ]
 
 [project.urls]
@@ -73,7 +73,7 @@ exclude = [
   '.gitignore',
   '.pre-commit-config.yaml',
   '.readthedocs.yml',
-  'codecov.yml'
+  'codecov.yml',
 ]
 
 [tool.mypy]
@@ -98,7 +98,7 @@ filterwarnings = [
   'ignore::DeprecationWarning:aiida:',
   'ignore::DeprecationWarning:plumpy:',
   'ignore::DeprecationWarning:django:',
-  'ignore::DeprecationWarning:yaml:'
+  'ignore::DeprecationWarning:yaml:',
 ]
 python_files = 'test_*.py example_*.py'
 
@@ -118,7 +118,7 @@ ignore = [
   'PLR0915',  # Too many statements
   'PLR2004',  # Magic value used in comparison
   'RUF005',  # Consider iterable unpacking instead of concatenation
-  'RUF012'  # Mutable class attributes should be annotated with `typing.ClassVar`
+  'RUF012',  # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
 select = [
   'E',  # pydocstyle
@@ -129,7 +129,7 @@ select = [
   'PLE',  # pylint-error
   'PLR',  # pylint-refactor
   'PLW',  # pylint-warning
-  'RUF'  # ruff
+  'RUF',  # ruff
 ]
 
 [tool.tox]

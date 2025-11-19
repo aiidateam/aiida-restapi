@@ -3,47 +3,44 @@ name: cd
 on:
   push:
     tags:
-    - v[0-9]+.[0-9]+.[0-9]+*
+      - v[0-9]+.[0-9]+.[0-9]+*
 
 jobs:
-
   validate-release-tag:
-
     if: github.repository == 'aiidateam/aiida-restapi'
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v2
+      - name: Checkout source
+        uses: actions/checkout@v2
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: Validate the tag version against the package version
-      run: python .github/workflows/validate_release_tag.py $GITHUB_REF
+      - name: Validate the tag version against the package version
+        run: python .github/workflows/validate_release_tag.py $GITHUB_REF
 
   publish:
-
     name: Publish to PyPI
     needs: [validate-release-tag]
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v2
+      - name: Checkout source
+        uses: actions/checkout@v2
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: Install flit
-      run: pip install flit~=3.4
+      - name: Install flit
+        run: pip install flit~=3.4
 
-    - name: Build and publish
-      run: flit publish
-      env:
-        FLIT_USERNAME: __token__
-        FLIT_PASSWORD: ${{ secrets.pypi_token }}
+      - name: Build and publish
+        run: flit publish
+        env:
+          FLIT_USERNAME: __token__
+          FLIT_PASSWORD: ${{ secrets.pypi_token }}
