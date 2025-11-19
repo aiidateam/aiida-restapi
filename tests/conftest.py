@@ -18,7 +18,7 @@ from httpx import AsyncClient
 from aiida_restapi import app, config
 from aiida_restapi.routers.auth import UserInDB, get_current_user
 
-pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
+pytest_plugins = ['aiida.tools.pytest_fixtures']
 
 
 @pytest.fixture(scope='function', autouse=True)

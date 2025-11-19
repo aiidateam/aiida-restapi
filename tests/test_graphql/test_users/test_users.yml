@@ -2,7 +2,7 @@ data:
   users:
     count: 3
     rows:
-    - email: test@aiida.local
+    - email: test@localhost
       first_name: ''
       id: int
       institution: ''

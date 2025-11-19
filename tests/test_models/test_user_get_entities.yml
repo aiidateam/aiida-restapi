@@ -1,4 +1,4 @@
-- email: test@aiida.local
+- email: test@localhost
   first_name: ''
   id: int
   institution: ''
