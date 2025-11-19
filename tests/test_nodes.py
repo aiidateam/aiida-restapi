@@ -279,16 +279,17 @@ def test_create_unknown_entry_point(default_computers, client, authenticate):  #
 
 
 def test_create_additional_attribute(default_computers, client, authenticate):  # pylint: disable=unused-argument
-    """Test adding additional properties returns errors."""
+    """Test adding additional properties are ignored."""
     response = client.post(
         '/nodes',
         json={
             'orm_class': 'Int',
             'value': 42,
-            'extra_thing': 'should fail',
+            'extra_thing': 'should be ignored',
         },
     )
-    assert response.status_code == 422, response.content
+    assert response.status_code == 200, response.content
+    assert 'extra_thing' not in response.json().get('attributes', {})
 
 
 def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused-argument
