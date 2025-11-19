@@ -21,6 +21,13 @@ from aiida_restapi.routers.auth import UserInDB, get_current_user
 pytest_plugins = ['aiida.tools.pytest_fixtures']
 
 
+@pytest.fixture(scope='session', autouse=True)
+def aiida_profile(aiida_config, aiida_profile_factory):
+    """Create and load a profile with RabbitMQ as broker."""
+    with aiida_profile_factory(aiida_config, broker_backend='core.rabbitmq') as profile:
+        yield profile
+
+
 @pytest.fixture(scope='function', autouse=True)
 def clear_database_auto(aiida_profile_clean):  # pylint: disable=unused-argument
     """Automatically clear database in between tests."""
