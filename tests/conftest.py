@@ -13,7 +13,7 @@ from aiida.common.exceptions import NotExistent
 from aiida.engine import ProcessState
 from aiida.orm import WorkChainNode, WorkFunctionNode
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from aiida_restapi import app, config
 from aiida_restapi.routers.auth import UserInDB, get_current_user
@@ -52,7 +52,7 @@ def anyio_backend():
 @pytest.fixture(scope='function')
 async def async_client():
     """Return fastapi async test client."""
-    async with AsyncClient(app=app, base_url='http://test') as async_test_client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as async_test_client:
         yield async_test_client
 
 
