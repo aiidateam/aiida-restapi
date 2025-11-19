@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
+import bcrypt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,10 +38,16 @@ router = APIRouter()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        return pwd_context.verify(hashed_password, plain_password)
-    except VerifyMismatchError:
-        return False
+    if hashed_password.startswith('$argon2'):
+        try:
+            return pwd_context.verify(hashed_password, plain_password)
+        except VerifyMismatchError:
+            return False
+
+    if hashed_password.startswith('$2b$'):
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+    return False
 
 
 def get_password_hash(password: str) -> str:
