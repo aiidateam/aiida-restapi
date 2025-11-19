@@ -33,7 +33,7 @@ readme = 'README.md'
 requires-python = '>=3.9'
 
 [project.optional-dependencies]
-auth = ['python-jose', 'python-multipart', 'passlib']
+auth = ['python-jose', 'python-multipart', 'argon2-cffi']
 docs = [
   'sphinx',
   'myst-parser[linkify]>=0.13.7',
