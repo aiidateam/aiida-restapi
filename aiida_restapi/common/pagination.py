@@ -5,6 +5,7 @@ from __future__ import annotations
 import typing as t
 
 import pydantic as pdt
+from aiida import orm  # noqa: F401
 
 from .types import EntityModelType
 
@@ -14,3 +15,6 @@ class PaginatedResults(pdt.BaseModel, t.Generic[EntityModelType]):
     page: int
     page_size: int
     results: list[EntityModelType]
+
+
+PaginatedResults.model_rebuild()
