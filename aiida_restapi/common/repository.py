@@ -79,7 +79,7 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         if not node_type:
             return super().get_projectable_properties()
         else:
-            node_cls = orm.utils.load_node_class(node_type)
+            node_cls = orm.utils.load_node_class(f'{node_type}.')
             return sorted(node_cls.fields.keys())
 
     def get_entities(self, queries: QueryParams) -> PaginatedResults[NodeModelType]:
@@ -94,16 +94,13 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         model = super().get_entity_by_id(entity_id)
         return self._patch_repository_metadata(model)
 
-    def create_entity(self, model: NodeModelType, node_type: str | None = None) -> NodeModelType:
+    def create_entity(self, model: NodeModelType) -> NodeModelType:
         """Create new AiiDA node from its model.
 
         :param node_model: The AiiDA ORM model of the node to create.
-        :param node_type: The AiiDA node type.
         :return: The created and stored AiiDA node instance.
         """
-        if node_type is None:
-            raise ValueError('Node type is required')
-        node_cls = orm.utils.load_node_class(node_type)
+        node_cls = orm.utils.load_node_class(f'{model.node_type}.')
         node = t.cast(NodeType, node_cls.from_model(model))
         node.store()
         created_model = node.to_model()

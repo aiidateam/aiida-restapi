@@ -94,33 +94,53 @@ async def get_nodes(
 
 
 @router.get('/nodes/types')
-async def get_nodes_types() -> list[str]:
-    """Get available AiiDA node class names.
-
-    :return: List of available AiiDA node class names.
+async def get_nodes_types() -> list:
     """
-    return sorted(model_registry.get_node_types())
+    Return all node types in a machine-actionable format:
+
+    >>> [
+    >>>   {
+    >>>     "label": "Int",
+    >>>     "node_type": "data.core.int.Int.",
+    >>>     "nodes": "/nodes/types/data.core.int.Int"
+    >>>     "projections": "/nodes/types/data.core.int.Int/projectable_properties",
+    >>>     "schema": "/nodes/types/data.core.int.Int/schema",
+    >>>   },
+    >>>   ...
+    >>> ]
+    """
+    return [
+        {
+            'label': model_registry.get_node_class_name(node_type),
+            'node_type': f'{node_type}.',
+            'nodes': f'/nodes/types/{node_type}',
+            'projections': f'/nodes/types/{node_type}/projectable_properties',
+            'schema': f'/nodes/types/{node_type}/schema',
+        }
+        for node_type in sorted(
+            model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
+        )
+    ]
 
 
 @router.get(
-    '/nodes/types/{node_class}',
+    '/nodes/types/{node_type}',
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
 )
 @with_dbenv()
 async def get_nodes_by_type(
-    node_class: str,
+    node_type: str,
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Node.Model]:
     """Get AiiDA nodes by node type with optional filtering, sorting, and/or pagination.
 
-    :param node_class: The name of the AiiDA node class.
+    :param node_type: The AiiDA node type string.
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of node models.
     :raises HTTPException: If the node class is not recognized (404), or on failure (400).
     """
     try:
-        node_type = model_registry.get_node_type(node_class)
         queries.filters['node_type'] = {'like': f'%{node_type}%'}
         return repository.get_entities(queries)
     except KeyError as exception:
@@ -129,17 +149,16 @@ async def get_nodes_by_type(
         raise HTTPException(status_code=400, detail=str(exception)) from exception
 
 
-@router.get('/nodes/types/{node_class}/projectable_properties')
+@router.get('/nodes/types/{node_type}/projectable_properties')
 @with_dbenv()
-async def get_node_class_projectable_properties(node_class: str) -> list[str]:
+async def get_node_class_projectable_properties(node_type: str) -> list[str]:
     """Get projectable properties of a given AiiDA node class.
 
-    :param node_class: The name of the AiiDA node class.
+    :param node_type: The AiiDA node type string.
     :return: The list of projectable properties for the given AiiDA node class.
     :raises HTTPException: If the node class is not recognized (404), or on failure (400).
     """
     try:
-        node_type = model_registry.get_node_type(node_class)
         return repository.get_projectable_properties(node_type)
     except KeyError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
@@ -147,9 +166,9 @@ async def get_node_class_projectable_properties(node_class: str) -> list[str]:
         raise HTTPException(status_code=400, detail=str(exception)) from exception
 
 
-@router.get('/nodes/types/{node_class}/schema')
+@router.get('/nodes/types/{node_type}/schema')
 async def get_node_class_schema(
-    node_class: str,
+    node_type: str,
     which: t.Literal['get', 'post'] | None = Query(
         None,
         description='Type of schema to retrieve: "get" or "post"',
@@ -157,13 +176,13 @@ async def get_node_class_schema(
 ) -> dict[str, t.Any]:
     """Get JSON schema for a given AiiDA node class.
 
-    :param node_class: The name of the AiiDA node class.
+    :param node_type: The AiiDA node type string.
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
     :raises HTTPException: If the node class (or `which` parameter) is not recognized (404), or on failure (400).
     """
     try:
-        NodeModel = model_registry.get_model(node_class)
+        NodeModel = model_registry.get_model(node_type)
         if which is None:
             return {
                 'get': orm.Node.Model.model_json_schema(),
@@ -315,8 +334,7 @@ async def create_node(
         or if creation fails (400).
     """
     try:
-        node_type = model_registry.get_node_type(node_model.orm_class)
-        return repository.create_entity(node_model, node_type)
+        return repository.create_entity(node_model)
     except KeyError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -349,10 +367,9 @@ async def create_upload_file(
     try:
         params_dict = t.cast(dict, json.loads(params))
         params_dict['content'] = await upload_file.read()  # TODO: read in chunks
-        node_class = params_dict.get('orm_class', 'SinglefileData')
-        node_model = model_registry.get_model(node_class)
+        node_type = params_dict.get('node_type', 'data.core.singlefile.SinglefileData')
+        node_model = model_registry.get_model(node_type)
         model = node_model(**params_dict)
-        node_type = model_registry.get_node_type(node_class)
     except json.JSONDecodeError as exception:
         raise HTTPException(
             status_code=400,
@@ -365,4 +382,4 @@ async def create_upload_file(
             status_code=422,
             detail=f'Validation failed: {exception}',
         ) from exception
-    return repository.create_entity(model, node_type)
+    return repository.create_entity(model)

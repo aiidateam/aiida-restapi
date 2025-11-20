@@ -70,7 +70,7 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Dict',
+            'node_type': 'data.core.dict.Dict',
             'value': {'x': 1, 'y': 2},
             'label': 'test_dict',
         },
@@ -85,7 +85,7 @@ async def test_create_code(default_computers, async_client, authenticate):  # py
         response = await async_client.post(
             '/nodes',
             json={
-                'orm_class': 'InstalledCode',
+                'node_type': 'data.core.code.installed.InstalledCode',
                 'computer': comp_id,
                 'filepath_executable': '/bin/true',
                 'label': 'test_code',
@@ -99,7 +99,7 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'List',
+            'node_type': 'data.core.list.List',
             'value': [2, 3],
         },
     )
@@ -111,7 +111,7 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Int',
+            'node_type': 'data.core.int.Int',
             'value': 6,
         },
     )
@@ -123,7 +123,7 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Float',
+            'node_type': 'data.core.float.Float',
             'value': 6.6,
         },
     )
@@ -135,7 +135,7 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Str',
+            'node_type': 'data.core.str.Str',
             'value': 'test_string',
         },
     )
@@ -147,7 +147,7 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Bool',
+            'node_type': 'data.core.bool.Bool',
             'value': 'True',
         },
     )
@@ -159,7 +159,7 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'StructureData',
+            'node_type': 'data.core.structure.StructureData',
             'description': '',
             'cell': [
                 [1.0, 0.0, 0.0],
@@ -197,7 +197,7 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'OrbitalData',
+            'node_type': 'data.core.orbital.OrbitalData',
             'description': '',
             'attributes': {
                 'orbital_dicts': [
@@ -235,7 +235,7 @@ def test_create_single_file_upload(client, authenticate):  # pylint: disable=unu
     data = {
         'params': json.dumps(
             {
-                'orm_class': 'SinglefileData',
+                'node_type': 'data.core.singlefile.SinglefileData',
                 'description': 'Testing single upload file',
                 'filename': 'test_file.txt',
             }
@@ -247,19 +247,19 @@ def test_create_single_file_upload(client, authenticate):  # pylint: disable=unu
 
 
 @pytest.mark.parametrize(
-    'orm_class, value',
+    'node_type, value',
     [
-        ('Int', 'test'),
-        ('Float', [1, 2, 3]),
-        ('Str', 5),
+        ('data.core.int.Int', 'test'),
+        ('data.core..float.Float', [1, 2, 3]),
+        ('data.core.str.Str', 5),
     ],
 )
-def test_create_node_wrong_value(client, orm_class, value, authenticate):  # pylint: disable=unused-argument
+def test_create_node_wrong_value(client, node_type, value, authenticate):  # pylint: disable=unused-argument
     """Test creating a new node with wrong value."""
     response = client.post(
         '/nodes',
         json={
-            'orm_class': orm_class,
+            'node_type': node_type,
             'value': value,
         },
     )
@@ -271,7 +271,7 @@ def test_create_unknown_entry_point(default_computers, client, authenticate):  #
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'NonExistentType',
+            'node_type': 'data.core.nonexistent.NonExistentType',
             'label': 'test_code',
         },
     )
@@ -283,7 +283,7 @@ def test_create_additional_attribute(default_computers, client, authenticate):  
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Int',
+            'node_type': 'data.core.int.Int',
             'value': 42,
             'extra_thing': 'should be ignored',
         },
@@ -297,7 +297,7 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
     response = client.post(
         '/nodes',
         json={
-            'orm_class': 'Bool',
+            'node_type': 'data.core.bool.Bool',
             'value': 'True',
             'extras': {'extra_one': 'value_1', 'extra_two': 'value_2'},
         },
