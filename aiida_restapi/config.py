@@ -1,6 +1,6 @@
 """Configuration of API"""
 
-from importlib.metadata import version
+from aiida_restapi import __version__
 
 # to get a string like this run:
 # openssl rand -hex 32
@@ -25,6 +25,6 @@ fake_users_db = {
 DOWNLOAD_CHUNK_SIZE = 1024
 
 API_CONFIG = {
-    'PREFIX': version('aiida_restapi'),  # prefix for all URLs
-    'VERSION': '0.1.0a',
+    'PREFIX': '/api/v0',  # prefix for all URLs
+    'VERSION': __version__,
 }
