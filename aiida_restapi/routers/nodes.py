@@ -86,8 +86,9 @@ async def get_node_projectable_properties(
 
 
 @read_router.get('/nodes/statistics', response_model=dict[str, t.Any])
+@with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
-    """Get statistics for nodes endpoint"""
+    """Get node statistics."""
 
     from aiida.manage import get_manager
 
