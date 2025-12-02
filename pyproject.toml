@@ -20,6 +20,7 @@ dependencies = [
   'fastapi~=0.115.5',
   'uvicorn[standard]~=0.32.1',
   'pydantic~=2.0',
+  'pydantic-settings',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
   'python-dateutil~=2.0',
