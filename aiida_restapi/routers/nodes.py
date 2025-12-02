@@ -43,6 +43,7 @@ async def get_nodes_download_formats() -> dict[str, Any]:
 
 
 @router.get('/nodes/statistics', response_model=dict[str, Any])
+@with_dbenv()
 async def get_nodes_statistics(user: Optional[int] = None) -> dict[str, Any]:
     """Get statistics for nodes endpoint"""
 
