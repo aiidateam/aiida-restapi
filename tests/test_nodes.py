@@ -351,3 +351,39 @@ async def test_get_download_node(array_data_node, async_client):
     response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
     assert response.status_code == 422, response.json()
     assert 'Please specify the download format' in response.json()['detail']
+
+
+@pytest.mark.anyio
+async def test_get_statistics(default_nodes, async_client):
+    """Test get statistics for nodes."""
+
+    from datetime import datetime
+
+    default_user_reference_json = {
+        'total': 4,
+        'types': {
+            'data.core.float.Float.': 1,
+            'data.core.str.Str.': 1,
+            'data.core.bool.Bool.': 1,
+            'data.core.int.Int.': 1,
+        },
+        'ctime_by_day': {datetime.today().strftime('%Y-%m-%d'): 4},
+    }
+
+    # Test without specifiying user, should use default user
+    response = await async_client.get('/nodes/statistics')
+    assert response.status_code == 200, response.json()
+    assert response.json() == default_user_reference_json
+
+    # Test that the output is the same when we use the pk of the default user
+    from aiida import orm
+
+    default_user_pk = orm.User(email='').collection.get_default().pk
+    response = await async_client.get(f'/nodes/statistics?user={default_user_pk}')
+    assert response.status_code == 200, response.json()
+    assert response.json() == default_user_reference_json
+
+    # Test empty response for nonexisting user
+    response = await async_client.get('/nodes/statistics?user=99999')
+    assert response.status_code == 200, response.json()
+    assert response.json() == {'total': 0, 'types': {}, 'ctime_by_day': {}}
