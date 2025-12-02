@@ -1,5 +1,7 @@
 """Declaration of FastAPI application."""
 
+from __future__ import annotations
+
 import re
 
 from aiida import __version__ as aiida_version
