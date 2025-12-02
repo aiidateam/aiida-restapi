@@ -369,9 +369,7 @@ http://localhost:5000/api/v4/nodes?attributes=true&attributes_filter=pbc1
 http://localhost:5000/api/v4/nodes/full_types
 ```
 
-NOT YET SPECIFICALLY IMPLEMENTED
-(although this needs further investigation, because full types is basically not documented anywhere)
-
+Not implemented for GraphQL, please use the REST API for this use case.
 
 ```html
 http://localhost:5000/api/v4/nodes/download_formats
