@@ -21,9 +21,6 @@ fake_users_db = {
     }
 }
 
-# The chunks size for streaming data for download
-DOWNLOAD_CHUNK_SIZE = 1024
-
 API_CONFIG = {
     'PREFIX': '/api/v0',  # prefix for all URLs
     'VERSION': __version__,
