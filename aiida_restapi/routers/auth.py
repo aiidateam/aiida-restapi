@@ -4,10 +4,12 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
+import bcrypt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from aiida_restapi import config
@@ -28,7 +30,7 @@ class UserInDB(User):
     disabled: Optional[bool] = None
 
 
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+pwd_context = PasswordHasher()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
@@ -36,7 +38,16 @@ router = APIRouter()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if hashed_password.startswith('$argon2'):
+        try:
+            return pwd_context.verify(hashed_password, plain_password)
+        except VerifyMismatchError:
+            return False
+
+    if hashed_password.startswith('$2b$'):
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+    return False
 
 
 def get_password_hash(password: str) -> str:
