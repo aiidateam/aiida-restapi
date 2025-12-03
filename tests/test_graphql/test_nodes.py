@@ -14,7 +14,7 @@ def test_node(create_node, orm_regression):
     fields = field_names_from_orm(type(node))
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ node(id: %r) { %s } }' % (node.id, ' '.join(fields)))
+    executed = client.execute('{ node(id: %r) { %s } }' % (node.pk, ' '.join(fields)))
     orm_regression(executed)
 
 
@@ -25,7 +25,7 @@ def test_node_logs(create_node, create_log, orm_regression):
     create_log(message='log 2', node=node)
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ node(id: %r) { logs { count rows{ message } } } }' % (node.id))
+    executed = client.execute('{ node(id: %r) { logs { count rows{ message } } } }' % (node.pk))
     orm_regression(executed)
 
 
@@ -36,7 +36,7 @@ def test_node_comments(create_node, create_comment, orm_regression):
     create_comment(content='comment 2', node=node)
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ node(id: %r) { comments { count rows{ content } } } }' % (node.id))
+    executed = client.execute('{ node(id: %r) { comments { count rows{ content } } } }' % (node.pk))
     orm_regression(executed)
 
 
@@ -53,7 +53,7 @@ def test_node_incoming(create_node, orm_regression):
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
     executed = client.execute(
-        '{ node(id: %r) { incoming { count rows{ node { label } link { label type } } } } }' % (node.id)
+        '{ node(id: %r) { incoming { count rows{ node { label } link { label type } } } } }' % (node.pk)
     )
     orm_regression(executed)
 
@@ -72,7 +72,7 @@ def test_node_outgoing(create_node, orm_regression):
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
     executed = client.execute(
-        '{ node(id: %r) { outgoing { count rows{ node { label } link { label type } } } } }' % (node.id)
+        '{ node(id: %r) { outgoing { count rows{ node { label } link { label type } } } } }' % (node.pk)
     )
     orm_regression(executed)
 
@@ -89,7 +89,7 @@ def test_node_ancestors(create_node, orm_regression):
 
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ node(id: %r) { ancestors { count rows{ label } } } }' % (node.id))
+    executed = client.execute('{ node(id: %r) { ancestors { count rows{ label } } } }' % (node.pk))
     orm_regression(executed)
 
 
@@ -106,7 +106,7 @@ def test_node_descendants(create_node, orm_regression):
 
     schema = create_schema([NodeQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ node(id: %r) { descendants { count rows{ label } } } }' % (node.id))
+    executed = client.execute('{ node(id: %r) { descendants { count rows{ label } } } }' % (node.pk))
     orm_regression(executed)
 
 

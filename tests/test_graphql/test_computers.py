@@ -13,7 +13,7 @@ def test_computer(create_computer, orm_regression):
     fields = field_names_from_orm(type(computer))
     schema = create_schema([ComputerQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ computer(id: %r) { %s } }' % (computer.id, ' '.join(fields)))
+    executed = client.execute('{ computer(id: %r) { %s } }' % (computer.pk, ' '.join(fields)))
     orm_regression(executed)
 
 
@@ -24,7 +24,7 @@ def test_computer_nodes(create_computer, create_node, orm_regression):
     create_node(label='node 2', computer=computer)
     schema = create_schema([ComputerQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ computer(id: %r) { nodes { count rows{ label } } } }' % (computer.id))
+    executed = client.execute('{ computer(id: %r) { nodes { count rows{ label } } } }' % (computer.pk))
     orm_regression(executed)
 
 
