@@ -5,30 +5,33 @@ import json
 
 import pytest
 from aiida import orm
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
-def test_get_node_projectable_properties(client):
+def test_get_node_projectable_properties(client: TestClient):
     """Test get projectable properties for nodes."""
     response = client.get('/nodes/projectable_properties')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Node.fields.keys())
 
 
-def test_get_nodes(default_nodes, client):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes(client: TestClient):
     """Test listing existing nodes."""
     response = client.get('/nodes')
     assert response.status_code == 200
     assert len(response.json()['results']) == 4
 
 
-def test_get_node(default_nodes, client):  # pylint: disable=unused-argument
+def test_get_node(client: TestClient, default_nodes):
     """Test retrieving a single nodes."""
     for nodes_id in default_nodes:
         response = client.get(f'/nodes/{nodes_id}')
         assert response.status_code == 200
 
 
-def test_get_download_formats(client):
+def test_get_download_formats(client: TestClient):
     """Test get download formats for nodes."""
     response = client.get('/nodes/download_formats')
 
@@ -65,7 +68,8 @@ def test_get_download_formats(client):
             raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
 
 
-def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_dict(client: TestClient):
     """Test creating a new dict."""
     response = client.post(
         '/nodes',
@@ -79,7 +83,8 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
 
 
 @pytest.mark.anyio
-async def test_create_code(default_computers, async_client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+async def test_create_code(async_client: AsyncClient, default_computers):
     """Test creating a new Code."""
     for comp_id in default_computers:
         response = await async_client.post(
@@ -94,7 +99,8 @@ async def test_create_code(default_computers, async_client, authenticate):  # py
     assert response.status_code == 200, response.content
 
 
-def test_create_list(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_list(client: TestClient):
     """Test creating a new list."""
     response = client.post(
         '/nodes',
@@ -106,7 +112,8 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
-def test_create_int(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_int(client: TestClient):
     """Test creating a new Int."""
     response = client.post(
         '/nodes',
@@ -118,7 +125,8 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
-def test_create_float(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_float(client: TestClient):
     """Test creating a new Float."""
     response = client.post(
         '/nodes',
@@ -130,7 +138,8 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
-def test_create_string(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_string(client: TestClient):
     """Test creating a new string."""
     response = client.post(
         '/nodes',
@@ -142,19 +151,21 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     assert response.status_code == 200, response.content
 
 
-def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_bool(client: TestClient):
     """Test creating a new Bool."""
     response = client.post(
         '/nodes',
         json={
             'node_type': 'data.core.bool.Bool',
-            'value': 'True',
+            'value': True,
         },
     )
     assert response.status_code == 200, response.content
 
 
-def test_create_structure_data(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_structure_data(client: TestClient):
     """Test creating a new StructureData."""
     response = client.post(
         '/nodes',
@@ -192,7 +203,8 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     assert response.status_code == 200, response.content
 
 
-def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_orbital_data(client: TestClient):
     """Test creating a new OrbitalData."""
     response = client.post(
         '/nodes',
@@ -223,7 +235,8 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     assert response.status_code == 200, response.content
 
 
-def test_create_single_file_upload(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_single_file_upload(client: TestClient):
     """Testing file upload"""
     test_file = {
         'upload_file': (
@@ -254,7 +267,8 @@ def test_create_single_file_upload(client, authenticate):  # pylint: disable=unu
         ('data.core.str.Str', 5),
     ],
 )
-def test_create_node_wrong_value(client, node_type, value, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_node_wrong_value(client: TestClient, node_type, value):
     """Test creating a new node with wrong value."""
     response = client.post(
         '/nodes',
@@ -266,7 +280,8 @@ def test_create_node_wrong_value(client, node_type, value, authenticate):  # pyl
     assert response.status_code == 422, response.content
 
 
-def test_create_unknown_entry_point(default_computers, client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('default_computers', 'authenticate')
+def test_create_unknown_entry_point(client: TestClient):
     """Test error message when specifying unknown ``entry_point``."""
     response = client.post(
         '/nodes',
@@ -278,7 +293,8 @@ def test_create_unknown_entry_point(default_computers, client, authenticate):  #
     assert response.status_code == 422, response.content
 
 
-def test_create_additional_attribute(default_computers, client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('default_computers', 'authenticate')
+def test_create_additional_attribute(client: TestClient):
     """Test adding additional properties are ignored."""
     response = client.post(
         '/nodes',
@@ -292,7 +308,8 @@ def test_create_additional_attribute(default_computers, client, authenticate):  
     assert 'extra_thing' not in response.json().get('attributes', {})
 
 
-def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_create_bool_with_extra(client: TestClient):
     """Test creating a new Bool with extra."""
     response = client.post(
         '/nodes',
@@ -309,7 +326,7 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
 
 
 @pytest.mark.anyio
-async def test_get_download_node(array_data_node, async_client):
+async def test_get_download_node(async_client: AsyncClient, array_data_node):
     """Test download node /nodes/{nodes_id}/download.
     The async client is needed to avoid an error caused by an I/O operation on closed file"""
 

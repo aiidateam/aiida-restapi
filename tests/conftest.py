@@ -174,7 +174,7 @@ def default_nodes():
 
 @pytest.fixture(scope='function')
 def array_data_node():
-    """Populate database with downloadable node (implmenting a _prepare_* function)."""
+    """Populate database with downloadable node (implementing a _prepare_* function)."""
 
     return orm.ArrayData(np.arange(4)).store()
 
@@ -213,7 +213,7 @@ def mutate_mapping(
 
 @pytest.fixture
 def orm_regression(data_regression):
-    """A variant of data_regression.check, that replaces nondetermistic fields (like uuid)."""
+    """A variant of data_regression.check, that replaces non-deterministic fields (like uuid)."""
 
     def _func(
         data: dict,
@@ -289,7 +289,7 @@ def create_log():
         level_name: str = 'level 1',
         message='',
         node: Optional[orm.nodes.Node] = None,
-    ) -> orm.Comment:
+    ) -> orm.Log:
         orm_node = node or orm.Data().store()
         return orm.Log(datetime.now(pytz.UTC), loggername, level_name, orm_node.pk, message=message).store()
 
