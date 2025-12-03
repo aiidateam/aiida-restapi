@@ -13,7 +13,7 @@ def test_log(create_log, orm_regression):
     fields = field_names_from_orm(type(log))
     schema = create_schema([LogQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ log(id: %r) { %s } }' % (log.id, ' '.join(fields)))
+    executed = client.execute('{ log(id: %r) { %s } }' % (log.pk, ' '.join(fields)))
     orm_regression(executed)
 
 
