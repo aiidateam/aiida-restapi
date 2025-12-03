@@ -4,10 +4,13 @@ import io
 
 import pytest
 from aiida import orm
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
 @pytest.mark.anyio
-async def test_add_process(default_test_add_process, async_client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+async def test_add_process(async_client: AsyncClient, default_test_add_process: list[str]):
     """Test adding new process"""
     code_id, x_id, y_id = default_test_add_process
     response = await async_client.post(
@@ -28,7 +31,8 @@ async def test_add_process(default_test_add_process, async_client, authenticate)
     assert response.status_code == 200
 
 
-def test_add_process_invalid_entry_point(default_test_add_process, client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_add_process_invalid_entry_point(client: TestClient, default_test_add_process: list[str]):
     """Test adding new process with invalid entry point"""
     code_id, x_id, y_id = default_test_add_process
     response = client.post(
@@ -49,7 +53,8 @@ def test_add_process_invalid_entry_point(default_test_add_process, client, authe
     assert response.status_code == 404
 
 
-def test_add_process_invalid_node_id(default_test_add_process, client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+def test_add_process_invalid_node_id(client: TestClient, default_test_add_process):
     """Test adding new process with invalid Node ID"""
     code_id, x_id, _ = default_test_add_process
     response = client.post(
@@ -72,7 +77,8 @@ def test_add_process_invalid_node_id(default_test_add_process, client, authentic
 
 
 @pytest.mark.anyio
-async def test_add_process_nested_inputs(default_test_add_process, async_client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('authenticate')
+async def test_add_process_nested_inputs(async_client: AsyncClient, default_test_add_process):
     """Test adding new process that has nested inputs"""
     code_id, _, _ = default_test_add_process
     template = orm.Dict(
