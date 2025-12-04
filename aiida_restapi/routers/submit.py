@@ -23,7 +23,7 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
 
     :param inputs: The inputs dictionary.
     :returns: The deserialized inputs dictionary.
-    :raises HTTPException: If the inputs contain a UUID that does not correspond to an existing node.
+    :raises HTTPException: 404 if the inputs contain a UUID that does not correspond to an existing node.
     """
     uuid_suffix = '.uuid'
     results = {}
@@ -35,10 +35,7 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
             try:
                 results[key[: -len(uuid_suffix)]] = orm.load_node(uuid=value)
             except NotExistent as exc:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f'Node with UUID `{value}` does not exist.',
-                ) from exc
+                raise HTTPException(status_code=404, detail=f'Node with UUID `{value}` does not exist.') from exc
         else:
             results[key] = value
 
@@ -76,15 +73,14 @@ async def submit_process(
     :param process: The Pydantic model of the process to create.
     :param current_user: The current authenticated user.
     :return: The created process node model.
-    :raises HTTPException: If the entry point is not recognized or if any input node UUID does not exist.
+    :raises HTTPException: 404 if the entry point is not recognized,
+        500 for other failures during process submission.
     """
     try:
         entry_point_process = load_entry_point_from_string(process.entry_point)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Entry point '{process.entry_point}' not recognized.",
-        ) from exc
-
-    process_node = engine.submit(entry_point_process, **process.inputs)
-    return t.cast(orm.Node.Model, process_node.to_model())
+        process_node = engine.submit(entry_point_process, **process.inputs)
+        return t.cast(orm.Node.Model, process_node.to_model())
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail=f"Entry point '{process.entry_point}' not recognized.") from err
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err

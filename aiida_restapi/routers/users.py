@@ -6,6 +6,7 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.common.exceptions import NotExistent
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
@@ -29,7 +30,7 @@ async def get_users_schema(
 
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: If the 'which' parameter is not 'get' or 'post'.
+    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
     """
     if not which:
         return {
@@ -40,7 +41,7 @@ async def get_users_schema(
         return orm.User.Model.model_json_schema()
     elif which == 'post':
         return orm.User.CreateModel.model_json_schema()
-    raise HTTPException(status_code=400, detail='Parameter "which" must be either "get" or "post"')
+    raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
 
 
 @router.get('/users/projectable_properties', response_model=list[str])
@@ -79,12 +80,12 @@ async def get_user(user_id: int) -> orm.User.Model:
 
     :param user_id: The id of the user to retrieve.
     :return: The AiiDA user model.
-    :raises HTTPException: If the user with the given id does not exist (404).
+    :raises HTTPException: 404 if the user with the given id does not exist,
     """
     try:
         return repository.get_entity_by_id(user_id)
-    except Exception:
-        raise HTTPException(status_code=404, detail=f'Could not find any User with id {user_id}')
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find a User with id {user_id}')
 
 
 @router.post(
@@ -102,5 +103,9 @@ async def create_user(
     :param user_model: The Pydantic model of the user to create.
     :param current_user: The current authenticated user.
     :return: The created AiiDA User model.
+    :raises HTTPException: 500 for any failures during user creation.
     """
-    return repository.create_entity(user_model)
+    try:
+        return repository.create_entity(user_model)
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err))

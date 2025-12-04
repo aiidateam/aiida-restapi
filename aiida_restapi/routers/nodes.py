@@ -36,7 +36,7 @@ async def get_nodes_schema(
 
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises: HTTPException: If the 'which' parameter is not 'get' or 'post'.
+    :raises: HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
     """
 
     def generate_create_models() -> dict[str, dict[str, t.Any]]:
@@ -51,10 +51,7 @@ async def get_nodes_schema(
         return orm.Node.Model.model_json_schema()
     if which == 'post':
         return generate_create_models()
-    raise HTTPException(
-        status_code=404,
-        detail=f'Schema type "{which}" not supported; expected "get" or "post"',
-    )
+    raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
 
 
 @router.get('/nodes/projectable_properties')
@@ -138,15 +135,16 @@ async def get_nodes_by_type(
     :param node_type: The AiiDA node type string.
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of node models.
-    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    :raises HTTPException: 422 if the node type is not recognized,
+        500 for other failures during retrieval.
     """
     try:
         queries.filters['node_type'] = {'like': f'%{node_type}%'}
         return repository.get_entities(queries)
     except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @router.get('/nodes/types/{node_type}/projectable_properties')
@@ -156,14 +154,15 @@ async def get_node_class_projectable_properties(node_type: str) -> list[str]:
 
     :param node_type: The AiiDA node type string.
     :return: The list of projectable properties for the given AiiDA node class.
-    :raises HTTPException: If the node class is not recognized (404), or on failure (400).
+    :raises HTTPException: 422 if the node type is not recognized,
+        500 for other failures during retrieval.
     """
     try:
         return repository.get_projectable_properties(node_type)
     except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @router.get('/nodes/types/{node_type}/schema')
@@ -179,7 +178,9 @@ async def get_node_class_schema(
     :param node_type: The AiiDA node type string.
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: If the node class (or `which` parameter) is not recognized (404), or on failure (400).
+    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
+        422 if the node type is not recognized,
+        500 for other failures during retrieval.
     """
     try:
         NodeModel = model_registry.get_model(node_type)
@@ -193,10 +194,10 @@ async def get_node_class_schema(
         if which == 'post':
             return NodeModel.model_json_schema()
     except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
-    raise HTTPException(status_code=404, detail='Parameter "which" must be either "get" or "post"')
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
 
 
 @router.get(
@@ -210,12 +211,15 @@ async def get_node(node_id: int) -> orm.Node.Model:
 
     :param node_id: The id of the node to retrieve.
     :return: The AiiDA node model, e.g. `orm.Node.Model`,
-    :raises HTTPException: If the node with the given id does not exist.
+    :raises HTTPException: 422 if the node with the given id does not exist,
+        500 for other failures during retrieval.
     """
     try:
         return repository.get_entity_by_id(node_id)
-    except Exception:
-        raise HTTPException(status_code=404, detail=f'Could not find any Node with id {node_id}')
+    except NotExistent:
+        raise HTTPException(status_code=422, detail=f'Could not find any Node with id {node_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
 
 
 @router.get('/nodes/{node_id}/download')
@@ -229,14 +233,14 @@ async def download_node(
     :param node_id: The id of the node to retrieve.
     :param download_format: The format to download the node in.
     :return: StreamingResponse with the exported node content.
-    :raises HTTPException: If the node with the given id does not exist (404),
-        if the download format is not specified (422),
-        or if the download format is not supported (422).
+    :raises HTTPException: 403 if licensing restrictions prevent export,
+        404 if the node with the given id does not exist,
+        422 if the download format is not specified, or if the download format is not supported.
     """
     try:
         node = orm.load_node(node_id)
     except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+        raise HTTPException(status_code=404, detail=f'Could not find a node with id {node_id}')
 
     if download_format is None:
         raise HTTPException(
@@ -252,7 +256,7 @@ async def download_node(
         try:
             exported_bytes, _ = node._exportcontent(download_format)
         except LicensingException as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
+            raise HTTPException(status_code=403, detail=str(exc))
 
         def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
@@ -280,8 +284,8 @@ async def get_node_repo_file_contents(
     :param node_id: The id of the node to retrieve the repository contents for.
     :param filename: The filename of the repository content to retrieve. If None, retrieves all contents.
     :return: StreamingResponse with the requested file content.
-    :raises HTTPException: If the node with the given id does not exist (404),
-        or if the requested file does not exist in the node's repository (404).
+    :raises HTTPException: 404 if the node with the given id does not exist,
+        404 if the requested file does not exist in the node's repository.
     """
     try:
         node = orm.load_node(node_id)
@@ -330,15 +334,15 @@ async def create_node(
     :param node_model: The AiiDA ORM model of the node to create.
     :param current_user: The current authenticated user.
     :return: The created AiiDA node.
-    :raises HTTPException: If the node class is not recognized (404),
-        or if creation fails (400).
+    :raises HTTPException: 422 if the node type is not recognized,
+        500 for other failures during node creation.
     """
     try:
         return repository.create_entity(node_model)
     except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 # TODO what about folderdata?
@@ -359,8 +363,9 @@ async def create_upload_file(
     :param upload_file: The file to upload.
     :param current_user: The current authenticated user.
     :return: The created AiiDA node model.
-    :raises HTTPException: If the JSON is invalid (400), if the node class is not recognized (404),
-        or if validation fails (422).
+    :raises HTTPException: 400 if the JSON is invalid,
+        422 if the node type is not recognized,
+        422 if validation fails.
     """
     # Note that in this multipart form case, json input can't be used.
     # Here instead we get the parameters as a string and manually pass through pydantic.
@@ -376,7 +381,7 @@ async def create_upload_file(
             detail=f'Invalid JSON format: {exception!s}',
         ) from exception
     except KeyError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
     except pdt.ValidationError as exception:
         raise HTTPException(
             status_code=422,
