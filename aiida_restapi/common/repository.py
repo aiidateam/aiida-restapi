@@ -5,6 +5,16 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
+from aiida.common import EntryPointError
+from aiida.common.escaping import escape_for_sql_like
+from aiida.common.exceptions import LoadingEntryPointError
+from aiida.common.lang import type_check
+from aiida.plugins.entry_point import (
+    get_entry_point_names,
+    is_valid_entry_point_string,
+    load_entry_point,
+    load_entry_point_from_string,
+)
 from aiida.repository import File
 
 from .pagination import PaginatedResults
@@ -71,6 +81,10 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
 class NodeRepository(EntityRepository[NodeType, NodeModelType]):
     """Utility class for AiiDA Node REST API operations."""
 
+    FULL_TYPE_CONCATENATOR = '|'
+    LIKE_OPERATOR_CHARACTER = '%'
+    DEFAULT_NAMESPACE_LABEL = '~no-entry-point~'
+
     def get_projectable_properties(self, node_type: str | None = None) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 
@@ -83,17 +97,85 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
             node_cls = orm.utils.load_node_class(f'{node_type}.')
             return sorted(node_cls.fields.keys())
 
-    def get_entities(self, queries: QueryParams) -> PaginatedResults[NodeModelType]:
-        """Get nodes with optional filtering, sorting, and/or pagination and augment repository content."""
-        paginated_results = super().get_entities(queries)
-        for model in paginated_results.results:
-            self._patch_repository_metadata(model)
-        return paginated_results
+    def get_all_download_formats(self, full_type: str | None = None) -> dict:
+        """Returns dict of possible node formats for all available node types"""
+        all_formats = {}
 
-    def get_entity_by_id(self, entity_id: int) -> NodeModelType:
-        """Get a single node by id and augment repository content."""
-        model = super().get_entity_by_id(entity_id)
-        return self._patch_repository_metadata(model)
+        if full_type:
+            node_cls = self._load_entry_point_from_full_type(full_type)
+            try:
+                available_formats = node_cls.get_export_formats()
+                all_formats[full_type] = available_formats
+            except AttributeError:
+                pass
+        else:
+            entry_point_group = 'aiida.data'
+
+            for name in get_entry_point_names(entry_point_group):
+                try:
+                    node_cls = load_entry_point(entry_point_group, name)
+                    available_formats = node_cls.get_export_formats()
+                except (AttributeError, LoadingEntryPointError):
+                    continue
+
+                if available_formats:
+                    full_type = self._construct_full_type(node_cls.class_node_type, '')
+                    all_formats[full_type] = available_formats
+
+        return all_formats
+
+    def get_node_repository_metadata(self, node_id: int) -> dict[str, dict]:
+        """Get the repository metadata of a node.
+
+        :param node_id: The id of the node to retrieve the repository metadata for.
+        :return: A dictionary with the repository file metadata.
+        """
+        node = self.entity_cls.collection.get(pk=node_id)
+        total_size = 0
+
+        def get_metadata(objects: list[File], content: dict, path: str | None = None) -> dict[str, dict]:
+            nonlocal total_size
+
+            for obj in objects:
+                if obj.is_dir():
+                    content[obj.name] = {
+                        'type': 'DIRECTORY',
+                        'objects': get_metadata(
+                            node.base.repository.list_objects(obj.name),
+                            {},
+                            obj.name,
+                        ),
+                    }
+                elif obj.is_file():
+                    filename = f'{path}/{obj.name}' if path else obj.name
+                    size = node.base.repository.get_object_size(filename)
+
+                    try:
+                        node.base.repository.get_object_content(filename, 'r')
+                        binary = False
+                    except UnicodeDecodeError:
+                        binary = True
+
+                    content[obj.name] = {
+                        'type': 'FILE',
+                        'binary': binary,
+                        'size': size,
+                        'download': f'/nodes/{node_id}/repo/contents?filename={filename}',
+                    }
+                    total_size += size
+
+            return content
+
+        metadata = get_metadata(node.base.repository.list_objects(), {})
+
+        metadata['zipped'] = {
+            'type': 'FILE',
+            'binary': True,
+            'size': total_size,
+            'download': f'/nodes/{node_id}/repo/contents',
+        }
+
+        return metadata
 
     def create_entity(self, model: NodeModelType) -> NodeModelType:
         """Create new AiiDA node from its model.
@@ -104,50 +186,124 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         node_cls = orm.utils.load_node_class(f'{model.node_type}.')
         node = t.cast(NodeType, node_cls.from_model(model))
         node.store()
-        created_model = node.to_model()
-        patched_model = self._patch_repository_metadata(created_model)
-        return patched_model
+        return t.cast(NodeModelType, node.to_model())
 
-    def _patch_repository_metadata(self, model: NodeModelType) -> NodeModelType:
-        """Add download URLs to the repository content of the node model.
+    def _validate_full_type(self, full_type: str) -> None:
+        """Validate that the `full_type` is a valid full type unique node identifier.
 
-        :param model: The AiiDA node model.
-        :return: The patched AiiDA node model with download URLs in the repository metadata.
+        :param full_type: a `Node` full type
+        :raises ValueError: if the `full_type` is invalid
+        :raises TypeError: if the `full_type` is not a string type
         """
 
-        repo_metadata: dict[str, t.Any] = getattr(model, 'repository_metadata')
+        type_check(full_type, str)
 
-        if not repo_metadata:
-            return model
+        if self.FULL_TYPE_CONCATENATOR not in full_type:
+            raise ValueError(
+                f'full type `{full_type}` does not include the required concatenator symbol '
+                f'`{self.FULL_TYPE_CONCATENATOR}`.'
+            )
+        elif full_type.count(self.FULL_TYPE_CONCATENATOR) > 1:
+            raise ValueError(
+                f'full type `{full_type}` includes the concatenator symbol '
+                f'`{self.FULL_TYPE_CONCATENATOR}` more than once.'
+            )
 
-        node = self.entity_cls.collection.get(pk=model.pk)
+    def _construct_full_type(self, node_type: str, process_type: str) -> str:
+        """Return the full type, which fully identifies the type of any `Node` with the given `node_type` and
+        `process_type`.
 
-        total_size = 0
+        :param node_type: the `node_type` of the `Node`
+        :param process_type: the `process_type` of the `Node`
+        :return: the full type, which is a unique identifier
+        """
+        if node_type is None:
+            node_type = ''
 
-        def _patch_recursive(objects: list[File], content: dict, path: str | None = None) -> None:
-            nonlocal total_size
+        if process_type is None:
+            process_type = ''
 
-            for obj in objects:
-                if obj.is_file():
-                    filename = f'{path}/{obj.name}' if path else obj.name
-                    file_size = node.base.repository.get_object_size(filename)
-                    total_size += file_size
-                    content[obj.name] = {
-                        'size': file_size,
-                        'download': f'/nodes/{model.pk}/repo/contents?filename={filename}',
-                    }
-                elif obj.is_dir():
-                    content[obj.name] = {}
-                    dir_path = f'{path}/{obj.name}' if path else obj.name
-                    _patch_recursive(node.base.repository.list_objects(dir_path), content[obj.name], dir_path)
+        return f'{node_type}{self.FULL_TYPE_CONCATENATOR}{process_type}'
 
-        _patch_recursive(node.base.repository.list_objects(), repo_metadata['o'])
+    def _get_full_type_filters(self, full_type: str) -> dict[str, t.Any]:
+        """Return the `QueryBuilder` filters that will return all `Nodes` identified by the given `full_type`.
 
-        repo_metadata['o']['zipped'] = {
-            'size': total_size,
-            'download': f'/nodes/{model.pk}/repo/contents',
-        }
+        :param full_type: the `full_type` node type identifier
+        :return: dictionary of filters to be passed for the `filters` keyword in `QueryBuilder.append`
+        :raises ValueError: if the `full_type` is invalid
+        :raises TypeError: if the `full_type` is not a string type
+        """
+        self._validate_full_type(full_type)
 
-        setattr(model, 'repository_metadata', repo_metadata)
+        filters: dict[str, t.Any] = {}
+        node_type, process_type = full_type.split(self.FULL_TYPE_CONCATENATOR)
 
-        return model
+        for entry in (node_type, process_type):
+            if entry.count(self.LIKE_OPERATOR_CHARACTER) > 1:
+                raise ValueError(f'full type component `{entry}` contained more than one like-operator character')
+
+            if self.LIKE_OPERATOR_CHARACTER in entry and entry[-1] != self.LIKE_OPERATOR_CHARACTER:
+                raise ValueError(f'like-operator character in full type component `{entry}` is not at the end')
+
+        if self.LIKE_OPERATOR_CHARACTER in node_type:
+            # Remove the trailing `LIKE_OPERATOR_CHARACTER`, escape the string and reattach the character
+            node_type = node_type[:-1]
+            node_type = escape_for_sql_like(node_type) + self.LIKE_OPERATOR_CHARACTER
+            filters['node_type'] = {'like': node_type}
+        else:
+            filters['node_type'] = {'==': node_type}
+
+        if self.LIKE_OPERATOR_CHARACTER in process_type:
+            # Remove the trailing `LIKE_OPERATOR_CHARACTER` ()
+            # If that was the only specification, just ignore this filter (looking for any process_type)
+            # If there was more: escape the string and reattach the character
+            process_type = process_type[:-1]
+            if process_type:
+                process_type = escape_for_sql_like(process_type) + self.LIKE_OPERATOR_CHARACTER
+                filters['process_type'] = {'like': process_type}
+        elif process_type:
+            filters['process_type'] = {'==': process_type}
+        else:
+            # A `process_type=''` is used to represents both `process_type='' and `process_type=None`.
+            # This is because there is no simple way to single out null `process_types`, and therefore
+            # we consider them together with empty-string process_types.
+            # Moreover, the existence of both is most likely a bug of migrations and thus both share
+            # this same "erroneous" origin.
+            filters['process_type'] = {'or': [{'==': ''}, {'==': None}]}
+
+        return filters
+
+    def _load_entry_point_from_full_type(self, full_type: str) -> t.Any:
+        """Return the loaded entry point for the given `full_type` unique node type identifier.
+
+        :param full_type: the `full_type` unique node type identifier
+        :raises ValueError: if the `full_type` is invalid
+        :raises TypeError: if the `full_type` is not a string type
+        :raises `~aiida.common.exceptions.EntryPointError`: if the corresponding entry point cannot be loaded
+        """
+
+        data_prefix = 'data.'
+
+        self._validate_full_type(full_type)
+
+        node_type, process_type = full_type.split(self.FULL_TYPE_CONCATENATOR)
+
+        if is_valid_entry_point_string(process_type):
+            try:
+                return load_entry_point_from_string(process_type)
+            except EntryPointError:
+                raise EntryPointError(f'could not load entry point `{process_type}`')
+
+        elif node_type.startswith(data_prefix):
+            base_name = node_type.removeprefix(data_prefix)
+            entry_point_name = base_name.rsplit('.', 2)[0]
+
+            try:
+                return load_entry_point('aiida.data', entry_point_name)
+            except EntryPointError:
+                raise EntryPointError(f'could not load entry point `{process_type}`')
+
+        # Here we are dealing with a `ProcessNode` with a `process_type` that is not an entry point string.
+        # Which means it is most likely a full module path (the fallback option) and we cannot necessarily load the
+        # class from this. We could try with `importlib` but not sure that we should
+        raise EntryPointError('entry point of the given full type cannot be loaded')

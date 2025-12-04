@@ -9,11 +9,10 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import LicensingException, NotExistent
+from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
-from aiida_restapi import resources
 from aiida_restapi.common import NodeModelRegistry, NodeRepository, PaginatedResults, QueryParams, query_params
 
 from .auth import UserInDB, get_current_active_user
@@ -69,8 +68,15 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes.
 
     :return: A dictionary with available download formats as keys and their descriptions as values.
+    :raises HTTPException: 404 if the download formats are not available,
+        500 for other failures during retrieval.
     """
-    return resources.get_all_download_formats()
+    try:
+        return repository.get_all_download_formats()
+    except EntryPointError:
+        raise HTTPException(status_code=404, detail='The download formats are not available.')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
 
 
 @router.get(
@@ -272,6 +278,46 @@ async def download_node(
             'The available download formats can be '
             'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
         )
+
+
+class RepoFileMetadata(pdt.BaseModel):
+    """Pydantic model representing the metadata of a file in the AiiDA repository."""
+
+    type: str
+    binary: bool = False
+    size: int
+    download: str
+
+
+class RepoDirMetadata(pdt.BaseModel):
+    """Pydantic model representing the metadata of a directory in the AiiDA repository."""
+
+    type: str
+    objects: dict[str, t.Union[RepoFileMetadata, 'RepoDirMetadata']]
+
+
+MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
+
+
+@router.get(
+    '/nodes/{node_id}/repo/metadata',
+    response_model=dict[str, MetadataType],
+)
+@with_dbenv()
+async def get_node_repo_file_metadata(node_id: int) -> dict[str, dict]:
+    """Get the repository file metadata of a node.
+
+    :param node_id: The id of the node to retrieve the repository metadata for.
+    :return: A dictionary with the repository file metadata.
+    :raises HTTPException: 404 if the node with the given id does not exist,
+        500 for other failures during retrieval.
+    """
+    try:
+        return repository.get_node_repository_metadata(node_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
 
 
 @router.get('/nodes/{node_id}/repo/contents')
