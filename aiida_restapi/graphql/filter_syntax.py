@@ -13,8 +13,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from lark import Lark, Token, Tree
 
-from . import static
-from .utils import parse_date
+from .. import static
+from ..utils import parse_date
 
 FILTER_GRAMMAR = resources.open_text(static, 'filter_grammar.lark')
 
