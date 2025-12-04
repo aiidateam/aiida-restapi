@@ -91,9 +91,10 @@ async def get_nodes(
 
 
 @router.get('/nodes/types')
-async def get_nodes_types() -> list:
-    """
-    Return all node types in a machine-actionable format:
+async def get_node_types() -> list:
+    """Get all node types in machine-actionable format.
+
+    :return: A list of dictionaries, each containing information about a node type, e.g.:
 
     >>> [
     >>>   {
