@@ -39,18 +39,18 @@ async def get_nodes_schema(
     :raises: HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
     """
 
-    def generate_create_models() -> dict[str, dict[str, t.Any]]:
+    def generate_create_model_schema() -> dict[str, dict[str, t.Any]]:
         return {model.__name__: model.model_json_schema() for model in model_registry.get_models()}
 
     if which is None:
         return {
             'get': orm.Node.Model.model_json_schema(),
-            'post': generate_create_models(),
+            'post': generate_create_model_schema(),
         }
     if which == 'get':
         return orm.Node.Model.model_json_schema()
     if which == 'post':
-        return generate_create_models()
+        return generate_create_model_schema()
     raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
 
 
@@ -149,7 +149,7 @@ async def get_nodes_by_type(
 
 @router.get('/nodes/types/{node_type}/projectable_properties')
 @with_dbenv()
-async def get_node_class_projectable_properties(node_type: str) -> list[str]:
+async def get_node_projectable_properties_by_type(node_type: str) -> list[str]:
     """Get projectable properties of a given AiiDA node class.
 
     :param node_type: The AiiDA node type string.
@@ -166,7 +166,7 @@ async def get_node_class_projectable_properties(node_type: str) -> list[str]:
 
 
 @router.get('/nodes/types/{node_type}/schema')
-async def get_node_class_schema(
+async def get_node_schema_by_type(
     node_type: str,
     which: t.Literal['get', 'post'] | None = Query(
         None,
