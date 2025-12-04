@@ -295,13 +295,13 @@ async def get_node_repo_file_contents(
     repo = node.base.repository
 
     if filename:
-        if filename not in repo.list_object_names():
+        try:
+            file_content = repo.get_object_content(filename, mode='rb')
+        except FileNotFoundError:
             raise HTTPException(
                 status_code=404,
                 detail=f'Could not find file {filename} in the repository of node with id {node_id}',
             )
-
-        file_content = repo.get_object_content(filename, mode='rb')
 
         def file_stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(file_content) as handler:

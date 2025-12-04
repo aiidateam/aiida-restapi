@@ -5,6 +5,7 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
+from aiida.repository import File
 
 from .pagination import PaginatedResults
 from .query import QueryParams
@@ -115,19 +116,32 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         """
 
         repo_metadata: dict[str, t.Any] = getattr(model, 'repository_metadata')
+
         if not repo_metadata:
             return model
 
         node = self.entity_cls.collection.get(pk=model.pk)
 
         total_size = 0
-        for path in repo_metadata['o']:
-            size = node.base.repository.get_object_size(path)
-            total_size += size
-            repo_metadata['o'][path] |= {
-                'size': size,
-                'download': f'/nodes/{model.pk}/repo/contents?filename={path}',
-            }
+
+        def _patch_recursive(objects: list[File], content: dict, path: str | None = None) -> None:
+            nonlocal total_size
+
+            for obj in objects:
+                if obj.is_file():
+                    filename = f'{path}/{obj.name}' if path else obj.name
+                    file_size = node.base.repository.get_object_size(filename)
+                    total_size += file_size
+                    content[obj.name] = {
+                        'size': file_size,
+                        'download': f'/nodes/{model.pk}/repo/contents?filename={filename}',
+                    }
+                elif obj.is_dir():
+                    content[obj.name] = {}
+                    dir_path = f'{path}/{obj.name}' if path else obj.name
+                    _patch_recursive(node.base.repository.list_objects(dir_path), content[obj.name], dir_path)
+
+        _patch_recursive(node.base.repository.list_objects(), repo_metadata['o'])
 
         repo_metadata['o']['zipped'] = {
             'size': total_size,
