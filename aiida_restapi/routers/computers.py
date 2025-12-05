@@ -17,7 +17,10 @@ from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
-repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
+repository = EntityRepository[orm.Computer, orm.Computer.Model](
+    entity_class=orm.Computer,
+    excluded_fields={'metadata'},
+)
 
 
 @router.get('/computers/schema')

@@ -22,7 +22,15 @@ from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
 
-repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
+repository = NodeRepository[orm.Node, orm.Node.Model](
+    entity_class=orm.Node,
+    excluded_fields={
+        'attributes',
+        'extras',
+        'repository_metadata',
+        'repository_content',
+    },
+)
 model_registry = NodeModelRegistry()
 
 

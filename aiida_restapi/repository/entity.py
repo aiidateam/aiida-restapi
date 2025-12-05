@@ -17,15 +17,16 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
     :ivar entity_cls: The AiiDA ORM entity class associated with this utility, e.g. `orm.User`, `orm.Node`, etc.
     """
 
-    def __init__(self, orm_entity: type[EntityType]):
-        self.entity_cls: type[EntityType] = orm_entity
+    def __init__(self, entity_class: type[EntityType], excluded_fields: set[str] | None = None) -> None:
+        self.entity_class: type[EntityType] = entity_class
+        self.excluded_fields = {'extras'} | (excluded_fields or set())
 
     def get_projectable_properties(self) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 
         :return: The list of projectable properties for the AiiDA entity.
         """
-        return sorted(self.entity_cls.fields.keys())
+        return sorted(self.entity_class.fields.keys())
 
     def get_entities(self, queries: QueryParams) -> PaginatedResults[EntityModelType]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
@@ -33,8 +34,8 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         :param queries: The query parameters, including filters, order_by, page_size, and page.
         :return: The paginated results, including total count, current page, page size, and list of entity models.
         """
-        total = self.entity_cls.collection.count(filters=queries.filters)
-        results = self.entity_cls.collection.find(
+        total = self.entity_class.collection.count(filters=queries.filters)
+        results = self.entity_class.collection.find(
             filters=queries.filters,
             order_by=queries.order_by,
             limit=queries.page_size,
@@ -44,7 +45,7 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
             total=total,
             page=queries.page,
             page_size=queries.page_size,
-            results=[result.to_model() for result in results],
+            results=[result.to_model(exclude=self.excluded_fields) for result in results],
         )
 
     def get_entity_by_id(self, entity_id: int) -> EntityModelType:
@@ -53,7 +54,8 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         :param entity_id: The id of the entity to retrieve.
         :return: The AiiDA entity model, e.g. `orm.User.Model`, `orm.Node.Model`, etc.
         """
-        return t.cast(EntityModelType, self.entity_cls.collection.get(pk=entity_id).to_model())
+        entity = self.entity_class.collection.get(pk=entity_id).to_model(exclude=self.excluded_fields)
+        return t.cast(EntityModelType, entity)
 
     def create_entity(self, model: EntityModelType) -> EntityModelType:
         """Create new AiiDA entity from its model.
@@ -61,5 +63,5 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         :param model: The Pydantic model of the entity to create.
         :return: The created and stored AiiDA `Entity` instance.
         """
-        entity = self.entity_cls.from_model(model).store()
-        return t.cast(EntityModelType, entity.to_model())
+        entity = self.entity_class.from_model(model).store()
+        return t.cast(EntityModelType, entity.to_model(exclude=self.excluded_fields))

@@ -74,7 +74,7 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         :param node_id: The id of the node to retrieve the repository metadata for.
         :return: A dictionary with the repository file metadata.
         """
-        node = self.entity_cls.collection.get(pk=node_id)
+        node = self.entity_class.collection.get(pk=node_id)
         total_size = 0
 
         def get_metadata(objects: list[File], content: dict, path: str | None = None) -> dict[str, dict]:
