@@ -9,7 +9,9 @@ from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.exceptions import NotExistent
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from aiida_restapi.common import EntityRepository, PaginatedResults, QueryParams, query_params
+from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
 

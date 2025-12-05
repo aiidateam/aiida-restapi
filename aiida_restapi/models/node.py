@@ -1,4 +1,4 @@
-"""REST API model utilities."""
+"""REST API models for ORM nodes."""
 
 from __future__ import annotations
 

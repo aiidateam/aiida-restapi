@@ -13,12 +13,14 @@ from aiida.common.exceptions import EntryPointError, LicensingException, NotExis
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
-from aiida_restapi.common import NodeModelRegistry, NodeRepository, PaginatedResults, QueryParams, query_params
+from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.models.node import NodeModelRegistry
+from aiida_restapi.repository.node import NodeRepository
 
 from .auth import UserInDB, get_current_active_user
 
 router = APIRouter()
-
 
 repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
 model_registry = NodeModelRegistry()

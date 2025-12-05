@@ -1,4 +1,4 @@
-"""Query utilities."""
+"""REST API query utilities."""
 
 from __future__ import annotations
 
