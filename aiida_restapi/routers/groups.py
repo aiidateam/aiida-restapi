@@ -93,6 +93,27 @@ async def get_group(group_id: int) -> orm.Group.Model:
         raise HTTPException(status_code=500, detail=str(err))
 
 
+@router.get(
+    '/groups/{group_id}/extras',
+    response_model=dict[str, t.Any],
+)
+@with_dbenv()
+async def get_group_extras(group_id: int) -> dict[str, t.Any]:
+    """Get the extras of a group.
+
+    :param group_id: The id of the group to retrieve the extras for.
+    :return: A dictionary with the group extras.
+    :raises HTTPException: 404 if the group with the given id does not exist,
+        500 for other failures during retrieval.
+    """
+    try:
+        return repository.get_entity_extras(group_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any group with id {group_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
+
+
 @router.post(
     '/groups',
     response_model=orm.Group.Model,
