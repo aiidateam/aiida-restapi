@@ -36,16 +36,10 @@ async def get_computers_schema(
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
     :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
     """
-    if not which:
-        return {
-            'get': orm.Computer.Model.model_json_schema(),
-            'post': orm.Computer.CreateModel.model_json_schema(),
-        }
-    elif which == 'get':
-        return orm.Computer.Model.model_json_schema()
-    elif which == 'post':
-        return orm.Computer.CreateModel.model_json_schema()
-    raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
+    try:
+        return repository.get_entity_schema(which=which)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
 
 
 @router.get('/computers/projectable_properties', response_model=list[str])
@@ -75,22 +69,22 @@ async def get_computers(
 
 
 @router.get(
-    '/computers/{comp_id}',
+    '/computers/{computer_id}',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
 )
 @with_dbenv()
-async def get_computer(comp_id: int) -> orm.Computer.Model:
+async def get_computer(computer_id: int) -> orm.Computer.Model:
     """Get AiiDA computer by id.
 
-    :param comp_id: The id of the AiiDA computer.
+    :param computer_id: The id of the AiiDA computer.
     :return: The computer model.
     :raises HTTPException: 404 if the computer with the given id does not exist.
     """
     try:
-        return repository.get_entity_by_id(comp_id)
+        return repository.get_entity_by_id(computer_id)
     except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {comp_id}')
+        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
 
 
 @router.post(

@@ -21,6 +21,24 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         self.entity_class: type[EntityType] = entity_class
         self.excluded_fields = {'extras'} | (excluded_fields or set())
 
+    def get_entity_schema(self, which: t.Literal['get', 'post'] | None = None) -> dict:
+        """Get JSON schema for the AiiDA entity.
+
+        :param which: The type of schema to retrieve: 'get' or 'post'.
+        :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+        :raises ValueError: If the 'which' parameter is not 'get' or 'post'.
+        """
+        if not which:
+            return {
+                'get': self.entity_class.Model.model_json_schema(),
+                'post': self.entity_class.CreateModel.model_json_schema(),
+            }
+        elif which == 'get':
+            return self.entity_class.Model.model_json_schema()
+        elif which == 'post':
+            return self.entity_class.CreateModel.model_json_schema()
+        raise ValueError(f'Schema type "{which}" not supported; expected "get" or "post"')
+
     def get_projectable_properties(self) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 

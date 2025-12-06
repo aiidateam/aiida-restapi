@@ -33,16 +33,10 @@ async def get_users_schema(
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
     :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
     """
-    if not which:
-        return {
-            'get': orm.User.Model.model_json_schema(),
-            'post': orm.User.CreateModel.model_json_schema(),
-        }
-    elif which == 'get':
-        return orm.User.Model.model_json_schema()
-    elif which == 'post':
-        return orm.User.CreateModel.model_json_schema()
-    raise HTTPException(status_code=422, detail=f'Schema type "{which}" not supported; expected "get" or "post"')
+    try:
+        return repository.get_entity_schema(which=which)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
 
 
 @router.get('/users/projectable_properties', response_model=list[str])
