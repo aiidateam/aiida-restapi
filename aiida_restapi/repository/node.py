@@ -121,6 +121,20 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
 
         return metadata
 
+    def get_node_attributes(self, node_id: int) -> dict[str, t.Any]:
+        """Get the attributes of a node.
+
+        :param node_id: The id of the node to retrieve the attributes for.
+        :return: A dictionary with the node attributes.
+        """
+        return t.cast(
+            dict,
+            self.entity_class.collection.query(
+                filters={'pk': node_id},
+                project=['attributes'],
+            ).first()[0],
+        )
+
     def create_entity(self, model: NodeModelType) -> NodeModelType:
         """Create new AiiDA node from its model.
 
@@ -128,9 +142,8 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         :return: The created and stored AiiDA node instance.
         """
         node_cls = orm.utils.load_node_class(f'{model.node_type}.')
-        node = t.cast(NodeType, node_cls.from_model(model))
-        node.store()
-        return t.cast(NodeModelType, node.to_model())
+        node = t.cast(NodeType, node_cls.from_model(model).store())
+        return self.to_model(node)
 
     def _validate_full_type(self, full_type: str) -> None:
         """Validate that the `full_type` is a valid full type unique node identifier.

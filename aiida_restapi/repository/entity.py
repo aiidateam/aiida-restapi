@@ -45,7 +45,7 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
             total=total,
             page=queries.page,
             page_size=queries.page_size,
-            results=[result.to_model(exclude=self.excluded_fields) for result in results],
+            results=[self.to_model(result) for result in results],
         )
 
     def get_entity_by_id(self, entity_id: int) -> EntityModelType:
@@ -54,8 +54,22 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         :param entity_id: The id of the entity to retrieve.
         :return: The AiiDA entity model, e.g. `orm.User.Model`, `orm.Node.Model`, etc.
         """
-        entity = self.entity_class.collection.get(pk=entity_id).to_model(exclude=self.excluded_fields)
-        return t.cast(EntityModelType, entity)
+        entity = self.entity_class.collection.get(pk=entity_id)
+        return self.to_model(entity)
+
+    def get_entity_extras(self, entity_id: int) -> dict[str, t.Any]:
+        """Get the extras of an entity.
+
+        :param entity_id: The id of the entity to retrieve the extras for.
+        :return: A dictionary with the entity extras.
+        """
+        return t.cast(
+            dict,
+            self.entity_class.collection.query(
+                filters={'pk': entity_id},
+                project=['extras'],
+            ).first()[0],
+        )
 
     def create_entity(self, model: EntityModelType) -> EntityModelType:
         """Create new AiiDA entity from its model.
@@ -64,4 +78,12 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         :return: The created and stored AiiDA `Entity` instance.
         """
         entity = self.entity_class.from_model(model).store()
+        return self.to_model(entity)
+
+    def to_model(self, entity: EntityType) -> EntityModelType:
+        """Convert an AiiDA entity to its Pydantic model.
+
+        :param entity: The AiiDA entity to convert.
+        :return: The Pydantic model of the entity, excluding any fields specified in `excluded_fields`.
+        """
         return t.cast(EntityModelType, entity.to_model(exclude=self.excluded_fields))

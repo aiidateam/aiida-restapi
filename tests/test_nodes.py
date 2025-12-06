@@ -19,6 +19,9 @@ def test_get_nodes(default_nodes, client):  # pylint: disable=unused-argument
     response = client.get('/nodes')
     assert response.status_code == 200
     assert len(response.json()['results']) == 4
+    result = response.json()['results'][0]
+    assert not result['attributes']
+    assert not result['extras']
 
 
 def test_get_node(default_nodes, client):  # pylint: disable=unused-argument
@@ -26,6 +29,9 @@ def test_get_node(default_nodes, client):  # pylint: disable=unused-argument
     for nodes_id in default_nodes:
         response = client.get(f'/nodes/{nodes_id}')
         assert response.status_code == 200
+        result = response.json()
+        assert not result['attributes']
+        assert not result['extras']
 
 
 def test_get_download_formats(client):
@@ -63,6 +69,22 @@ def test_get_download_formats(client):
             raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
         if not set(value) <= set(response_json[key]):
             raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
+
+
+def test_get_node_repository_metadata(array_data_node, client):
+    """Test retrieving repository metadata for a node."""
+    response = client.get(f'/nodes/{array_data_node.pk}/repo/metadata')
+    assert response.status_code == 200
+    result = response.json()
+    default = orm.ArrayData.default_array_name + '.npy'
+    assert default in result
+    assert all(t in result[default] for t in ('type', 'binary', 'size', 'download'))
+    assert result[default]['type'] == 'FILE'
+    assert result[default]['binary'] is True
+    assert 'zipped' in result
+    assert all(t in result['zipped'] for t in ('type', 'binary', 'size', 'download'))
+    assert result['zipped']['type'] == 'FILE'
+    assert result['zipped']['binary'] is True
 
 
 def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
@@ -302,10 +324,14 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
             'extras': {'extra_one': 'value_1', 'extra_two': 'value_2'},
         },
     )
-    check_response = client.get(f'/nodes/{response.json()["pk"]}')
-    assert check_response.status_code == 200, response.content
-    assert check_response.json()['extras']['extra_one'] == 'value_1'
-    assert check_response.json()['extras']['extra_two'] == 'value_2'
+    assert response.status_code == 200, response.content
+    assert not response.json()['extras']
+
+    # We exclude extras from the node response, so we check by retrieving them separately
+    response = client.get(f'/nodes/{response.json()["pk"]}/extras')
+    assert response.status_code == 200
+    assert response.json()['extra_one'] == 'value_1'
+    assert response.json()['extra_two'] == 'value_2'
 
 
 @pytest.mark.anyio

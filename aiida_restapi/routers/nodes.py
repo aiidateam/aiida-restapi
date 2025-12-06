@@ -239,6 +239,48 @@ async def get_node(node_id: int) -> orm.Node.Model:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
+@router.get(
+    '/nodes/{node_id}/attributes',
+    response_model=dict[str, t.Any],
+)
+@with_dbenv()
+async def get_node_attributes(node_id: int) -> dict[str, t.Any]:
+    """Get the attributes of a node.
+
+    :param node_id: The id of the node to retrieve the attributes for.
+    :return: A dictionary with the node attributes.
+    :raises HTTPException: 404 if the node with the given id does not exist,
+        500 for other failures during retrieval.
+    """
+    try:
+        return repository.get_node_attributes(node_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
+
+
+@router.get(
+    '/nodes/{node_id}/extras',
+    response_model=dict[str, t.Any],
+)
+@with_dbenv()
+async def get_node_extras(node_id: int) -> dict[str, t.Any]:
+    """Get the extras of a node.
+
+    :param node_id: The id of the node to retrieve the extras for.
+    :return: A dictionary with the node extras.
+    :raises HTTPException: 404 if the node with the given id does not exist,
+        500 for other failures during retrieval.
+    """
+    try:
+        return repository.get_entity_extras(node_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
+
+
 @router.get('/nodes/{node_id}/download')
 @with_dbenv()
 async def download_node(
