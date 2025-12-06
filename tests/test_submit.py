@@ -3,44 +3,7 @@
 import io
 
 import pytest
-from aiida.orm import Dict, SinglefileData
-
-
-def test_get_processes(example_processes, client):  # pylint: disable=unused-argument
-    """Test listing existing processes."""
-    response = client.get('/processes/')
-
-    assert response.status_code == 200
-    assert len(response.json()) == 12
-
-
-def test_get_processes_projectable(client):
-    """Test get projectable properties for processes."""
-    response = client.get('/processes/projectable_properties')
-
-    assert response.status_code == 200
-    assert response.json() == [
-        'id',
-        'uuid',
-        'node_type',
-        'process_type',
-        'label',
-        'description',
-        'ctime',
-        'mtime',
-        'user_id',
-        'dbcomputer_id',
-        'attributes',
-        'extras',
-        'repository_metadata',
-    ]
-
-
-def test_get_single_processes(example_processes, client):  # pylint: disable=unused-argument
-    """Test retrieving a single processes."""
-    for proc_id in example_processes:
-        response = client.get(f'/processes/{proc_id}')
-        assert response.status_code == 200
+from aiida import orm
 
 
 @pytest.mark.anyio
@@ -48,10 +11,10 @@ async def test_add_process(default_test_add_process, async_client, authenticate)
     """Test adding new process"""
     code_id, x_id, y_id = default_test_add_process
     response = await async_client.post(
-        '/processes',
+        '/submit',
         json={
             'label': 'test_new_process',
-            'process_entry_point': 'aiida.calculations:core.arithmetic.add',
+            'entry_point': 'aiida.calculations:core.arithmetic.add',
             'inputs': {
                 'code.uuid': code_id,
                 'x.uuid': x_id,
@@ -69,10 +32,10 @@ def test_add_process_invalid_entry_point(default_test_add_process, client, authe
     """Test adding new process with invalid entry point"""
     code_id, x_id, y_id = default_test_add_process
     response = client.post(
-        '/processes',
+        '/submit',
         json={
             'label': 'test_new_process',
-            'process_entry_point': 'wrong_entry_point',
+            'entry_point': 'wrong_entry_point',
             'inputs': {
                 'code.uuid': code_id,
                 'x.uuid': x_id,
@@ -90,10 +53,10 @@ def test_add_process_invalid_node_id(default_test_add_process, client, authentic
     """Test adding new process with invalid Node ID"""
     code_id, x_id, _ = default_test_add_process
     response = client.post(
-        '/processes',
+        '/submit',
         json={
             'label': 'test_new_process',
-            'process_entry_point': 'aiida.calculations:core.arithmetic.add',
+            'entry_point': 'aiida.calculations:core.arithmetic.add',
             'inputs': {
                 'code.uuid': code_id,
                 'x.uuid': x_id,
@@ -112,18 +75,18 @@ def test_add_process_invalid_node_id(default_test_add_process, client, authentic
 async def test_add_process_nested_inputs(default_test_add_process, async_client, authenticate):  # pylint: disable=unused-argument
     """Test adding new process that has nested inputs"""
     code_id, _, _ = default_test_add_process
-    template = Dict(
+    template = orm.Dict(
         {
             'files_to_copy': [('file', 'file.txt')],
         }
     ).store()
-    single_file = SinglefileData(io.StringIO('content')).store()
+    single_file = orm.SinglefileData(io.StringIO('content')).store()
 
     response = await async_client.post(
-        '/processes',
+        '/submit',
         json={
             'label': 'test_new_process',
-            'process_entry_point': 'aiida.calculations:core.templatereplacer',
+            'entry_point': 'aiida.calculations:core.templatereplacer',
             'inputs': {
                 'code.uuid': code_id,
                 'template.uuid': template.uuid,

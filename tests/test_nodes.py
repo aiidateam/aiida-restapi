@@ -4,28 +4,34 @@ import io
 import json
 
 import pytest
+from aiida import orm
 
 
-def test_get_nodes_projectable(client):
-    """Test get projectable properites for nodes."""
+def test_get_node_projectable_properties(client):
+    """Test get projectable properties for nodes."""
     response = client.get('/nodes/projectable_properties')
-
     assert response.status_code == 200
-    assert response.json() == [
-        'id',
-        'uuid',
-        'node_type',
-        'process_type',
-        'label',
-        'description',
-        'ctime',
-        'mtime',
-        'user_id',
-        'dbcomputer_id',
-        'attributes',
-        'extras',
-        'repository_metadata',
-    ]
+    assert response.json() == sorted(orm.Node.fields.keys())
+
+
+def test_get_nodes(default_nodes, client):  # pylint: disable=unused-argument
+    """Test listing existing nodes."""
+    response = client.get('/nodes')
+    assert response.status_code == 200
+    assert len(response.json()['results']) == 4
+    result = response.json()['results'][0]
+    assert not result['attributes']
+    assert not result['extras']
+
+
+def test_get_node(default_nodes, client):  # pylint: disable=unused-argument
+    """Test retrieving a single nodes."""
+    for nodes_id in default_nodes:
+        response = client.get(f'/nodes/{nodes_id}')
+        assert response.status_code == 200
+        result = response.json()
+        assert not result['attributes']
+        assert not result['extras']
 
 
 def test_get_download_formats(client):
@@ -65,19 +71,20 @@ def test_get_download_formats(client):
             raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
 
 
-def test_get_single_nodes(default_nodes, client):  # pylint: disable=unused-argument
-    """Test retrieving a single nodes."""
-
-    for nodes_id in default_nodes:
-        response = client.get(f'/nodes/{nodes_id}')
-        assert response.status_code == 200
-
-
-def test_get_nodes(default_nodes, client):  # pylint: disable=unused-argument
-    """Test listing existing nodes."""
-    response = client.get('/nodes')
+def test_get_node_repository_metadata(array_data_node, client):
+    """Test retrieving repository metadata for a node."""
+    response = client.get(f'/nodes/{array_data_node.pk}/repo/metadata')
     assert response.status_code == 200
-    assert len(response.json()) == 4
+    result = response.json()
+    default = orm.ArrayData.default_array_name + '.npy'
+    assert default in result
+    assert all(t in result[default] for t in ('type', 'binary', 'size', 'download'))
+    assert result[default]['type'] == 'FILE'
+    assert result[default]['binary'] is True
+    assert 'zipped' in result
+    assert all(t in result['zipped'] for t in ('type', 'binary', 'size', 'download'))
+    assert result['zipped']['type'] == 'FILE'
+    assert result['zipped']['binary'] is True
 
 
 def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
@@ -85,8 +92,8 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.dict',
-            'attributes': {'x': 1, 'y': 2},
+            'node_type': 'data.core.dict.Dict',
+            'value': {'x': 1, 'y': 2},
             'label': 'test_dict',
         },
     )
@@ -96,14 +103,13 @@ def test_create_dict(client, authenticate):  # pylint: disable=unused-argument
 @pytest.mark.anyio
 async def test_create_code(default_computers, async_client, authenticate):  # pylint: disable=unused-argument
     """Test creating a new Code."""
-
     for comp_id in default_computers:
         response = await async_client.post(
             '/nodes',
             json={
-                'entry_point': 'core.code.installed',
-                'dbcomputer_id': comp_id,
-                'attributes': {'filepath_executable': '/bin/true'},
+                'node_type': 'data.core.code.installed.InstalledCode',
+                'computer': comp_id,
+                'filepath_executable': '/bin/true',
                 'label': 'test_code',
             },
         )
@@ -115,11 +121,10 @@ def test_create_list(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.list',
-            'attributes': {'list': [2, 3]},
+            'node_type': 'data.core.list.List',
+            'value': [2, 3],
         },
     )
-
     assert response.status_code == 200, response.content
 
 
@@ -128,8 +133,8 @@ def test_create_int(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.int',
-            'attributes': {'value': 6},
+            'node_type': 'data.core.int.Int',
+            'value': 6,
         },
     )
     assert response.status_code == 200, response.content
@@ -140,8 +145,8 @@ def test_create_float(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.float',
-            'attributes': {'value': 6.6},
+            'node_type': 'data.core.float.Float',
+            'value': 6.6,
         },
     )
     assert response.status_code == 200, response.content
@@ -152,8 +157,8 @@ def test_create_string(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.str',
-            'attributes': {'value': 'test_string'},
+            'node_type': 'data.core.str.Str',
+            'value': 'test_string',
         },
     )
     assert response.status_code == 200, response.content
@@ -164,8 +169,8 @@ def test_create_bool(client, authenticate):  # pylint: disable=unused-argument
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.bool',
-            'attributes': {'value': 'True'},
+            'node_type': 'data.core.bool.Bool',
+            'value': 'True',
         },
     )
     assert response.status_code == 200, response.content
@@ -176,20 +181,36 @@ def test_create_structure_data(client, authenticate):  # pylint: disable=unused-
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.structure',
-            'process_type': None,
+            'node_type': 'data.core.structure.StructureData',
             'description': '',
-            'attributes': {
-                'cell': [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-                'pbc': [True, True, True],
-                'ase': None,
-                'pymatgen': None,
-                'pymatgen_structure': None,
-                'pymatgen_molecule': None,
-            },
+            'cell': [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            'pbc1': True,
+            'pbc2': True,
+            'pbc3': True,
+            'kinds': [
+                {
+                    'name': 'H',
+                    'mass': 1.00784,
+                    'symbols': ['H'],
+                    'weights': [1.0],
+                }
+            ],
+            'sites': [
+                {
+                    'position': [0.0, 0.0, 0.0],
+                    'kind_name': 'H',
+                },
+                {
+                    'position': [0.5, 0.5, 0.5],
+                    'kind_name': 'H',
+                },
+            ],
         },
     )
-
     assert response.status_code == 200, response.content
 
 
@@ -198,8 +219,7 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.orbital',
-            'process_type': None,
+            'node_type': 'data.core.orbital.OrbitalData',
             'description': '',
             'attributes': {
                 'orbital_dicts': [
@@ -222,7 +242,6 @@ def test_create_orbital_data(client, authenticate):  # pylint: disable=unused-ar
             },
         },
     )
-
     assert response.status_code == 200, response.content
 
 
@@ -238,50 +257,35 @@ def test_create_single_file_upload(client, authenticate):  # pylint: disable=unu
     data = {
         'params': json.dumps(
             {
-                'entry_point': 'core.singlefile',
-                'process_type': None,
+                'node_type': 'data.core.singlefile.SinglefileData',
                 'description': 'Testing single upload file',
-                'attributes': {},
+                'filename': 'test_file.txt',
             }
         )
     }
 
-    response = client.post('/nodes/singlefile', files=test_file, data=data)
-
+    response = client.post('/nodes/file-upload', files=test_file, data=data)
     assert response.status_code == 200, response.json()
 
 
-def test_create_node_wrong_value(client, authenticate):  # pylint: disable=unused-argument
+@pytest.mark.parametrize(
+    'node_type, value',
+    [
+        ('data.core.int.Int', 'test'),
+        ('data.core..float.Float', [1, 2, 3]),
+        ('data.core.str.Str', 5),
+    ],
+)
+def test_create_node_wrong_value(client, node_type, value, authenticate):  # pylint: disable=unused-argument
     """Test creating a new node with wrong value."""
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.float',
-            'attributes': {'value': 'tests'},
+            'node_type': node_type,
+            'value': value,
         },
     )
-    assert response.status_code == 400, response.content
-
-    response = client.post(
-        '/nodes',
-        json={
-            'entry_point': 'core.int',
-            'attributes': {'value': 'tests'},
-        },
-    )
-    assert response.status_code == 400, response.content
-
-
-def test_create_node_wrong_attribute(client, authenticate):  # pylint: disable=unused-argument
-    """Test adding node with wrong attributes."""
-    response = client.post(
-        '/nodes',
-        json={
-            'entry_point': 'core.str',
-            'attributes': {'value1': 5},
-        },
-    )
-    assert response.status_code == 400, response.content
+    assert response.status_code == 422, response.content
 
 
 def test_create_unknown_entry_point(default_computers, client, authenticate):  # pylint: disable=unused-argument
@@ -289,29 +293,25 @@ def test_create_unknown_entry_point(default_computers, client, authenticate):  #
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.not.existing.entry.point',
+            'node_type': 'data.core.nonexistent.NonExistentType',
             'label': 'test_code',
         },
     )
-    assert response.status_code == 404, response.content
-    assert response.json()['detail'] == "Entry point 'core.not.existing.entry.point' not found in group 'aiida.data'"
+    assert response.status_code == 422, response.content
 
 
 def test_create_additional_attribute(default_computers, client, authenticate):  # pylint: disable=unused-argument
-    """Test adding additional properties returns errors."""
-
-    for comp_id in default_computers:
-        response = client.post(
-            '/nodes',
-            json={
-                'uuid': '3',
-                'entry_point': 'core.code.installed',
-                'dbcomputer_id': comp_id,
-                'attributes': {'filepath_executable': '/bin/true'},
-                'label': 'test_code',
-            },
-        )
-    assert response.status_code == 422, response.content
+    """Test adding additional properties are ignored."""
+    response = client.post(
+        '/nodes',
+        json={
+            'node_type': 'data.core.int.Int',
+            'value': 42,
+            'extra_thing': 'should be ignored',
+        },
+    )
+    assert response.status_code == 200, response.content
+    assert 'extra_thing' not in response.json().get('attributes', {})
 
 
 def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused-argument
@@ -319,17 +319,19 @@ def test_create_bool_with_extra(client, authenticate):  # pylint: disable=unused
     response = client.post(
         '/nodes',
         json={
-            'entry_point': 'core.bool',
-            'attributes': {'value': 'True'},
+            'node_type': 'data.core.bool.Bool',
+            'value': 'True',
             'extras': {'extra_one': 'value_1', 'extra_two': 'value_2'},
         },
     )
+    assert response.status_code == 200, response.content
+    assert not response.json()['extras']
 
-    check_response = client.get(f"/nodes/{response.json()['id']}")
-
-    assert check_response.status_code == 200, response.content
-    assert check_response.json()['extras']['extra_one'] == 'value_1'
-    assert check_response.json()['extras']['extra_two'] == 'value_2'
+    # We exclude extras from the node response, so we check by retrieving them separately
+    response = client.get(f'/nodes/{response.json()["pk"]}/extras')
+    assert response.status_code == 200
+    assert response.json()['extra_one'] == 'value_1'
+    assert response.json()['extra_two'] == 'value_2'
 
 
 @pytest.mark.anyio

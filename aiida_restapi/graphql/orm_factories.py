@@ -12,7 +12,7 @@ from aiida.cmdline.utils.decorators import with_dbenv
 from graphql import GraphQLError
 from pydantic import Json
 
-from aiida_restapi.aiida_db_mappings import ORM_MAPPING, get_model_from_orm
+from aiida_restapi.graphql.aiida_db_mappings import ORM_MAPPING, get_model_from_orm
 
 from .config import ENTITY_LIMIT
 from .utils import JSON, selected_field_names_naive

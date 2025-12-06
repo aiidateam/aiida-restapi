@@ -6,7 +6,7 @@ from typing import Any, Optional
 import graphene as gr
 from aiida.orm import User
 
-from aiida_restapi.filter_syntax import parse_filter_str
+from aiida_restapi.graphql.filter_syntax import parse_filter_str
 
 from .nodes import NodesQuery
 from .orm_factories import (

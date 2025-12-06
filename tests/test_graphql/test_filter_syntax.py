@@ -4,7 +4,7 @@ import datetime
 
 import pytest
 
-from aiida_restapi.filter_syntax import parse_filter_str
+from aiida_restapi.graphql.filter_syntax import parse_filter_str
 
 
 @pytest.mark.parametrize(
