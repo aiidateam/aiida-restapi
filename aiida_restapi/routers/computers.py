@@ -15,12 +15,13 @@ from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
 
 
-@router.get('/computers/schema')
+@read_router.get('/computers/schema')
 async def get_computers_schema(
     which: t.Literal['get', 'post'] = Query(
         'get',
@@ -39,7 +40,7 @@ async def get_computers_schema(
         raise HTTPException(status_code=422, detail=str(err)) from err
 
 
-@router.get('/computers/projectable_properties', response_model=list[str])
+@read_router.get('/computers/projectable_properties', response_model=list[str])
 async def get_computer_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA computers.
 
@@ -48,7 +49,7 @@ async def get_computer_projectable_properties() -> list[str]:
     return repository.get_projectable_properties()
 
 
-@router.get(
+@read_router.get(
     '/computers',
     response_model=PaginatedResults[orm.Computer.Model],
     response_model_exclude_none=True,
@@ -66,7 +67,7 @@ async def get_computers(
     return repository.get_entities(queries)
 
 
-@router.get(
+@read_router.get(
     '/computers/{computer_id}',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
@@ -86,7 +87,7 @@ async def get_computer(computer_id: int) -> orm.Computer.Model:
         raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
 
 
-@router.get('/computers/{computer_id}/metadata', response_model=dict[str, t.Any])
+@read_router.get('/computers/{computer_id}/metadata', response_model=dict[str, t.Any])
 @with_dbenv()
 async def get_computer_metadata(computer_id: int) -> dict[str, t.Any]:
     """Get metadata of an AiiDA computer by id.
@@ -102,7 +103,7 @@ async def get_computer_metadata(computer_id: int) -> dict[str, t.Any]:
         raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
 
 
-@router.post(
+@write_router.post(
     '/computers',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,

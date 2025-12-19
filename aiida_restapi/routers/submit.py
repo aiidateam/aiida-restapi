@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+write_router = APIRouter()
 
 
 def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
@@ -58,7 +58,7 @@ class ProcessSubmitModel(pdt.BaseModel):
         return process_inputs(inputs)
 
 
-@router.post(
+@write_router.post(
     '/submit',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
