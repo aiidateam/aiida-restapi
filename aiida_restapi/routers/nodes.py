@@ -85,7 +85,34 @@ async def get_node_projectable_properties(
         raise HTTPException(status_code=422, detail=str(err)) from err
 
 
-@read_router.get('/nodes/statistics', response_model=dict[str, t.Any])
+class NodeStatistics(pdt.BaseModel):
+    """Pydantic model representing node statistics."""
+
+    total: int = pdt.Field(
+        description='Total number of nodes.',
+        examples=[47],
+    )
+    types: dict[str, int] = pdt.Field(
+        description='Number of nodes by type.',
+        examples=[
+            {
+                'data.core.int.Int.': 42,
+                'data.core.singlefile.SinglefileData.': 5,
+            }
+        ],
+    )
+    ctime_by_day: dict[str, int] = pdt.Field(
+        description='Number of nodes created per day (YYYY-MM-DD).',
+        examples=[
+            {
+                '2012-01-01': 10,
+                '2012-01-02': 15,
+            }
+        ],
+    )
+
+
+@read_router.get('/nodes/statistics', response_model=NodeStatistics)
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
     """Get node statistics."""
