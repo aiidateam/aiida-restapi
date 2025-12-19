@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.graphql import main
-from aiida_restapi.routers import auth, computers, daemon, groups, nodes, server, submit, users
+from aiida_restapi.routers import auth, computers, daemon, groups, nodes, querybuilder, server, submit, users
 
 
 def create_app() -> FastAPI:
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
 
     api_router.include_router(auth.router)
 
-    for module in (computers, daemon, groups, nodes, server, submit, users):
+    for module in (computers, daemon, groups, nodes, querybuilder, server, submit, users):
         if read_router := getattr(module, 'read_router', None):
             api_router.include_router(read_router)
         if not read_only and (write_router := getattr(module, 'write_router', None)):
