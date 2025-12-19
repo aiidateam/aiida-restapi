@@ -115,7 +115,25 @@ class NodeStatistics(pdt.BaseModel):
 @read_router.get('/nodes/statistics', response_model=NodeStatistics)
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
-    """Get node statistics."""
+    """Get node statistics.
+
+    :param user: Optional user PK to filter statistics by user.
+    :return: A dictionary containing total node count, counts by node type, and creation time statistics.
+
+    >>> {
+    >>>   "total": 47,
+    >>>   "types": {
+    >>>       "data.core.int.Int.": 42,
+    >>>       "data.core.singlefile.SinglefileData.": 5,
+    >>>       ...
+    >>>   },
+    >>>   "ctime_by_day": {
+    >>>       "2012-01-01": 10,
+    >>>       "2012-01-02": 15,
+    >>>       ...
+    >>>   },
+    >>> }
+    """
 
     from aiida.manage import get_manager
 
