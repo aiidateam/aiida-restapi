@@ -639,8 +639,9 @@ async def test_get_download_node(async_client: AsyncClient, array_data_node: orm
     assert 'Please specify the download format' in response.json()['detail']
 
 
+@pytest.mark.usefixtures('default_nodes')
 @pytest.mark.anyio
-async def test_get_statistics(default_nodes, async_client):
+async def test_get_statistics(async_client: AsyncClient):
     """Test get statistics for nodes."""
 
     from datetime import datetime
@@ -656,7 +657,7 @@ async def test_get_statistics(default_nodes, async_client):
         'ctime_by_day': {datetime.today().strftime('%Y-%m-%d'): 4},
     }
 
-    # Test without specifiying user, should use default user
+    # Test without specifying user, should use default user
     response = await async_client.get('/nodes/statistics')
     assert response.status_code == 200, response.json()
     assert response.json() == default_user_reference_json
