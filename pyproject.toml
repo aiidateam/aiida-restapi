@@ -59,6 +59,9 @@ testing = [
   'anyio~=4.6.0',
 ]
 
+[project.scripts]
+aiida-restapi = 'aiida_restapi.cli.main:cli'
+
 [project.urls]
 Source = 'https://github.com/aiidateam/aiida-restapi'
 
