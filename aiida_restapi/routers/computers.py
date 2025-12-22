@@ -32,12 +32,15 @@ async def get_computers_schema(
 
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
+    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
+        500 for any other failures.
     """
     try:
         return repository.get_entity_schema(which=which)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get('/computers/projectable_properties', response_model=list[str])
@@ -68,39 +71,45 @@ async def get_computers(
 
 
 @read_router.get(
-    '/computers/{computer_id}',
+    '/computers/{pk}',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
 )
 @with_dbenv()
-async def get_computer(computer_id: int) -> orm.Computer.Model:
-    """Get AiiDA computer by id.
+async def get_computer(pk: str) -> orm.Computer.Model:
+    """Get AiiDA computer by pk.
 
-    :param computer_id: The id of the AiiDA computer.
+    :param pk: The pk of the AiiDA computer.
     :return: The computer model.
-    :raises HTTPException: 404 if the computer with the given id does not exist.
+    :raises HTTPException: 404 if the computer with the given pk does not exist,
+        500 for any other failures.
     """
     try:
-        return repository.get_entity_by_id(computer_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
+        return repository.get_entity_by_id(pk)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/computers/{computer_id}/metadata', response_model=dict[str, t.Any])
+@read_router.get('/computers/{pk}/metadata', response_model=dict[str, t.Any])
 @with_dbenv()
-async def get_computer_metadata(computer_id: int) -> dict[str, t.Any]:
-    """Get metadata of an AiiDA computer by id.
+async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
+    """Get metadata of an AiiDA computer by pk.
 
-    :param computer_id: The id of the AiiDA computer.
+    :param pk: The pk of the AiiDA computer.
     :return: The metadata dictionary of the computer.
-    :raises HTTPException: 404 if the computer with the given id does not exist.
+    :raises HTTPException: 404 if the computer with the given pk does not exist,
+        500 for any other failures.
     """
     try:
-        computer = repository.get_entity_by_id(computer_id)
+        computer = repository.get_entity_by_id(pk)
         return computer.metadata
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @write_router.post(
@@ -123,5 +132,5 @@ async def create_computer(
     """
     try:
         return repository.create_entity(computer_model)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception))

@@ -74,13 +74,13 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
 
         return all_formats
 
-    def get_node_repository_metadata(self, node_id: int) -> dict[str, dict]:
+    def get_node_repository_metadata(self, uuid: str) -> dict[str, dict]:
         """Get the repository metadata of a node.
 
-        :param node_id: The id of the node to retrieve the repository metadata for.
+        :param uuid: The uuid of the node to retrieve the repository metadata for.
         :return: A dictionary with the repository file metadata.
         """
-        node = self.entity_class.collection.get(pk=node_id)
+        node = self.entity_class.collection.get(uuid=uuid)
         total_size = 0
 
         def get_metadata(objects: list[File], path: str | None = None) -> dict[str, dict]:
@@ -113,7 +113,7 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
                         'type': 'FILE',
                         'binary': binary,
                         'size': size,
-                        'download': f'/nodes/{node_id}/repo/contents?filename={obj_name}',
+                        'download': f'/nodes/{uuid}/repo/contents?filename={obj_name}',
                     }
                     total_size += size
 
@@ -126,39 +126,39 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
                 'type': 'FILE',
                 'binary': True,
                 'size': total_size,
-                'download': f'/nodes/{node_id}/repo/contents',
+                'download': f'/nodes/{uuid}/repo/contents',
             }
 
         return metadata
 
-    def get_node_attributes(self, node_id: int) -> dict[str, t.Any]:
+    def get_node_attributes(self, uuid: str) -> dict[str, t.Any]:
         """Get the attributes of a node.
 
-        :param node_id: The id of the node to retrieve the attributes for.
+        :param uuid: The uuid of the node to retrieve the attributes for.
         :return: A dictionary with the node attributes.
         """
         return t.cast(
             dict,
             self.entity_class.collection.query(
-                filters={'pk': node_id},
+                filters={'uuid': uuid},
                 project=['attributes'],
             ).first()[0],
         )
 
     def get_node_links(
         self,
-        node_id: int,
+        uuid: str,
         queries: QueryParams,
         direction: t.Literal['incoming', 'outgoing'],
     ) -> PaginatedResults[NodeLinks]:
         """Get the incoming links of a node.
 
-        :param node_id: The id of the node to retrieve the incoming links for.
+        :param uuid: The uuid of the node to retrieve the incoming links for.
         :param queries: The query parameters, including filters, order_by, page_size, and page.
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :return: The paginated requested linked nodes.
         """
-        node = self.entity_class.collection.get(pk=node_id)
+        node = self.entity_class.collection.get(uuid=uuid)
 
         if direction == 'incoming':
             link_collection = node.base.links.get_incoming()
