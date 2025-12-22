@@ -32,12 +32,15 @@ async def get_groups_schema(
 
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
+    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
+        500 for any other failures.
     """
     try:
         return repository.get_entity_schema(which=which)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get('/groups/projectable_properties', response_model=list[str])
@@ -68,47 +71,47 @@ async def get_groups(
 
 
 @read_router.get(
-    '/groups/{group_id}',
+    '/groups/{uuid}',
     response_model=orm.Group.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
 )
 @with_dbenv()
-async def get_group(group_id: int) -> orm.Group.Model:
-    """Get AiiDA group by id.
+async def get_group(uuid: str) -> orm.Group.Model:
+    """Get AiiDA group by uuid.
 
-    :param group_id: The id of the group to retrieve.
+    :param uuid: The uuid of the group to retrieve.
     :return: The AiiDA group model.
-    :raises HTTPException: 404 if a group with the given id does not exist,
+    :raises HTTPException: 404 if a group with the given uuid does not exist,
         500 for any other server error.
     """
     try:
-        return repository.get_entity_by_id(group_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Group with id {group_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+        return repository.get_entity_by_id(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(
-    '/groups/{group_id}/extras',
+    '/groups/{uuid}/extras',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
-async def get_group_extras(group_id: int) -> dict[str, t.Any]:
+async def get_group_extras(uuid: str) -> dict[str, t.Any]:
     """Get the extras of a group.
 
-    :param group_id: The id of the group to retrieve the extras for.
+    :param uuid: The uuid of the group to retrieve the extras for.
     :return: A dictionary with the group extras.
-    :raises HTTPException: 404 if the group with the given id does not exist,
+    :raises HTTPException: 404 if the group with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_extras(group_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any group with id {group_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_entity_extras(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @write_router.post(
@@ -131,5 +134,5 @@ async def create_group(
     """
     try:
         return repository.create_entity(group_model)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception

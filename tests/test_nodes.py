@@ -120,9 +120,9 @@ def test_get_nodes_with_filters(client: TestClient):
     assert results[0]['node_type'] == 'data.core.float.Float.'
 
     # Attributes are excluded, so we need to check separately by id
-    response = client.get(f'/nodes/{results[0]["pk"]}/attributes')
-    assert response.status_code == 200
-    assert response.json()['value'] == 1.1
+    check = client.get(f'/nodes/{results[0]["uuid"]}/attributes')
+    assert check.status_code == 200
+    assert check.json()['value'] == 1.1
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -153,12 +153,12 @@ def test_get_nodes_pagination(client: TestClient):
     assert all(result['pk'] in (3, 4) for result in results)
 
 
-def test_get_node(client: TestClient, default_nodes: list[int | None]):
+def test_get_node(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving a single nodes."""
-    for nodes_id in default_nodes:
-        response = client.get(f'/nodes/{nodes_id}')
+    for node_id in default_nodes:
+        response = client.get(f'/nodes/{node_id}')
         assert response.status_code == 200, response.content
-        assert response.json()['pk'] == nodes_id
+        assert response.json()['uuid'] == node_id
 
 
 def test_get_download_formats(client: TestClient):
@@ -200,7 +200,7 @@ def test_get_download_formats(client: TestClient):
 
 def test_get_node_repository_metadata(client: TestClient, array_data_node: orm.ArrayData):
     """Test retrieving repository metadata for a node."""
-    response = client.get(f'/nodes/{array_data_node.pk}/repo/metadata')
+    response = client.get(f'/nodes/{array_data_node.uuid}/repo/metadata')
     assert response.status_code == 200
     result = response.json()
     default = orm.ArrayData.default_array_name + '.npy'
@@ -410,7 +410,7 @@ def test_create_single_file(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
     assert check.status_code == 200, check.content
     result = check.json()
     assert 'test_file.txt' in result
@@ -444,7 +444,7 @@ def test_create_single_file_binary(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
     assert check.status_code == 200, check.content
     result = check.json()
     assert 'binary_file.bin' in result
@@ -485,7 +485,7 @@ def test_create_folder_data(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
     assert check.status_code == 200, check.content
     result = check.json()
     assert 'folder' in result
@@ -535,7 +535,7 @@ def test_create_node_with_files_has_zipped_metadata(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
     assert check.status_code == 200, check.content
     result = check.json()
     assert 'zipped' in result
@@ -593,7 +593,7 @@ def test_create_additional_attribute(client: TestClient):
     )
     assert response.status_code == 200, response.content
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/attributes')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/attributes')
     assert check.status_code == 200, check.content
     result = check.json()
     assert 'value' in result
@@ -614,7 +614,7 @@ def test_create_bool_with_extra(client: TestClient):
     assert response.status_code == 200, response.content
 
     # We exclude extras from the node response, so we check by retrieving them separately
-    check = client.get(f'/nodes/{response.json()["pk"]}/extras')
+    check = client.get(f'/nodes/{response.json()["uuid"]}/extras')
     assert check.status_code == 200, check.content
     result = check.json()
     assert result['extra_one'] == 'value_1'
