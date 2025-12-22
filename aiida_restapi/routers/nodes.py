@@ -16,6 +16,7 @@ from typing_extensions import TypeAlias
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.config import API_CONFIG
 from aiida_restapi.models.node import NodeModelRegistry
 from aiida_restapi.repository.node import NodeLinks, NodeRepository
 
@@ -25,6 +26,7 @@ read_router = APIRouter()
 write_router = APIRouter()
 
 repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
+
 model_registry = NodeModelRegistry()
 
 if t.TYPE_CHECKING:
@@ -53,7 +55,8 @@ async def get_nodes_schema(
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: The JSON schema for the base AiiDA node 'get' model.
     :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        422 if the node type is not recognized.
+        422 if the node type is not recognized,
+        500 for any other failures.
     """
     if not node_type:
         return orm.Node.Model.model_json_schema()
@@ -62,6 +65,8 @@ async def get_nodes_schema(
         return model.model_json_schema()
     except KeyError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get('/nodes/projectable_properties')
@@ -77,12 +82,15 @@ async def get_node_projectable_properties(
 
     :param node_type: The AiiDA node type string.
     :return: The list of projectable properties for AiiDA nodes.
-    :raises HTTPException: 422 if the node type is not recognized.
+    :raises HTTPException: 422 if the node type is not recognized,
+        500 for any other failures.
     """
     try:
         return repository.get_projectable_properties(node_type)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 class NodeStatistics(pdt.BaseModel):
@@ -151,10 +159,10 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
     """
     try:
         return repository.get_all_download_formats()
-    except EntryPointError:
-        raise HTTPException(status_code=404, detail='The download formats are not available.')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+    except EntryPointError as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(
@@ -202,13 +210,14 @@ async def get_node_types() -> list:
     >>>   ...
     >>> ]
     """
+    api_prefix = API_CONFIG['PREFIX']
     return [
         {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
-            'nodes': f'/nodes?filters={{"node_type":"{node_type}"}}',
-            'projections': f'/nodes/projectable_properties?type={node_type}',
-            'node_schema': f'/nodes/schema?type={node_type}',
+            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
+            'projections': f'{api_prefix}/nodes/projectable_properties?type={node_type}',
+            'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
         for node_type in sorted(
             model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
@@ -217,79 +226,79 @@ async def get_node_types() -> list:
 
 
 @read_router.get(
-    '/nodes/{node_id}',
+    '/nodes/{uuid}',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
 )
 @with_dbenv()
-async def get_node(node_id: int) -> orm.Node.Model:
-    """Get AiiDA node by id.
+async def get_node(uuid: str) -> orm.Node.Model:
+    """Get AiiDA node by uuid.
 
-    :param node_id: The id of the node to retrieve.
+    :param uuid: The uuid of the node to retrieve.
     :return: The AiiDA node model, e.g. `orm.Node.Model`,
-    :raises HTTPException: 422 if the node with the given id does not exist,
+    :raises HTTPException: 422 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_by_id(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=422, detail=f'Could not find any Node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_entity_by_id(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(
-    '/nodes/{node_id}/attributes',
+    '/nodes/{uuid}/attributes',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
-async def get_node_attributes(node_id: int) -> dict[str, t.Any]:
+async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
     """Get the attributes of a node.
 
-    :param node_id: The id of the node to retrieve the attributes for.
+    :param uuid: The uuid of the node to retrieve the attributes for.
     :return: A dictionary with the node attributes.
-    :raises HTTPException: 404 if the node with the given id does not exist,
+    :raises HTTPException: 404 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_attributes(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_node_attributes(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(
-    '/nodes/{node_id}/extras',
+    '/nodes/{uuid}/extras',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
-async def get_node_extras(node_id: int) -> dict[str, t.Any]:
+async def get_node_extras(uuid: str) -> dict[str, t.Any]:
     """Get the extras of a node.
 
-    :param node_id: The id of the node to retrieve the extras for.
+    :param uuid: The uuid of the node to retrieve the extras for.
     :return: A dictionary with the node extras.
-    :raises HTTPException: 404 if the node with the given id does not exist,
+    :raises HTTPException: 404 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_extras(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_entity_extras(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(
-    '/nodes/{node_id}/links',
+    '/nodes/{uuid}/links',
     response_model=PaginatedResults[NodeLinks],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
 )
 @with_dbenv()
 async def get_node_links(
-    node_id: int,
+    uuid: str,
     queries: t.Annotated[QueryParams, Depends(query_params)],
     direction: t.Literal['incoming', 'outgoing'] = Query(
         description='Specify whether to retrieve incoming or outgoing links.',
@@ -297,40 +306,46 @@ async def get_node_links(
 ) -> PaginatedResults[NodeLinks]:
     """Get the incoming or outgoing links of a node.
 
-    :param node_id: The id of the node to retrieve the incoming links for.
+    :param uuid: The uuid of the node to retrieve the incoming links for.
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :param direction: Specify whether to retrieve incoming or outgoing links.
     :return: The paginated requested linked nodes.
-    :raises HTTPException: 404 if the node with the given id does not exist,
+    :raises HTTPException: 404 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_links(node_id, queries, direction=direction)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_node_links(uuid, queries, direction=direction)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/nodes/{node_id}/download')
+@read_router.get('/nodes/{uuid}/download')
 @with_dbenv()
 async def download_node(
-    node_id: int,
-    download_format: str | None = Query(None, description='Format to download the node in'),
+    uuid: str,
+    download_format: str | None = Query(
+        None,
+        description='Format to download the node in',
+    ),
 ) -> StreamingResponse:
-    """Download AiiDA node by id in a given download format provided as a query parameter.
+    """Download AiiDA node by uuid in a given download format provided as a query parameter.
 
-    :param node_id: The id of the node to retrieve.
+    :param uuid: The uuid of the node to retrieve.
     :param download_format: The format to download the node in.
     :return: StreamingResponse with the exported node content.
     :raises HTTPException: 403 if licensing restrictions prevent export,
-        404 if the node with the given id does not exist,
-        422 if the download format is not specified, or if the download format is not supported.
+        404 if the node with the given uuid does not exist,
+        422 if the download format is not specified, or if the download format is not supported,
+        500 for other failures during retrieval.
     """
     try:
-        node = orm.load_node(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a node with id {node_id}')
+        node = orm.load_node(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
     if download_format is None:
         raise HTTPException(
@@ -345,8 +360,8 @@ async def download_node(
 
         try:
             exported_bytes, _ = node._exportcontent(download_format)
-        except LicensingException as exc:
-            raise HTTPException(status_code=403, detail=str(exc))
+        except LicensingException as exception:
+            raise HTTPException(status_code=403, detail=str(exception)) from exception
 
         def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
@@ -396,57 +411,57 @@ MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
 @read_router.get(
-    '/nodes/{node_id}/repo/metadata',
+    '/nodes/{uuid}/repo/metadata',
     response_model=dict[str, MetadataType],
 )
 @with_dbenv()
-async def get_node_repo_file_metadata(node_id: int) -> dict[str, dict]:
+async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
     """Get the repository file metadata of a node.
 
-    :param node_id: The id of the node to retrieve the repository metadata for.
+    :param uuid: The uuid of the node to retrieve the repository metadata for.
     :return: A dictionary with the repository file metadata.
-    :raises HTTPException: 404 if the node with the given id does not exist,
+    :raises HTTPException: 404 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_repository_metadata(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        return repository.get_node_repository_metadata(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/nodes/{node_id}/repo/contents')
+@read_router.get('/nodes/{uuid}/repo/contents')
 @with_dbenv()
 async def get_node_repo_file_contents(
-    node_id: int,
-    filename: str | None = Query(None, description='Filename of repository content to retrieve'),
+    uuid: str,
+    filename: str | None = Query(
+        None,
+        description='Filename of repository content to retrieve',
+    ),
 ) -> StreamingResponse:
     """Get the repository contents of a node.
 
-    :param node_id: The id of the node to retrieve the repository contents for.
+    :param uuid: The uuid of the node to retrieve the repository contents for.
     :param filename: The filename of the repository content to retrieve. If None, retrieves all contents.
     :return: StreamingResponse with the requested file content.
-    :raises HTTPException: 404 if the node with the given id does not exist,
+    :raises HTTPException: 404 if the node with the given uuid does not exist,
         404 if the requested file does not exist in the node's repository.
     """
     from urllib.parse import quote
 
     try:
-        node = orm.load_node(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+        node = orm.load_node(uuid)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
 
     repo = node.base.repository
 
     if filename:
         try:
             file_content = repo.get_object_content(filename, mode='rb')
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=404,
-                detail=f'Could not find file {filename} in the repository of node with id {node_id}',
-            )
+        except FileNotFoundError as exception:
+            raise HTTPException(status_code=404, detail=str(exception)) from exception
 
         def file_stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(file_content) as handler:
@@ -465,7 +480,7 @@ async def get_node_repo_file_contents(
             with io.BytesIO(zip_bytes) as handler:
                 yield from handler
 
-        download_name = f'node_{node_id}_repo.zip'
+        download_name = f'node_{uuid}_repo.zip'
         quoted = quote(download_name)
         headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
 
@@ -525,8 +540,8 @@ async def create_node_with_files(
     """
     try:
         parameters = t.cast(dict, json.loads(params))
-    except json.JSONDecodeError as exc:
-        raise HTTPException(400, f"Invalid JSON in 'params': {exc}") from exc
+    except json.JSONDecodeError as exception:
+        raise HTTPException(400, str(exception)) from exception
 
     if not (node_type := parameters.get('node_type')):
         raise HTTPException(422, "Missing 'node_type' in params")
@@ -534,10 +549,10 @@ async def create_node_with_files(
     try:
         model_cls = model_registry.get_model(node_type, which='post')
         model = model_cls(**parameters)
-    except KeyError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    except pdt.ValidationError as exc:
-        raise HTTPException(422, f'Validation failed: {exc}') from exc
+    except KeyError as exception:
+        raise HTTPException(422, str(exception)) from exception
+    except pdt.ValidationError as exception:
+        raise HTTPException(422, str(exception)) from exception
 
     files_dict: dict[str, UploadFile] = {}
 
@@ -549,7 +564,7 @@ async def create_node_with_files(
     try:
         return repository.create_entity(model, files=files_dict)
     except json.JSONDecodeError as exception:
-        raise HTTPException(status_code=400, detail=f'Invalid JSON in params: {exception}') from exception
+        raise HTTPException(status_code=400, detail=str(exception)) from exception
     except KeyError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:

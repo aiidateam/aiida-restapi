@@ -137,7 +137,7 @@ def example_processes():
         calc.base.attributes.set('process_label', process_label)
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
 
         calc = WorkChainNode()
         calc.set_process_state(state)
@@ -151,7 +151,7 @@ def example_processes():
             calc.pause()
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
     return calcs
 
 
@@ -192,7 +192,7 @@ def default_groups():
     test_user_2 = orm.User(email='stravinsky@symphony.org', first_name='Igor', last_name='Stravinsky').store()
     group_1 = orm.Group(label='test_label_1', user=test_user_1).store()
     group_2 = orm.Group(label='test_label_2', user=test_user_2).store()
-    return [group_1.pk, group_2.pk]
+    return [group_1.uuid, group_2.uuid]
 
 
 @pytest.fixture(scope='function')
@@ -203,7 +203,7 @@ def default_nodes():
     node_3 = orm.Str('test_string').store()
     node_4 = orm.Bool(False).store()
 
-    return [node_1.pk, node_2.pk, node_3.pk, node_4.pk]
+    return [node_1.uuid, node_2.uuid, node_3.uuid, node_4.uuid]
 
 
 @pytest.fixture(scope='function')

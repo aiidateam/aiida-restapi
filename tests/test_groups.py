@@ -22,7 +22,7 @@ def test_get_groups(client: TestClient):
     assert len(response.json()['results']) == 2
 
 
-def test_get_group(client: TestClient, default_groups: list[int | None]):
+def test_get_group(client: TestClient, default_groups: list[str]):
     """Test retrieving a single group."""
     for group_id in default_groups:
         response = client.get(f'/groups/{group_id}')

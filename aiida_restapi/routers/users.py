@@ -32,12 +32,15 @@ async def get_users_schema(
 
     :param which: The type of schema to retrieve: 'get' or 'post'.
     :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
+    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
+        500 for any other failures.
     """
     try:
         return repository.get_entity_schema(which=which)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get('/users/projectable_properties', response_model=list[str])
@@ -68,21 +71,24 @@ async def get_users(
 
 
 @read_router.get(
-    '/users/{user_id}',
+    '/users/{pk}',
     response_model=orm.User.Model,
 )
 @with_dbenv()
-async def get_user(user_id: int) -> orm.User.Model:
-    """Get AiiDA user by id.
+async def get_user(pk: int) -> orm.User.Model:
+    """Get AiiDA user by pk.
 
-    :param user_id: The id of the user to retrieve.
+    :param pk: The pk of the user to retrieve.
     :return: The AiiDA user model.
-    :raises HTTPException: 404 if the user with the given id does not exist,
+    :raises HTTPException: 404 if the user with the given pk does not exist,
+        500 for any other failures.
     """
     try:
-        return repository.get_entity_by_id(user_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a User with id {user_id}')
+        return repository.get_entity_by_id(pk)
+    except NotExistent as exception:
+        raise HTTPException(status_code=404, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @write_router.post(
@@ -105,5 +111,5 @@ async def create_user(
     """
     try:
         return repository.create_entity(user_model)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception))
