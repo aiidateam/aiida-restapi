@@ -18,7 +18,7 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
     """
 
     def __init__(self, entity_class: type[EntityType]) -> None:
-        self.entity_class: type[EntityType] = entity_class
+        self.entity_class = entity_class
 
     def get_entity_schema(self, which: t.Literal['get', 'post'] | None = None) -> dict:
         """Get JSON schema for the AiiDA entity.
@@ -45,7 +45,7 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
-    def get_entities(self, queries: QueryParams) -> PaginatedResults:
+    def get_entities(self, queries: QueryParams) -> PaginatedResults[EntityModelType]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
         :param queries: The query parameters, including filters, order_by, page_size, and page.
@@ -65,25 +65,25 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
             results=[self.to_model(result) for result in results],
         )
 
-    def get_entity_by_id(self, entity_id: int) -> EntityModelType:
+    def get_entity_by_id(self, identifier: str | int) -> EntityModelType:
         """Get an AiiDA entity by id.
 
-        :param entity_id: The id of the entity to retrieve.
+        :param identifier: The id of the entity to retrieve.
         :return: The AiiDA entity model, e.g. `orm.User.Model`, `orm.Node.Model`, etc.
         """
-        entity = self.entity_class.collection.get(pk=entity_id)
+        entity = self.entity_class.collection.get(**{self.entity_class.identity_field: identifier})
         return self.to_model(entity)
 
-    def get_entity_extras(self, entity_id: int) -> dict[str, t.Any]:
+    def get_entity_extras(self, identifier: str | int) -> dict[str, t.Any]:
         """Get the extras of an entity.
 
-        :param entity_id: The id of the entity to retrieve the extras for.
+        :param identifier: The id of the entity to retrieve the extras for.
         :return: A dictionary with the entity extras.
         """
         return t.cast(
             dict,
             self.entity_class.collection.query(
-                filters={'pk': entity_id},
+                filters={self.entity_class.identity_field: identifier},
                 project=['extras'],
             ).first()[0],
         )
