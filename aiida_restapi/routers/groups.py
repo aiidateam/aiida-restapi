@@ -15,13 +15,16 @@ from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/groups')
+write_router = APIRouter(prefix='/groups')
 
 repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
 
 
-@read_router.get('/groups/schema')
+@read_router.get(
+    '/schema',
+    response_model=dict,
+)
 async def get_groups_schema(
     which: t.Literal['get', 'post'] = Query(
         'get',
@@ -43,7 +46,10 @@ async def get_groups_schema(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/groups/projectable_properties', response_model=list[str])
+@read_router.get(
+    '/projectable_properties',
+    response_model=list[str],
+)
 async def get_group_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA groups.
 
@@ -53,7 +59,7 @@ async def get_group_projectable_properties() -> list[str]:
 
 
 @read_router.get(
-    '/groups',
+    '',
     response_model=PaginatedResults[orm.Group.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -71,7 +77,7 @@ async def get_groups(
 
 
 @read_router.get(
-    '/groups/{uuid}',
+    '/{uuid}',
     response_model=orm.Group.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -94,7 +100,7 @@ async def get_group(uuid: str) -> orm.Group.Model:
 
 
 @read_router.get(
-    '/groups/{uuid}/extras',
+    '/{uuid}/extras',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
@@ -115,7 +121,7 @@ async def get_group_extras(uuid: str) -> dict[str, t.Any]:
 
 
 @write_router.post(
-    '/groups',
+    '',
     response_model=orm.Group.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,

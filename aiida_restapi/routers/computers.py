@@ -15,13 +15,16 @@ from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/computers')
+write_router = APIRouter(prefix='/computers')
 
 repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
 
 
-@read_router.get('/computers/schema')
+@read_router.get(
+    '/schema',
+    response_model=dict,
+)
 async def get_computers_schema(
     which: t.Literal['get', 'post'] = Query(
         'get',
@@ -43,7 +46,10 @@ async def get_computers_schema(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/computers/projectable_properties', response_model=list[str])
+@read_router.get(
+    '/projectable_properties',
+    response_model=list[str],
+)
 async def get_computer_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA computers.
 
@@ -53,7 +59,7 @@ async def get_computer_projectable_properties() -> list[str]:
 
 
 @read_router.get(
-    '/computers',
+    '',
     response_model=PaginatedResults[orm.Computer.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -71,7 +77,7 @@ async def get_computers(
 
 
 @read_router.get(
-    '/computers/{pk}',
+    '/{pk}',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -93,7 +99,10 @@ async def get_computer(pk: str) -> orm.Computer.Model:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/computers/{pk}/metadata', response_model=dict[str, t.Any])
+@read_router.get(
+    '/{pk}/metadata',
+    response_model=dict[str, t.Any],
+)
 @with_dbenv()
 async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
     """Get metadata of an AiiDA computer by pk.
@@ -113,7 +122,7 @@ async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
 
 
 @write_router.post(
-    '/computers',
+    '',
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
