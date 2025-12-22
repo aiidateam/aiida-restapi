@@ -15,13 +15,16 @@ from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/users')
+write_router = APIRouter(prefix='/users')
 
 repository = EntityRepository[orm.User, orm.User.Model](orm.User)
 
 
-@read_router.get('/users/schema')
+@read_router.get(
+    '/schema',
+    response_model=dict,
+)
 async def get_users_schema(
     which: t.Literal['get', 'post'] = Query(
         'get',
@@ -43,7 +46,10 @@ async def get_users_schema(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/users/projectable_properties', response_model=list[str])
+@read_router.get(
+    '/projectable_properties',
+    response_model=list[str],
+)
 async def get_user_projectable_properties() -> list[str]:
     """Get projectable properties for AiiDA user.
 
@@ -53,7 +59,7 @@ async def get_user_projectable_properties() -> list[str]:
 
 
 @read_router.get(
-    '/users',
+    '',
     response_model=PaginatedResults[orm.User.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -71,7 +77,7 @@ async def get_users(
 
 
 @read_router.get(
-    '/users/{pk}',
+    '/{pk}',
     response_model=orm.User.Model,
 )
 @with_dbenv()
@@ -92,7 +98,7 @@ async def get_user(pk: int) -> orm.User.Model:
 
 
 @write_router.post(
-    '/users',
+    '',
     response_model=orm.User.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,

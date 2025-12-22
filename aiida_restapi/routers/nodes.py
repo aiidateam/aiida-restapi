@@ -22,8 +22,8 @@ from aiida_restapi.repository.node import NodeLinks, NodeRepository
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/nodes')
+write_router = APIRouter(prefix='/nodes')
 
 repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
 
@@ -37,7 +37,10 @@ else:
     NodeModelUnion = model_registry.ModelUnion
 
 
-@read_router.get('/nodes/schema')
+@read_router.get(
+    '/schema',
+    response_model=dict,
+)
 async def get_nodes_schema(
     node_type: str | None = Query(
         None,
@@ -69,7 +72,10 @@ async def get_nodes_schema(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/nodes/projectable_properties')
+@read_router.get(
+    '/projectable_properties',
+    response_model=list[str],
+)
 @with_dbenv()
 async def get_node_projectable_properties(
     node_type: str | None = Query(
@@ -120,7 +126,10 @@ class NodeStatistics(pdt.BaseModel):
     )
 
 
-@read_router.get('/nodes/statistics', response_model=NodeStatistics)
+@read_router.get(
+    '/statistics',
+    response_model=NodeStatistics,
+)
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
     """Get node statistics.
@@ -149,7 +158,7 @@ async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
     return backend.query().get_creation_statistics(user_pk=user)
 
 
-@read_router.get('/nodes/download_formats')
+@read_router.get('/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes.
 
@@ -166,7 +175,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 
 
 @read_router.get(
-    '/nodes',
+    '',
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -193,7 +202,10 @@ class NodeType(pdt.BaseModel):
     node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
 
 
-@read_router.get('/nodes/types', response_model=list[NodeType])
+@read_router.get(
+    '/types',
+    response_model=list[NodeType],
+)
 async def get_node_types() -> list:
     """Get all node types in machine-actionable format.
 
@@ -203,9 +215,9 @@ async def get_node_types() -> list:
     >>>   {
     >>>     "label": "Int",
     >>>     "node_type": "data.core.int.Int.",
-    >>>     "nodes": "/nodes?filters={\"node_type\":{\"data.core.int.Int.\"}}",
-    >>>     "projections": "/nodes/projectable_properties?type=data.core.int.Int.",
-    >>>     "node_schema": "/nodes/schema?type=data.core.int.Int.",
+    >>>     "nodes": ".../nodes?filters={\"node_type\":{\"data.core.int.Int.\"}}",
+    >>>     "projections": ".../nodes/projectable_properties?type=data.core.int.Int.",
+    >>>     "node_schema": ".../nodes/schema?type=data.core.int.Int.",
     >>>   },
     >>>   ...
     >>> ]
@@ -226,7 +238,7 @@ async def get_node_types() -> list:
 
 
 @read_router.get(
-    '/nodes/{uuid}',
+    '/{uuid}',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -249,7 +261,7 @@ async def get_node(uuid: str) -> orm.Node.Model:
 
 
 @read_router.get(
-    '/nodes/{uuid}/attributes',
+    '/{uuid}/attributes',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
@@ -270,7 +282,7 @@ async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
 
 
 @read_router.get(
-    '/nodes/{uuid}/extras',
+    '/{uuid}/extras',
     response_model=dict[str, t.Any],
 )
 @with_dbenv()
@@ -291,7 +303,7 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
 
 
 @read_router.get(
-    '/nodes/{uuid}/links',
+    '/{uuid}/links',
     response_model=PaginatedResults[NodeLinks],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -321,7 +333,10 @@ async def get_node_links(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/nodes/{uuid}/download')
+@read_router.get(
+    '/{uuid}/download',
+    response_class=StreamingResponse,
+)
 @with_dbenv()
 async def download_node(
     uuid: str,
@@ -411,7 +426,7 @@ MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
 @read_router.get(
-    '/nodes/{uuid}/repo/metadata',
+    '/{uuid}/repo/metadata',
     response_model=dict[str, MetadataType],
 )
 @with_dbenv()
@@ -431,7 +446,10 @@ async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@read_router.get('/nodes/{uuid}/repo/contents')
+@read_router.get(
+    '/{uuid}/repo/contents',
+    response_class=StreamingResponse,
+)
 @with_dbenv()
 async def get_node_repo_file_contents(
     uuid: str,
@@ -488,7 +506,7 @@ async def get_node_repo_file_contents(
 
 
 @write_router.post(
-    '/nodes',
+    '',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
@@ -515,7 +533,7 @@ async def create_node(
 
 
 @write_router.post(
-    '/nodes/file-upload',
+    '/file-upload',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
