@@ -1,34 +1,24 @@
 """Test the /computers endpoint"""
 
+from aiida import orm
+
+
+def test_get_computer_projectable_properties(client):
+    """Test get projectable properties for computer."""
+    response = client.get('/computers/projectable_properties')
+    assert response.status_code == 200
+    assert response.json() == sorted(orm.Computer.fields.keys())
+
 
 def test_get_computers(default_computers, client):  # pylint: disable=unused-argument
     """Test listing existing computer."""
     response = client.get('/computers/')
-
     assert response.status_code == 200
-    assert len(response.json()) == 2
+    assert len(response.json()['results']) == 2
 
 
-def test_get_computers_projectable(client):
-    """Test get projectable properites for computer."""
-    response = client.get('/computers/projectable_properties')
-
-    assert response.status_code == 200
-    assert response.json() == [
-        'id',
-        'uuid',
-        'label',
-        'hostname',
-        'scheduler_type',
-        'transport_type',
-        'metadata',
-        'description',
-    ]
-
-
-def test_get_single_computers(default_computers, client):  # pylint: disable=unused-argument
+def test_get_computer(default_computers, client):  # pylint: disable=unused-argument
     """Test retrieving a single computer."""
-
     for comp_id in default_computers:
         response = client.get(f'/computers/{comp_id}')
         assert response.status_code == 200
@@ -46,7 +36,6 @@ def test_create_computer(client, authenticate):  # pylint: disable=unused-argume
         },
     )
     assert response.status_code == 200, response.content
-
     response = client.get('/computers')
-    computers = [comp['label'] for comp in response.json()]
+    computers = [comp['label'] for comp in response.json()['results']]
     assert 'test_comp' in computers
