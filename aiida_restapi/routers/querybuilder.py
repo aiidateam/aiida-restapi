@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from aiida_restapi.common.pagination import PaginatedResults
 
-read_router = APIRouter()
+read_router = APIRouter(prefix='/querybuilder')
 
 
 class QueryBuilderPathItem(pdt.BaseModel):
@@ -110,7 +110,7 @@ class QueryBuilderDict(pdt.BaseModel):
 
 
 @read_router.post(
-    '/querybuilder',
+    '',
     response_model=PaginatedResults,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,

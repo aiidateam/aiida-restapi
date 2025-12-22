@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/daemon')
+write_router = APIRouter(prefix='/daemon')
 
 
 class DaemonStatusModel(BaseModel):
@@ -23,7 +23,7 @@ class DaemonStatusModel(BaseModel):
 
 
 @read_router.get(
-    '/daemon/status',
+    '/status',
     response_model=DaemonStatusModel,
 )
 @with_dbenv()
@@ -46,7 +46,7 @@ async def get_daemon_status() -> DaemonStatusModel:
 
 
 @write_router.post(
-    '/daemon/start',
+    '/start',
     response_model=DaemonStatusModel,
 )
 @with_dbenv()
@@ -73,7 +73,7 @@ async def get_daemon_start(
 
 
 @write_router.post(
-    '/daemon/stop',
+    '/stop',
     response_model=DaemonStatusModel,
 )
 @with_dbenv()
