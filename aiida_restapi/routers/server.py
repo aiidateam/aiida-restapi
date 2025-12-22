@@ -13,7 +13,7 @@ from starlette.routing import Route
 
 from aiida_restapi.config import API_CONFIG
 
-read_router = APIRouter()
+read_router = APIRouter(prefix='/server')
 
 
 class ServerInfo(pdt.BaseModel):
@@ -26,7 +26,10 @@ class ServerInfo(pdt.BaseModel):
     AiiDA_version: str = pdt.Field(description='Version of the AiiDA installation')
 
 
-@read_router.get('/server/info', response_model=ServerInfo)
+@read_router.get(
+    '/info',
+    response_model=ServerInfo,
+)
 async def get_server_info() -> ServerInfo:
     """Get the API version information."""
     api_version = API_CONFIG['VERSION'].split('.')
@@ -49,7 +52,7 @@ class ServerEndpoint(pdt.BaseModel):
 
 
 @read_router.get(
-    '/server/endpoints',
+    '/endpoints',
     response_model=dict[str, list[ServerEndpoint]],
 )
 async def get_server_endpoints(request: Request) -> dict[str, list[ServerEndpoint]]:
@@ -80,7 +83,7 @@ async def get_server_endpoints(request: Request) -> dict[str, list[ServerEndpoin
 
 
 @read_router.get(
-    '/server/endpoints/table',
+    '/endpoints/table',
     name='endpoints',
     response_class=HTMLResponse,
 )

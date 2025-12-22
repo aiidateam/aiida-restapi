@@ -33,9 +33,9 @@ class UserInDB(orm.User.Model):
 
 pwd_context = PasswordHasher()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f'{config.API_CONFIG["PREFIX"]}/auth/token')
 
-router = APIRouter()
+router = APIRouter(prefix='/auth')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -113,7 +113,10 @@ async def get_current_active_user(
     return current_user
 
 
-@router.post('/token', response_model=Token)
+@router.post(
+    '/token',
+    response_model=Token,
+)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> dict[str, t.Any]:
@@ -130,7 +133,10 @@ async def login_for_access_token(
     return {'access_token': access_token, 'token_type': 'bearer'}
 
 
-@router.get('/auth/me/', response_model=orm.User.Model)
+@router.get(
+    '/me/',
+    response_model=orm.User.Model,
+)
 async def read_users_me(
     current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
 ) -> orm.User.Model:
