@@ -17,7 +17,7 @@ from typing_extensions import TypeAlias
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.models.node import NodeModelRegistry
-from aiida_restapi.repository.node import NodeRepository
+from aiida_restapi.repository.node import NodeLinks, NodeRepository
 
 from .auth import UserInDB, get_current_active_user
 
@@ -275,6 +275,37 @@ async def get_node_extras(node_id: int) -> dict[str, t.Any]:
     """
     try:
         return repository.get_entity_extras(node_id)
+    except NotExistent:
+        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err)) from err
+
+
+@read_router.get(
+    '/nodes/{node_id}/links',
+    response_model=PaginatedResults[NodeLinks],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+)
+@with_dbenv()
+async def get_node_links(
+    node_id: int,
+    queries: t.Annotated[QueryParams, Depends(query_params)],
+    direction: t.Literal['incoming', 'outgoing'] = Query(
+        description='Specify whether to retrieve incoming or outgoing links.',
+    ),
+) -> PaginatedResults[NodeLinks]:
+    """Get the incoming or outgoing links of a node.
+
+    :param node_id: The id of the node to retrieve the incoming links for.
+    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :param direction: Specify whether to retrieve incoming or outgoing links.
+    :return: The paginated requested linked nodes.
+    :raises HTTPException: 404 if the node with the given id does not exist,
+        500 for other failures during retrieval.
+    """
+    try:
+        return repository.get_node_links(node_id, queries, direction=direction)
     except NotExistent:
         raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
     except Exception as err:

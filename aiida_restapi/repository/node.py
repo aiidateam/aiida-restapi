@@ -17,7 +17,10 @@ from aiida.plugins.entry_point import (
 )
 from aiida.repository import File
 
+from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
+from aiida_restapi.models.node import NodeLinks
 
 from .entity import EntityRepository
 
@@ -140,6 +143,49 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
                 filters={'pk': node_id},
                 project=['attributes'],
             ).first()[0],
+        )
+
+    def get_node_links(
+        self,
+        node_id: int,
+        queries: QueryParams,
+        direction: t.Literal['incoming', 'outgoing'],
+    ) -> PaginatedResults[NodeLinks]:
+        """Get the incoming links of a node.
+
+        :param node_id: The id of the node to retrieve the incoming links for.
+        :param queries: The query parameters, including filters, order_by, page_size, and page.
+        :param direction: Specify whether to retrieve incoming or outgoing links.
+        :return: The paginated requested linked nodes.
+        """
+        node = self.entity_class.collection.get(pk=node_id)
+
+        if direction == 'incoming':
+            link_collection = node.base.links.get_incoming()
+        else:
+            link_collection = node.base.links.get_outgoing()
+
+        all_links = link_collection.all()
+
+        start, end = (
+            queries.page_size * (queries.page - 1),
+            queries.page_size * queries.page,
+        )
+
+        links = [
+            NodeLinks(
+                **link.node.serialize(minimal=True),
+                link_label=link.link_label,
+                link_type=link.link_type.value,
+            )
+            for link in all_links[start:end]
+        ]
+
+        return PaginatedResults(
+            total=len(all_links),
+            page=queries.page,
+            page_size=queries.page_size,
+            results=links,
         )
 
     def create_entity(
