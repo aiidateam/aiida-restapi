@@ -233,13 +233,16 @@ def test_create_dict(client: TestClient):
 async def test_create_code(async_client: AsyncClient, default_computers: list[int | None]):
     """Test creating a new Code."""
     for comp_id in default_computers:
+        computer = orm.load_computer(comp_id)
         response = await async_client.post(
             '/nodes',
             json={
                 'node_type': 'data.core.code.installed.InstalledCode.',
                 'label': 'test_code',
-                'computer': comp_id,
-                'attributes': {'filepath_executable': '/bin/true'},
+                'attributes': {
+                    'filepath_executable': '/bin/true',
+                    'computer': computer.label,
+                },
             },
         )
     assert response.status_code == 200, response.content
