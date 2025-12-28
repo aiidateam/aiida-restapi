@@ -11,7 +11,11 @@ from aiida_restapi.routers import auth, computers, daemon, groups, nodes, queryb
 
 
 def create_app() -> FastAPI:
-    """Create the FastAPI application and include the routers."""
+    """Create the FastAPI application and include the routers.
+
+    :return: The FastAPI application.
+    :rtype: FastAPI
+    """
 
     read_only = os.getenv('AIIDA_RESTAPI_READ_ONLY') == '1'
 
