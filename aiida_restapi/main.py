@@ -19,7 +19,12 @@ def create_app() -> FastAPI:
 
     api_router = APIRouter(prefix=API_CONFIG['PREFIX'])
 
-    for module in (auth, computers, daemon, groups, nodes, querybuilder, server, submit, users):
+    api_router.add_route(
+        '/',
+        lambda _: RedirectResponse(url=api_router.url_path_for('endpoints')),
+    )
+
+    for module in (auth, server, users, computers, groups, nodes, querybuilder, submit, daemon):
         if read_router := getattr(module, 'read_router', None):
             api_router.include_router(read_router)
         if not read_only and (write_router := getattr(module, 'write_router', None)):
@@ -29,11 +34,6 @@ def create_app() -> FastAPI:
         '/graphql',
         main.app,
         methods=['POST'],
-    )
-
-    api_router.add_route(
-        '/',
-        lambda _: RedirectResponse(url=api_router.url_path_for('endpoints')),
     )
 
     app.include_router(api_router)
