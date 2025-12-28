@@ -17,14 +17,14 @@ if t.TYPE_CHECKING:
 
 def test_get_node_projectable_properties(client: TestClient):
     """Test get projectable properties for nodes."""
-    response = client.get('/nodes/projectable_properties')
+    response = client.get('/nodes/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Node.fields.keys())
 
 
 def test_get_node_projectable_properties_by_type(client: TestClient):
     """Test get projectable properties for nodes by valid type."""
-    response = client.get('/nodes/projectable_properties?type=data.core.int.Int.')
+    response = client.get('/nodes/projections?type=data.core.int.Int.')
     assert response.status_code == 200
     result = response.json()
     assert result == sorted(orm.Int.fields.keys())
@@ -34,7 +34,7 @@ def test_get_node_projectable_properties_by_type(client: TestClient):
 
 def test_get_node_projectable_properties_by_invalid_type(client: TestClient):
     """Test get projectable properties for nodes with invalid type."""
-    response = client.get('/nodes/projectable_properties?type=this_is_not_a_valid_type')
+    response = client.get('/nodes/projections?type=this_is_not_a_valid_type')
     assert response.status_code == 422
 
 

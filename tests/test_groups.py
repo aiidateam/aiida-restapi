@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 def test_get_group_projectable_properties(client: TestClient):
     """Test get projectable properties for group."""
-    response = client.get('/groups/projectable_properties')
+    response = client.get('/groups/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Group.fields.keys())
 

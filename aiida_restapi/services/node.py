@@ -20,35 +20,43 @@ from aiida.repository import File
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
-from aiida_restapi.models.node import NodeLinks
+from aiida_restapi.models.node import NodeLink
 
-from .entity import EntityRepository
+from .entity import EntityService
 
 if t.TYPE_CHECKING:
     from fastapi import UploadFile
 
 
-class NodeRepository(EntityRepository[NodeType, NodeModelType]):
+class NodeService(EntityService[NodeType, NodeModelType]):
     """Utility class for AiiDA Node REST API operations."""
 
     FULL_TYPE_CONCATENATOR = '|'
     LIKE_OPERATOR_CHARACTER = '%'
     DEFAULT_NAMESPACE_LABEL = '~no-entry-point~'
 
-    def get_projectable_properties(self, node_type: str | None = None) -> list[str]:
+    def get_projections(self, node_type: str | None = None) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 
         :param node_type: The AiiDA node type.
+        :type node_type: str | None
         :return: The list of projectable properties for the AiiDA node.
+        :rtype: list[str]
         """
         if not node_type:
-            return super().get_projectable_properties()
+            return super().get_projections()
         else:
             node_cls = self._load_entry_point_from_node_type(node_type)
             return sorted(node_cls.fields.keys())
 
-    def get_all_download_formats(self, full_type: str | None = None) -> dict:
-        """Returns dict of possible node formats for all available node types"""
+    def get_download_formats(self, full_type: str | None = None) -> dict:
+        """Returns dict of possible node formats for all available node types.
+
+        :param full_type: The full type of the AiiDA node.
+        :type full_type: str | None
+        :return: A dictionary with full types as keys and list of available formats as values.
+        :rtype: dict[str, list[str]]
+        """
         all_formats = {}
 
         if full_type:
@@ -74,11 +82,13 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
 
         return all_formats
 
-    def get_node_repository_metadata(self, uuid: str) -> dict[str, dict]:
+    def get_repository_metadata(self, uuid: str) -> dict[str, dict]:
         """Get the repository metadata of a node.
 
         :param uuid: The uuid of the node to retrieve the repository metadata for.
+        :type uuid: str
         :return: A dictionary with the repository file metadata.
+        :rtype: dict[str, dict]
         """
         node = self.entity_class.collection.get(uuid=uuid)
         total_size = 0
@@ -131,32 +141,22 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
 
         return metadata
 
-    def get_node_attributes(self, uuid: str) -> dict[str, t.Any]:
-        """Get the attributes of a node.
-
-        :param uuid: The uuid of the node to retrieve the attributes for.
-        :return: A dictionary with the node attributes.
-        """
-        return t.cast(
-            dict,
-            self.entity_class.collection.query(
-                filters={'uuid': uuid},
-                project=['attributes'],
-            ).first()[0],
-        )
-
-    def get_node_links(
+    def get_links(
         self,
         uuid: str,
         queries: QueryParams,
         direction: t.Literal['incoming', 'outgoing'],
-    ) -> PaginatedResults[NodeLinks]:
+    ) -> PaginatedResults[NodeLink]:
         """Get the incoming links of a node.
 
         :param uuid: The uuid of the node to retrieve the incoming links for.
+        :type uuid: str
         :param queries: The query parameters, including filters, order_by, page_size, and page.
+        :type queries: QueryParams
         :param direction: Specify whether to retrieve incoming or outgoing links.
+        :type direction: str
         :return: The paginated requested linked nodes.
+        :rtype: PaginatedResults[NodeLink]
         """
         node = self.entity_class.collection.get(uuid=uuid)
 
@@ -173,7 +173,7 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         )
 
         links = [
-            NodeLinks(
+            NodeLink(
                 **link.node.serialize(minimal=True),
                 link_label=link.link_label,
                 link_type=link.link_type.value,
@@ -188,7 +188,7 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
             results=links,
         )
 
-    def create_entity(
+    def add_one(
         self,
         model: NodeModelType,
         files: dict[str, UploadFile] | None = None,
@@ -196,8 +196,11 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         """Create new AiiDA node from its model.
 
         :param node_model: The AiiDA ORM model of the node to create.
+        :type model: NodeModelType
         :param files: Optional list of files to attach to the node.
+        :type files: dict[str, UploadFile] | None
         :return: The created and stored AiiDA node instance.
+        :rtype: NodeModelType
         """
         node_cls = self._load_entry_point_from_node_type(model.node_type)
         node = t.cast(NodeType, node_cls.from_model(model))
@@ -205,12 +208,13 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
             upload.file.seek(0)
             node.base.repository.put_object_from_filelike(upload.file, path)
         node.store()
-        return self.to_model(node)
+        return self._to_model(node)
 
     def _validate_full_type(self, full_type: str) -> None:
         """Validate that the `full_type` is a valid full type unique node identifier.
 
         :param full_type: a `Node` full type
+        :type full_type: str
         :raises ValueError: if the `full_type` is invalid
         :raises TypeError: if the `full_type` is not a string type
         """
@@ -233,8 +237,11 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         `process_type`.
 
         :param node_type: the `node_type` of the `Node`
+        :type node_type: str
         :param process_type: the `process_type` of the `Node`
+        :type process_type: str
         :return: the full type, which is a unique identifier
+        :rtype: str
         """
         if node_type is None:
             node_type = ''
@@ -248,7 +255,9 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         """Return the `QueryBuilder` filters that will return all `Nodes` identified by the given `full_type`.
 
         :param full_type: the `full_type` node type identifier
+        :type full_type: str
         :return: dictionary of filters to be passed for the `filters` keyword in `QueryBuilder.append`
+        :rtype: dict[str, t.Any]
         :raises ValueError: if the `full_type` is invalid
         :raises TypeError: if the `full_type` is not a string type
         """
@@ -296,6 +305,9 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         """Return the loaded entry point for the given `node_type`.
 
         :param node_type: the `node_type` unique node type identifier
+        :type node_type: str
+        :return: the loaded entry point
+        :rtype: NodeType
         :raises ValueError: if the `node_type` is invalid
         """
         try:
@@ -307,6 +319,9 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         """Return the loaded entry point for the given `full_type` unique node type identifier.
 
         :param full_type: the `full_type` unique node type identifier
+        :type full_type: str
+        :return: the loaded entry point
+        :rtype: t.Any
         :raises ValueError: if the `full_type` is invalid
         :raises TypeError: if the `full_type` is not a string type
         :raises `~aiida.common.exceptions.EntryPointError`: if the corresponding entry point cannot be loaded

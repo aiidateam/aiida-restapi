@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 def test_get_computer_projectable_properties(client: TestClient):
     """Test get projectable properties for computer."""
-    response = client.get('/computers/projectable_properties')
+    response = client.get('/computers/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Computer.fields.keys())
 

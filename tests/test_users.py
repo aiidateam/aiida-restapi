@@ -10,7 +10,7 @@ from httpx import AsyncClient
 
 def test_get_user_projectable_properties(client: TestClient):
     """Test get projectable properties for users."""
-    response = client.get('/users/projectable_properties')
+    response = client.get('/users/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.User.fields.keys())
 

@@ -11,14 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
-from aiida_restapi.repository.entity import EntityRepository
+from aiida_restapi.services.entity import EntityService
 
 from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/computers')
 write_router = APIRouter(prefix='/computers')
 
-repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
+service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
 
 
 @read_router.get(
@@ -39,7 +39,7 @@ async def get_computers_schema(
         500 for any other failures.
     """
     try:
-        return repository.get_entity_schema(which=which)
+        return service.get_schema(which=which)
     except ValueError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
@@ -47,15 +47,15 @@ async def get_computers_schema(
 
 
 @read_router.get(
-    '/projectable_properties',
+    '/projections',
     response_model=list[str],
 )
-async def get_computer_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA computers.
+async def get_computer_projections() -> list[str]:
+    """Get queryable projections for AiiDA computers.
 
-    :return: The list of projectable properties for AiiDA computers.
+    :return: The list of queryable projections for AiiDA computers.
     """
-    return repository.get_projectable_properties()
+    return service.get_projections()
 
 
 @read_router.get(
@@ -73,7 +73,7 @@ async def get_computers(
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of computer models.
     """
-    return repository.get_entities(queries)
+    return service.get_many(queries)
 
 
 @read_router.get(
@@ -92,7 +92,7 @@ async def get_computer(pk: str) -> orm.Computer.Model:
         500 for any other failures.
     """
     try:
-        return repository.get_entity_by_id(pk)
+        return service.get_one(pk)
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -113,8 +113,7 @@ async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
         500 for any other failures.
     """
     try:
-        computer = repository.get_entity_by_id(pk)
-        return computer.metadata
+        return service.get_field(pk, 'metadata')
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -140,6 +139,6 @@ async def create_computer(
     :raises HTTPException: 500 for any failures during computer creation.
     """
     try:
-        return repository.create_entity(computer_model)
+        return service.add_one(computer_model)
     except Exception as exception:
         raise HTTPException(status_code=500, detail=str(exception))

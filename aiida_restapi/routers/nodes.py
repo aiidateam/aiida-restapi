@@ -17,15 +17,15 @@ from typing_extensions import TypeAlias
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.config import API_CONFIG
-from aiida_restapi.models.node import NodeModelRegistry
-from aiida_restapi.repository.node import NodeLinks, NodeRepository
+from aiida_restapi.models.node import MetadataType, NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.services.node import NodeLink, NodeService
 
 from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
 
-repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
+service = NodeService[orm.Node, orm.Node.Model](orm.Node)
 
 model_registry = NodeModelRegistry()
 
@@ -73,57 +73,30 @@ async def get_nodes_schema(
 
 
 @read_router.get(
-    '/projectable_properties',
+    '/projections',
     response_model=list[str],
 )
 @with_dbenv()
-async def get_node_projectable_properties(
+async def get_node_projections(
     node_type: str | None = Query(
         None,
         description='The AiiDA node type string.',
         alias='type',
     ),
 ) -> list[str]:
-    """Get projectable properties for AiiDA nodes.
+    """Get queryable projections for AiiDA nodes.
 
     :param node_type: The AiiDA node type string.
-    :return: The list of projectable properties for AiiDA nodes.
+    :return: The list of queryable projections for AiiDA nodes.
     :raises HTTPException: 422 if the node type is not recognized,
         500 for any other failures.
     """
     try:
-        return repository.get_projectable_properties(node_type)
+        return service.get_projections(node_type)
     except ValueError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
-
-
-class NodeStatistics(pdt.BaseModel):
-    """Pydantic model representing node statistics."""
-
-    total: int = pdt.Field(
-        description='Total number of nodes.',
-        examples=[47],
-    )
-    types: dict[str, int] = pdt.Field(
-        description='Number of nodes by type.',
-        examples=[
-            {
-                'data.core.int.Int.': 42,
-                'data.core.singlefile.SinglefileData.': 5,
-            }
-        ],
-    )
-    ctime_by_day: dict[str, int] = pdt.Field(
-        description='Number of nodes created per day (YYYY-MM-DD).',
-        examples=[
-            {
-                '2012-01-01': 10,
-                '2012-01-02': 15,
-            }
-        ],
-    )
 
 
 @read_router.get(
@@ -167,7 +140,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_all_download_formats()
+        return service.get_download_formats()
     except EntryPointError as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -189,17 +162,7 @@ async def get_nodes(
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of node models.
     """
-    return repository.get_entities(queries)
-
-
-class NodeType(pdt.BaseModel):
-    """Pydantic model representing a node type."""
-
-    label: str = pdt.Field(description='The class name of the node type.')
-    node_type: str = pdt.Field(description='The AiiDA node type string.')
-    nodes: str = pdt.Field(description='The URL to access nodes of this type.')
-    projections: str = pdt.Field(description='The URL to access projectable properties of this node type.')
-    node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
+    return service.get_many(queries)
 
 
 @read_router.get(
@@ -216,7 +179,7 @@ async def get_node_types() -> list:
     >>>     "label": "Int",
     >>>     "node_type": "data.core.int.Int.",
     >>>     "nodes": ".../nodes?filters={\"node_type\":{\"data.core.int.Int.\"}}",
-    >>>     "projections": ".../nodes/projectable_properties?type=data.core.int.Int.",
+    >>>     "projections": ".../nodes/projections?type=data.core.int.Int.",
     >>>     "node_schema": ".../nodes/schema?type=data.core.int.Int.",
     >>>   },
     >>>   ...
@@ -228,7 +191,7 @@ async def get_node_types() -> list:
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
             'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
-            'projections': f'{api_prefix}/nodes/projectable_properties?type={node_type}',
+            'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
         for node_type in sorted(
@@ -253,7 +216,7 @@ async def get_node(uuid: str) -> orm.Node.Model:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_by_id(uuid)
+        return service.get_one(uuid)
     except NotExistent as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
@@ -274,7 +237,7 @@ async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_attributes(uuid)
+        return service.get_field(uuid, 'attributes')
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -295,7 +258,7 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_extras(uuid)
+        return service.get_field(uuid, 'extras')
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -304,7 +267,7 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
 
 @read_router.get(
     '/{uuid}/links',
-    response_model=PaginatedResults[NodeLinks],
+    response_model=PaginatedResults[NodeLink],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
 )
@@ -315,7 +278,7 @@ async def get_node_links(
     direction: t.Literal['incoming', 'outgoing'] = Query(
         description='Specify whether to retrieve incoming or outgoing links.',
     ),
-) -> PaginatedResults[NodeLinks]:
+) -> PaginatedResults[NodeLink]:
     """Get the incoming or outgoing links of a node.
 
     :param uuid: The uuid of the node to retrieve the incoming links for.
@@ -326,7 +289,7 @@ async def get_node_links(
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_links(uuid, queries, direction=direction)
+        return service.get_links(uuid, queries, direction=direction)
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -393,38 +356,6 @@ async def download_node(
         )
 
 
-class RepoFileMetadata(pdt.BaseModel):
-    """Pydantic model representing the metadata of a file in the AiiDA repository."""
-
-    type: t.Literal['FILE'] = pdt.Field(
-        description='The type of the repository object.',
-    )
-    binary: bool = pdt.Field(
-        False,
-        description='Whether the file is binary.',
-    )
-    size: int = pdt.Field(
-        description='The size of the file in bytes.',
-    )
-    download: str = pdt.Field(
-        description='The URL to download the file.',
-    )
-
-
-class RepoDirMetadata(pdt.BaseModel):
-    """Pydantic model representing the metadata of a directory in the AiiDA repository."""
-
-    type: t.Literal['DIRECTORY'] = pdt.Field(
-        description='The type of the repository object.',
-    )
-    objects: dict[str, t.Union[RepoFileMetadata, 'RepoDirMetadata']] = pdt.Field(
-        description='A dictionary with the metadata of the objects in the directory.',
-    )
-
-
-MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
-
-
 @read_router.get(
     '/{uuid}/repo/metadata',
     response_model=dict[str, MetadataType],
@@ -439,7 +370,7 @@ async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_repository_metadata(uuid)
+        return service.get_repository_metadata(uuid)
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -525,7 +456,7 @@ async def create_node(
         500 for other failures during node creation.
     """
     try:
-        return repository.create_entity(model)
+        return service.add_one(model)
     except KeyError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
@@ -580,7 +511,7 @@ async def create_node_with_files(
         files_dict[target] = upload
 
     try:
-        return repository.create_entity(model, files=files_dict)
+        return service.add_one(model, files=files_dict)
     except json.JSONDecodeError as exception:
         raise HTTPException(status_code=400, detail=str(exception)) from exception
     except KeyError as exception:

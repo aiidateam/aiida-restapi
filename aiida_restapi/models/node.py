@@ -1,5 +1,3 @@
-"""REST API models for ORM nodes."""
-
 from __future__ import annotations
 
 import typing as t
@@ -8,6 +6,80 @@ import pydantic as pdt
 from aiida.orm import Node
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
+
+
+class NodeStatistics(pdt.BaseModel):
+    """Pydantic model representing node statistics."""
+
+    total: int = pdt.Field(
+        description='Total number of nodes.',
+        examples=[47],
+    )
+    types: dict[str, int] = pdt.Field(
+        description='Number of nodes by type.',
+        examples=[
+            {
+                'data.core.int.Int.': 42,
+                'data.core.singlefile.SinglefileData.': 5,
+            }
+        ],
+    )
+    ctime_by_day: dict[str, int] = pdt.Field(
+        description='Number of nodes created per day (YYYY-MM-DD).',
+        examples=[
+            {
+                '2012-01-01': 10,
+                '2012-01-02': 15,
+            }
+        ],
+    )
+
+
+class NodeType(pdt.BaseModel):
+    """Pydantic model representing a node type."""
+
+    label: str = pdt.Field(description='The class name of the node type.')
+    node_type: str = pdt.Field(description='The AiiDA node type string.')
+    nodes: str = pdt.Field(description='The URL to access nodes of this type.')
+    projections: str = pdt.Field(description='The URL to access projectable properties of this node type.')
+    node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
+
+
+class RepoFileMetadata(pdt.BaseModel):
+    """Pydantic model representing the metadata of a file in the AiiDA repository."""
+
+    type: t.Literal['FILE'] = pdt.Field(
+        description='The type of the repository object.',
+    )
+    binary: bool = pdt.Field(
+        False,
+        description='Whether the file is binary.',
+    )
+    size: int = pdt.Field(
+        description='The size of the file in bytes.',
+    )
+    download: str = pdt.Field(
+        description='The URL to download the file.',
+    )
+
+
+class RepoDirMetadata(pdt.BaseModel):
+    """Pydantic model representing the metadata of a directory in the AiiDA repository."""
+
+    type: t.Literal['DIRECTORY'] = pdt.Field(
+        description='The type of the repository object.',
+    )
+    objects: dict[str, t.Union[RepoFileMetadata, 'RepoDirMetadata']] = pdt.Field(
+        description='A dictionary with the metadata of the objects in the directory.',
+    )
+
+
+MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
+
+
+class NodeLink(Node.Model):
+    link_label: str = pdt.Field(description='The label of the link to the node.')
+    link_type: str = pdt.Field(description='The type of the link to the node.')
 
 
 class NodeModelRegistry:
