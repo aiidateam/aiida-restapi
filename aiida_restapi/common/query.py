@@ -6,23 +6,24 @@ import json
 import typing as t
 
 import pydantic as pdt
-from fastapi import HTTPException, Query
 
 
 class QueryParams(pdt.BaseModel):
-    filters: dict[str, t.Any] = pdt.Field(
-        default_factory=dict,
+    filters: dict[str, t.Any] | None = pdt.Field(
+        None,
         description='AiiDA QueryBuilder filters',
         examples=[
-            {'node_type': {'==': 'data.core.int.Int.'}},
-            {'attributes.value': {'>': 42}},
+            '{"node_type": "data.core.int.Int."}',
+            '{"attributes.value": {">": 42}}',
         ],
     )
     order_by: str | list[str] | dict[str, t.Any] | None = pdt.Field(
         None,
         description='Fields to sort by',
         examples=[
-            {'attributes.value': 'desc'},
+            'pk',
+            'uuid,label',
+            '{"attributes.value": "desc"}',
         ],
     )
     page_size: pdt.PositiveInt = pdt.Field(
@@ -36,55 +37,26 @@ class QueryParams(pdt.BaseModel):
         examples=[1],
     )
 
+    @pdt.field_validator('filters', mode='before')
+    @classmethod
+    def parse_filters(cls, value: t.Any) -> dict[str, t.Any] | None:
+        if value:
+            try:
+                return json.loads(value)
+            except Exception as exception:
+                raise ValueError(f'Could not parse filters as JSON: {exception}') from exception
+        return None
 
-def query_params(
-    filters: str | None = Query(
-        None,
-        description='AiiDA QueryBuilder filters as JSON string',
-    ),
-    order_by: str | None = Query(
-        None,
-        description='Comma-separated list of fields to sort by',
-    ),
-    page_size: pdt.PositiveInt = Query(
-        10,
-        description='Number of results per page',
-    ),
-    page: pdt.PositiveInt = Query(
-        1,
-        description='Page number',
-    ),
-) -> QueryParams:
-    """Parse query parameters into a structured object.
-
-    :param filters: AiiDA QueryBuilder filters as JSON string.
-    :param order_by: Comma-separated string of fields to sort by.
-    :param page_size: Number of results per page.
-    :param page: Page number.
-    :return: Structured query parameters.
-    :raises HTTPException: If filters cannot be parsed as JSON.
-    """
-    query_filters: dict[str, t.Any] = {}
-    query_order_by: str | list[str] | dict[str, t.Any] | None = None
-    if filters:
-        try:
-            query_filters = json.loads(filters)
-        except Exception as exception:
-            raise HTTPException(
-                status_code=400,
-                detail=f'Could not parse filters as JSON: {exception}',
-            ) from exception
-    if order_by:
-        try:
-            query_order_by = json.loads(order_by)
-        except Exception as exception:
-            raise HTTPException(
-                status_code=400,
-                detail=f'Could not parse order_by as JSON: {exception}',
-            ) from exception
-    return QueryParams(
-        filters=query_filters,
-        order_by=query_order_by,
-        page_size=page_size,
-        page=page,
-    )
+    @pdt.field_validator('order_by', mode='before')
+    @classmethod
+    def parse_order_by(cls, value: t.Any) -> str | list[str] | dict[str, t.Any] | None:
+        if value:
+            # Due to allowing list[str] on the field, FastAPI will always convert query to a list
+            raw: str = value[0]
+            if raw.startswith('{') or raw.startswith('['):
+                try:
+                    return json.loads(raw)
+                except Exception as exception:
+                    raise ValueError(f'Could not parse order_by as JSON: {exception}') from exception
+            return raw.split(',')
+        return None

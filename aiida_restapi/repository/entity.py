@@ -45,23 +45,23 @@ class EntityRepository(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
-    def get_entities(self, queries: QueryParams) -> PaginatedResults[EntityModelType]:
+    def get_entities(self, query_params: QueryParams) -> PaginatedResults[EntityModelType]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
-        :param queries: The query parameters, including filters, order_by, page_size, and page.
+        :param query_params: The query parameters, including filters, order_by, page_size, and page.
         :return: The paginated results, including total count, current page, page size, and list of entity models.
         """
-        total = self.entity_class.collection.count(filters=queries.filters)
+        total = self.entity_class.collection.count(filters=query_params.filters)
         results = self.entity_class.collection.find(
-            filters=queries.filters,
-            order_by=queries.order_by,
-            limit=queries.page_size,
-            offset=queries.page_size * (queries.page - 1),
+            filters=query_params.filters,
+            order_by=query_params.order_by,
+            limit=query_params.page_size,
+            offset=query_params.page_size * (query_params.page - 1),
         )
         return PaginatedResults(
             total=total,
-            page=queries.page,
-            page_size=queries.page_size,
+            page=query_params.page,
+            page_size=query_params.page_size,
             results=[self.to_model(result) for result in results],
         )
 

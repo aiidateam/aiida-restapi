@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.common.query import QueryParams
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.models.node import NodeModelRegistry
 from aiida_restapi.repository.node import NodeLinks, NodeRepository
@@ -182,14 +182,27 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 )
 @with_dbenv()
 async def get_nodes(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
+    query_params: t.Annotated[
+        QueryParams,
+        Query(
+            default_factory=QueryParams,
+            description='Query parameters for filtering, sorting, and pagination.',
+        ),
+    ],
 ) -> PaginatedResults[orm.Node.Model]:
     """Get AiiDA nodes with optional filtering, sorting, and/or pagination.
 
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :param query_params: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of node models.
+    :raises HTTPException: 422 if the query parameters are invalid,
+        500 for other failures during retrieval.
     """
-    return repository.get_entities(queries)
+    try:
+        return repository.get_entities(query_params)
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 class NodeType(pdt.BaseModel):
@@ -311,7 +324,13 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
 @with_dbenv()
 async def get_node_links(
     uuid: str,
-    queries: t.Annotated[QueryParams, Depends(query_params)],
+    query_params: t.Annotated[
+        QueryParams,
+        Query(
+            default_factory=QueryParams,
+            description='Query parameters for filtering, sorting, and pagination.',
+        ),
+    ],
     direction: t.Literal['incoming', 'outgoing'] = Query(
         description='Specify whether to retrieve incoming or outgoing links.',
     ),
@@ -319,14 +338,14 @@ async def get_node_links(
     """Get the incoming or outgoing links of a node.
 
     :param uuid: The uuid of the node to retrieve the incoming links for.
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :param query_params: The query parameters, including filters, order_by, page_size, and page.
     :param direction: Specify whether to retrieve incoming or outgoing links.
     :return: The paginated requested linked nodes.
     :raises HTTPException: 404 if the node with the given uuid does not exist,
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_node_links(uuid, queries, direction=direction)
+        return repository.get_node_links(uuid, query_params, direction=direction)
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:

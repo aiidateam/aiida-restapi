@@ -10,7 +10,7 @@ from aiida.common.exceptions import NotExistent
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.common.query import QueryParams
 from aiida_restapi.repository.entity import EntityRepository
 
 from .auth import UserInDB, get_current_active_user
@@ -66,14 +66,27 @@ async def get_user_projectable_properties() -> list[str]:
 )
 @with_dbenv()
 async def get_users(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
+    query_params: t.Annotated[
+        QueryParams,
+        Query(
+            default_factory=QueryParams,
+            description='Query parameters for filtering, sorting, and pagination.',
+        ),
+    ],
 ) -> PaginatedResults[orm.User.Model]:
     """Get AiiDA users with optional filtering, sorting, and/or pagination.
 
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
+    :param query_params: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of user models.
+    :raises HTTPException: 422 if the query parameters are invalid,
+        500 for other failures during retrieval.
     """
-    return repository.get_entities(queries)
+    try:
+        return repository.get_entities(query_params)
+    except ValueError as exception:
+        raise HTTPException(status_code=422, detail=str(exception)) from exception
+    except Exception as exception:
+        raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
 @read_router.get(

@@ -148,13 +148,13 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
     def get_node_links(
         self,
         uuid: str,
-        queries: QueryParams,
+        query_params: QueryParams,
         direction: t.Literal['incoming', 'outgoing'],
     ) -> PaginatedResults[NodeLinks]:
         """Get the incoming links of a node.
 
         :param uuid: The uuid of the node to retrieve the incoming links for.
-        :param queries: The query parameters, including filters, order_by, page_size, and page.
+        :param query_params: The query parameters, including filters, order_by, page_size, and page.
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :return: The paginated requested linked nodes.
         """
@@ -168,8 +168,8 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
         all_links = link_collection.all()
 
         start, end = (
-            queries.page_size * (queries.page - 1),
-            queries.page_size * queries.page,
+            query_params.page_size * (query_params.page - 1),
+            query_params.page_size * query_params.page,
         )
 
         links = [
@@ -183,8 +183,8 @@ class NodeRepository(EntityRepository[NodeType, NodeModelType]):
 
         return PaginatedResults(
             total=len(all_links),
-            page=queries.page,
-            page_size=queries.page_size,
+            page=query_params.page,
+            page_size=query_params.page_size,
             results=links,
         )
 
