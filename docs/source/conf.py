@@ -89,6 +89,7 @@ nitpick_ignore = [
             'aiida_restapi.aiida_db_mappings.Config',
             'aiida_restapi.models.Config',
             'aiida_restapi.routers.auth.Config',
+            'aiida_restapi.routers.nodes.NodeType',
             'aiida_restapi.graphql.orm_factories.AiidaOrmObjectType',
             'aiida_restapi.graphql.nodes.LinkObjectType',
             'aiida_restapi.graphql.orm_factories.multirow_cls_factory.<locals>.AiidaOrmRowsType',
