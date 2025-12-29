@@ -123,13 +123,7 @@ async def query_builder(
         description='Whether to return results flat.',
     ),
 ) -> PaginatedResults:
-    """Execute a QueryBuilder query based on the provided dictionary.
-
-    :param query: The QueryBuilder query dictionary.
-    :param flat: Whether to return results flat.
-    :return: The results of the QueryBuilder query.
-    :raises HTTPException: 400 if the query is invalid.
-    """
+    """Execute a QueryBuilder query based on the provided dictionary."""
     query_dict = query.model_dump()
 
     try:

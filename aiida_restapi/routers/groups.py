@@ -31,13 +31,7 @@ async def get_groups_schema(
         description='Type of schema to retrieve: "get" or "post"',
     ),
 ) -> dict:
-    """Get JSON schema for AiiDA groups.
-
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        500 for any other failures.
-    """
+    """Get JSON schema for AiiDA groups."""
     try:
         return service.get_schema(which=which)
     except ValueError as exception:
@@ -51,10 +45,7 @@ async def get_groups_schema(
     response_model=list[str],
 )
 async def get_group_projections() -> list[str]:
-    """Get queryable projections for AiiDA groups.
-
-    :return: The list of queryable projections for AiiDA groups.
-    """
+    """Get queryable projections for AiiDA groups."""
     return service.get_projections()
 
 
@@ -68,11 +59,7 @@ async def get_group_projections() -> list[str]:
 async def get_groups(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Group.Model]:
-    """Get AiiDA groups with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of group models.
-    """
+    """Get AiiDA groups with optional filtering, sorting, and/or pagination."""
     return service.get_many(queries)
 
 
@@ -84,13 +71,7 @@ async def get_groups(
 )
 @with_dbenv()
 async def get_group(uuid: str) -> orm.Group.Model:
-    """Get AiiDA group by uuid.
-
-    :param uuid: The uuid of the group to retrieve.
-    :return: The AiiDA group model.
-    :raises HTTPException: 404 if a group with the given uuid does not exist,
-        500 for any other server error.
-    """
+    """Get AiiDA group by uuid."""
     try:
         return service.get_one(uuid)
     except NotExistent as exception:
@@ -105,13 +86,7 @@ async def get_group(uuid: str) -> orm.Group.Model:
 )
 @with_dbenv()
 async def get_group_extras(uuid: str) -> dict[str, t.Any]:
-    """Get the extras of a group.
-
-    :param uuid: The uuid of the group to retrieve the extras for.
-    :return: A dictionary with the group extras.
-    :raises HTTPException: 404 if the group with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get the extras of a group."""
     try:
         return service.get_field(uuid, 'extras')
     except NotExistent as exception:
@@ -131,13 +106,7 @@ async def create_group(
     group_model: orm.Group.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Group.Model:
-    """Create new AiiDA group.
-
-    :param group_model: The Pydantic model of the group to create.
-    :param current_user: The current authenticated user.
-    :return: The created AiiDA Group model.
-    :raises HTTPException: 500 for any failures during group creation.
-    """
+    """Create new AiiDA group."""
     try:
         return service.add_one(group_model)
     except Exception as exception:

@@ -28,10 +28,7 @@ class DaemonStatusModel(BaseModel):
 )
 @with_dbenv()
 async def get_daemon_status() -> DaemonStatusModel:
-    """Return the daemon status.
-
-    :return: The daemon status.
-    """
+    """Return the daemon status."""
     client = get_daemon_client()
 
     if not client.is_daemon_running:
@@ -53,11 +50,7 @@ async def get_daemon_status() -> DaemonStatusModel:
 async def get_daemon_start(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
-    """Start the daemon.
-
-    :return: The daemon status after starting.
-    :raises HTTPException: If the daemon is already running (400) or if there was an error starting it (500).
-    """
+    """Start the daemon."""
     client = get_daemon_client()
 
     if client.is_daemon_running:
@@ -80,11 +73,7 @@ async def get_daemon_start(
 async def get_daemon_stop(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> DaemonStatusModel:
-    """Stop the daemon.
-
-    :return: The daemon status after stopping.
-    :raises HTTPException: If the daemon is not running (400) or if there was an error stopping it (500).
-    """
+    """Stop the daemon."""
     client = get_daemon_client()
 
     if not client.is_daemon_running:

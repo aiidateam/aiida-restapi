@@ -38,11 +38,26 @@ class NodeStatistics(pdt.BaseModel):
 class NodeType(pdt.BaseModel):
     """Pydantic model representing a node type."""
 
-    label: str = pdt.Field(description='The class name of the node type.')
-    node_type: str = pdt.Field(description='The AiiDA node type string.')
-    nodes: str = pdt.Field(description='The URL to access nodes of this type.')
-    projections: str = pdt.Field(description='The URL to access projectable properties of this node type.')
-    node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
+    label: str = pdt.Field(
+        description='The class name of the node type.',
+        examples=['Int'],
+    )
+    node_type: str = pdt.Field(
+        description='The AiiDA node type string.',
+        examples=['data.core.int.Int.'],
+    )
+    nodes: str = pdt.Field(
+        description='The URL to access nodes of this type.',
+        examples=['../nodes?filters={"node_type":{"data.core.int.Int."}}'],
+    )
+    projections: str = pdt.Field(
+        description='The URL to access projectable properties of this node type.',
+        examples=['../nodes/projections?type=data.core.int.Int.'],
+    )
+    node_schema: str = pdt.Field(
+        description='The URL to access the schema of this node type.',
+        examples=['../nodes/schema?type=data.core.int.Int.'],
+    )
 
 
 class RepoFileMetadata(pdt.BaseModel):
@@ -50,16 +65,20 @@ class RepoFileMetadata(pdt.BaseModel):
 
     type: t.Literal['FILE'] = pdt.Field(
         description='The type of the repository object.',
+        examples=['FILE'],
     )
     binary: bool = pdt.Field(
         False,
         description='Whether the file is binary.',
+        examples=[True],
     )
     size: int = pdt.Field(
         description='The size of the file in bytes.',
+        examples=[1024],
     )
     download: str = pdt.Field(
         description='The URL to download the file.',
+        examples=['../nodes/{uuid}/repo/contents?filename=path/to/file.txt'],
     )
 
 
@@ -68,9 +87,24 @@ class RepoDirMetadata(pdt.BaseModel):
 
     type: t.Literal['DIRECTORY'] = pdt.Field(
         description='The type of the repository object.',
+        examples=['DIRECTORY'],
     )
     objects: dict[str, t.Union[RepoFileMetadata, 'RepoDirMetadata']] = pdt.Field(
         description='A dictionary with the metadata of the objects in the directory.',
+        examples=[
+            {
+                'file.txt': {
+                    'type': 'FILE',
+                    'binary': False,
+                    'size': 2048,
+                    'download': '../nodes/{uuid}/repo/contents?filename=path/to/file.txt',
+                },
+                'subdir': {
+                    'type': 'DIRECTORY',
+                    'objects': {},
+                },
+            }
+        ],
     )
 
 

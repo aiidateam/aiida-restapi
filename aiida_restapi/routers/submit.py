@@ -43,9 +43,19 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
 
 
 class ProcessSubmitModel(pdt.BaseModel):
-    label: str = pdt.Field(default='', description='The label of the process')
-    entry_point: str = pdt.Field(description='The entry point of the process')
-    inputs: dict[str, t.Any] = pdt.Field(description='The inputs of the process')
+    label: str = pdt.Field(
+        '',
+        description='The label of the process',
+        examples=['My process', 'Test calculation'],
+    )
+    entry_point: str = pdt.Field(
+        description='The entry point of the process',
+        examples=['core.arithmetic.add'],
+    )
+    inputs: dict[str, t.Any] = pdt.Field(
+        description='The inputs of the process',
+        examples=[{'x': 1, 'y': 2}],
+    )
 
     @pdt.field_validator('inputs')
     @classmethod
@@ -69,14 +79,7 @@ async def submit_process(
     process: ProcessSubmitModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Submit new AiiDA process.
-
-    :param process: The Pydantic model of the process to create.
-    :param current_user: The current authenticated user.
-    :return: The created process node model.
-    :raises HTTPException: 404 if the entry point is not recognized,
-        500 for other failures during process submission.
-    """
+    """Submit new AiiDA process."""
     try:
         entry_point_process = load_entry_point_from_string(process.entry_point)
         process_node = engine.submit(entry_point_process, **process.inputs)

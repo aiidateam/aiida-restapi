@@ -31,13 +31,7 @@ async def get_computers_schema(
         description='Type of schema to retrieve: "get" or "post"',
     ),
 ) -> dict:
-    """Get JSON schema for AiiDA computers.
-
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        500 for any other failures.
-    """
+    """Get JSON schema for AiiDA computers."""
     try:
         return service.get_schema(which=which)
     except ValueError as exception:
@@ -51,10 +45,7 @@ async def get_computers_schema(
     response_model=list[str],
 )
 async def get_computer_projections() -> list[str]:
-    """Get queryable projections for AiiDA computers.
-
-    :return: The list of queryable projections for AiiDA computers.
-    """
+    """Get queryable projections for AiiDA computers."""
     return service.get_projections()
 
 
@@ -68,11 +59,7 @@ async def get_computer_projections() -> list[str]:
 async def get_computers(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Computer.Model]:
-    """Get AiiDA computers with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of computer models.
-    """
+    """Get AiiDA computers with optional filtering, sorting, and/or pagination."""
     return service.get_many(queries)
 
 
@@ -84,13 +71,7 @@ async def get_computers(
 )
 @with_dbenv()
 async def get_computer(pk: str) -> orm.Computer.Model:
-    """Get AiiDA computer by pk.
-
-    :param pk: The pk of the AiiDA computer.
-    :return: The computer model.
-    :raises HTTPException: 404 if the computer with the given pk does not exist,
-        500 for any other failures.
-    """
+    """Get AiiDA computer by pk."""
     try:
         return service.get_one(pk)
     except NotExistent as exception:
@@ -105,13 +86,7 @@ async def get_computer(pk: str) -> orm.Computer.Model:
 )
 @with_dbenv()
 async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
-    """Get metadata of an AiiDA computer by pk.
-
-    :param pk: The pk of the AiiDA computer.
-    :return: The metadata dictionary of the computer.
-    :raises HTTPException: 404 if the computer with the given pk does not exist,
-        500 for any other failures.
-    """
+    """Get metadata of an AiiDA computer by pk."""
     try:
         return service.get_field(pk, 'metadata')
     except NotExistent as exception:
@@ -131,13 +106,7 @@ async def create_computer(
     computer_model: orm.Computer.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Computer.Model:
-    """Create new AiiDA computer.
-
-    :param computer_model: The AiiDA ORM model of the computer to create.
-    :param current_user: The current authenticated user.
-    :return: The created AiiDA Computer model.
-    :raises HTTPException: 500 for any failures during computer creation.
-    """
+    """Create new AiiDA computer."""
     try:
         return service.add_one(computer_model)
     except Exception as exception:
