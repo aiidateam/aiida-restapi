@@ -9,11 +9,12 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, Query, UploadFile
+from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
+from aiida_restapi.common import errors
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.config import API_CONFIG
@@ -40,6 +41,9 @@ else:
 @read_router.get(
     '/schema',
     response_model=dict,
+    responses={
+        422: {'model': errors.InvalidNodeTypeError},
+    },
 )
 async def get_nodes_schema(
     node_type: str | None = Query(
@@ -55,18 +59,16 @@ async def get_nodes_schema(
     """Get JSON schema for the base AiiDA node 'get' model."""
     if not node_type:
         return orm.Node.Model.model_json_schema()
-    try:
-        model = model_registry.get_model(node_type, which)
-        return model.model_json_schema()
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    model = model_registry.get_model(node_type, which)
+    return model.model_json_schema()
 
 
 @read_router.get(
     '/projections',
     response_model=list[str],
+    responses={
+        422: {'model': errors.InvalidNodeTypeError},
+    },
 )
 @with_dbenv()
 async def get_node_projections(
@@ -77,17 +79,15 @@ async def get_node_projections(
     ),
 ) -> list[str]:
     """Get queryable projections for AiiDA nodes."""
-    try:
-        return service.get_projections(node_type)
-    except ValueError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_projections(node_type)
 
 
 @read_router.get(
     '/statistics',
     response_model=NodeStatistics,
+    responses={
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
@@ -102,12 +102,7 @@ async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
 @read_router.get('/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes."""
-    try:
-        return service.get_download_formats()
-    except EntryPointError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_download_formats()
 
 
 @read_router.get(
@@ -115,6 +110,9 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_nodes(
@@ -150,46 +148,46 @@ async def get_node_types() -> list:
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_node(uuid: str) -> orm.Node.Model:
     """Get AiiDA node by uuid."""
-    try:
-        return service.get_one(uuid)
-    except NotExistent as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_one(uuid)
 
 
 @read_router.get(
     '/{uuid}/attributes',
     response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
     """Get the attributes of a node."""
-    try:
-        return service.get_field(uuid, 'attributes')
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_field(uuid, 'attributes')
 
 
 @read_router.get(
     '/{uuid}/extras',
     response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_node_extras(uuid: str) -> dict[str, t.Any]:
     """Get the extras of a node."""
-    try:
-        return service.get_field(uuid, 'extras')
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_field(uuid, 'extras')
 
 
 @read_router.get(
@@ -197,6 +195,11 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
     response_model=PaginatedResults[NodeLink],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_node_links(
@@ -207,49 +210,37 @@ async def get_node_links(
     ),
 ) -> PaginatedResults[NodeLink]:
     """Get the incoming or outgoing links of a node."""
-    try:
-        return service.get_links(uuid, queries, direction=direction)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_links(uuid, queries, direction=direction)
 
 
 @read_router.get(
     '/{uuid}/download',
     response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.InvalidInputError},
+        451: {'model': errors.InvalidLicenseError},
+    },
 )
 @with_dbenv()
 async def download_node(
     uuid: str,
-    download_format: str | None = Query(
-        None,
-        description='Format to download the node in',
-    ),
+    download_format: str | None = Query(None, description='Format to download the node in'),
 ) -> StreamingResponse:
     """Download AiiDA node by uuid in a given download format provided as a query parameter."""
-    try:
-        node = orm.load_node(uuid)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    node = orm.load_node(uuid)
 
     if download_format is None:
-        raise HTTPException(
-            status_code=422,
-            detail='Please specify the download format. '
+        raise ValidationException(
+            'Please specify the download format. '
             'The available download formats can be '
             'queried using the /nodes/download_formats/ endpoint.',
         )
 
-    elif download_format in node.get_export_formats():
+    if download_format in node.get_export_formats():
         # byteobj, dict with {filename: filecontent}
-
-        try:
-            exported_bytes, _ = node._exportcontent(download_format)
-        except LicensingException as exception:
-            raise HTTPException(status_code=403, detail=str(exception)) from exception
+        exported_bytes, _ = node._exportcontent(download_format)
 
         def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
@@ -257,33 +248,36 @@ async def download_node(
 
         return StreamingResponse(stream(), media_type=f'application/{download_format}')
 
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail='The format {} is not supported. '
-            'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
-        )
+    raise ValidationException(
+        'The format {} is not supported. '
+        'The available download formats can be '
+        'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
+    )
 
 
 @read_router.get(
     '/{uuid}/repo/metadata',
     response_model=dict[str, MetadataType],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
     """Get the repository file metadata of a node."""
-    try:
-        return service.get_repository_metadata(uuid)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_repository_metadata(uuid)
 
 
 @read_router.get(
     '/{uuid}/repo/contents',
     response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_node_repo_file_contents(
@@ -296,18 +290,11 @@ async def get_node_repo_file_contents(
     """Get the repository contents of a node."""
     from urllib.parse import quote
 
-    try:
-        node = orm.load_node(uuid)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-
+    node = orm.load_node(uuid)
     repo = node.base.repository
 
     if filename:
-        try:
-            file_content = repo.get_object_content(filename, mode='rb')
-        except FileNotFoundError as exception:
-            raise HTTPException(status_code=404, detail=str(exception)) from exception
+        file_content = repo.get_object_content(filename, mode='rb')
 
         def file_stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(file_content) as handler:
@@ -319,18 +306,17 @@ async def get_node_repo_file_contents(
 
         return StreamingResponse(file_stream(), media_type='application/octet-stream', headers=headers)
 
-    else:
-        zip_bytes = repo.get_zipped_objects()
+    zip_bytes = repo.get_zipped_objects()
 
-        def zip_stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(zip_bytes) as handler:
-                yield from handler
+    def zip_stream() -> t.Generator[bytes, None, None]:
+        with io.BytesIO(zip_bytes) as handler:
+            yield from handler
 
-        download_name = f'node_{uuid}_repo.zip'
-        quoted = quote(download_name)
-        headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
+    download_name = f'node_{uuid}_repo.zip'
+    quoted = quote(download_name)
+    headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
 
-        return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+    return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
 
 
 @write_router.post(
@@ -338,6 +324,10 @@ async def get_node_repo_file_contents(
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+    },
 )
 @with_dbenv()
 async def create_node(
@@ -345,12 +335,7 @@ async def create_node(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
     """Create new AiiDA node."""
-    try:
-        return service.add_one(model)
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.add_one(model)
 
 
 @write_router.post(
@@ -358,6 +343,11 @@ async def create_node(
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        400: {'model': errors.JsonDecodingError},
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+    },
 )
 @with_dbenv()
 async def create_node_with_files(
@@ -366,34 +356,19 @@ async def create_node_with_files(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
     """Create new AiiDA node with files."""
-    try:
-        parameters = t.cast(dict, json.loads(params))
-    except json.JSONDecodeError as exception:
-        raise HTTPException(400, str(exception)) from exception
+    parameters = t.cast(dict, json.loads(params))
 
     if not (node_type := parameters.get('node_type')):
-        raise HTTPException(422, "Missing 'node_type' in params")
+        raise ValidationException("The 'node_type' field is missing in the parameters.")
 
-    try:
-        model_cls = model_registry.get_model(node_type, which='post')
-        model = model_cls(**parameters)
-    except KeyError as exception:
-        raise HTTPException(422, str(exception)) from exception
-    except pdt.ValidationError as exception:
-        raise HTTPException(422, str(exception)) from exception
+    model_cls = model_registry.get_model(node_type, which='post')
+    model = model_cls(**parameters)
 
     files_dict: dict[str, UploadFile] = {}
 
     for upload in files:
         if (target := upload.filename) in files_dict:
-            raise HTTPException(422, f"Duplicate target path '{target}' in upload")
+            raise ValidationException(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
 
-    try:
-        return service.add_one(model, files=files_dict)
-    except json.JSONDecodeError as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.add_one(model, files=files_dict)

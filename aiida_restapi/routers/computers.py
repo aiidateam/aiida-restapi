@@ -6,9 +6,9 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import NotExistent
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
+from aiida_restapi.common import errors
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.services.entity import EntityService
@@ -24,6 +24,9 @@ service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
 @read_router.get(
     '/schema',
     response_model=dict,
+    responses={
+        422: {'model': errors.RequestValidationError},
+    },
 )
 async def get_computers_schema(
     which: t.Literal['get', 'post'] = Query(
@@ -32,12 +35,7 @@ async def get_computers_schema(
     ),
 ) -> dict:
     """Get JSON schema for AiiDA computers."""
-    try:
-        return service.get_schema(which=which)
-    except ValueError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_schema(which=which)
 
 
 @read_router.get(
@@ -54,6 +52,9 @@ async def get_computer_projections() -> list[str]:
     response_model=PaginatedResults[orm.Computer.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_computers(
@@ -68,31 +69,31 @@ async def get_computers(
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_computer(pk: str) -> orm.Computer.Model:
     """Get AiiDA computer by pk."""
-    try:
-        return service.get_one(pk)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_one(pk)
 
 
 @read_router.get(
     '/{pk}/metadata',
     response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
     """Get metadata of an AiiDA computer by pk."""
-    try:
-        return service.get_field(pk, 'metadata')
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_field(pk, 'metadata')
 
 
 @write_router.post(
@@ -100,6 +101,10 @@ async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
     response_model=orm.Computer.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError]},
+    },
 )
 @with_dbenv()
 async def create_computer(
@@ -107,7 +112,4 @@ async def create_computer(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Computer.Model:
     """Create new AiiDA computer."""
-    try:
-        return service.add_one(computer_model)
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception))
+    return service.add_one(computer_model)

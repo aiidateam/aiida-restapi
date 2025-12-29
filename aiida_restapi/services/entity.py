@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import typing as t
 
+from aiida import orm
+from aiida.common.exceptions import NotExistent
+
+from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import EntityModelType, EntityType
@@ -34,11 +38,10 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
                 'get': self.entity_class.Model.model_json_schema(),
                 'post': self.entity_class.CreateModel.model_json_schema(),
             }
-        elif which == 'get':
-            return self.entity_class.Model.model_json_schema()
         elif which == 'post':
             return self.entity_class.CreateModel.model_json_schema()
-        raise ValueError(f'Schema type "{which}" not supported; expected "get" or "post"')
+        else:
+            return self.entity_class.Model.model_json_schema()
 
     def get_projections(self) -> list[str]:
         """Get queryable projections for the AiiDA entity.
@@ -56,13 +59,16 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The paginated results, including total count, current page, page size, and list of entity models.
         :rtype: PaginatedResults[EntityModelType]
         """
-        total = self.entity_class.collection.count(filters=queries.filters)
-        results = self.entity_class.collection.find(
-            filters=queries.filters,
-            order_by=queries.order_by,
-            limit=queries.page_size,
-            offset=queries.page_size * (queries.page - 1),
-        )
+        try:
+            total = self.entity_class.collection.count(filters=queries.filters)
+            results = self.entity_class.collection.find(
+                filters=queries.filters,
+                order_by=queries.order_by,
+                limit=queries.page_size,
+                offset=queries.page_size * (queries.page - 1),
+            )
+        except Exception as exception:
+            raise QueryBuilderException(str(exception)) from exception
         return PaginatedResults(
             total=total,
             page=queries.page,
@@ -91,10 +97,20 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The value of the specified field.
         :rtype: t.Any
         """
-        return self.entity_class.collection.query(
+        qb = self.entity_class.collection.query(
             filters={self.entity_class.identity_field: identifier},
             project=[field],
-        ).first()[0]
+        )
+
+        try:
+            result = qb.first()
+        except Exception as exception:
+            raise QueryBuilderException(str(exception)) from exception
+
+        if not result:
+            raise NotExistent(f'{self.entity_class.__name__}<{identifier}> does not exist.')
+
+        return t.cast(orm.Entity, result[0])
 
     def add_one(self, model: EntityModelType) -> EntityModelType:
         """Create new AiiDA entity from its model.

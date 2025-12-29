@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import typing as t
 
-from aiida.common import EntryPointError
+from aiida.common import EntryPointError, exceptions
 from aiida.common.escaping import escape_for_sql_like
-from aiida.common.exceptions import DbContentError, LoadingEntryPointError
 from aiida.common.lang import type_check
 from aiida.orm.utils import load_node_class
 from aiida.plugins.entry_point import (
@@ -73,7 +72,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                 try:
                     node_cls = load_entry_point(entry_point_group, name)
                     available_formats = node_cls.get_export_formats()
-                except (AttributeError, LoadingEntryPointError):
+                except (AttributeError, exceptions.LoadingEntryPointError):
                     continue
 
                 if available_formats:
@@ -312,8 +311,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         """
         try:
             return t.cast(NodeType, load_node_class(node_type))
-        except DbContentError as exception:
-            raise ValueError(f'invalid node type `{node_type}`') from exception
+        except (exceptions.DbContentError, exceptions.MissingEntryPointError) as exception:
+            raise EntryPointError(f'invalid node type `{node_type}`') from exception
 
     def _load_entry_point_from_full_type(self, full_type: str) -> t.Any:
         """Return the loaded entry point for the given `full_type` unique node type identifier.

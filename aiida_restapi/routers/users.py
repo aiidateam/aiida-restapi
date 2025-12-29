@@ -6,9 +6,9 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import NotExistent
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
+from aiida_restapi.common import errors
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.services.entity import EntityService
@@ -24,6 +24,9 @@ service = EntityService[orm.User, orm.User.Model](orm.User)
 @read_router.get(
     '/schema',
     response_model=dict,
+    responses={
+        422: {'model': errors.RequestValidationError},
+    },
 )
 async def get_users_schema(
     which: t.Literal['get', 'post'] = Query(
@@ -32,12 +35,7 @@ async def get_users_schema(
     ),
 ) -> dict:
     """Get JSON schema for AiiDA users."""
-    try:
-        return service.get_schema(which=which)
-    except ValueError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_schema(which=which)
 
 
 @read_router.get(
@@ -54,6 +52,9 @@ async def get_user_projections() -> list[str]:
     response_model=PaginatedResults[orm.User.Model],
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def get_users(
@@ -66,16 +67,16 @@ async def get_users(
 @read_router.get(
     '/{pk}',
     response_model=orm.User.Model,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
 )
 @with_dbenv()
 async def get_user(pk: int) -> orm.User.Model:
     """Get AiiDA user by pk."""
-    try:
-        return service.get_one(pk)
-    except NotExistent as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    return service.get_one(pk)
 
 
 @write_router.post(
@@ -83,6 +84,10 @@ async def get_user(pk: int) -> orm.User.Model:
     response_model=orm.User.Model,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError]},
+    },
 )
 @with_dbenv()
 async def create_user(
@@ -90,7 +95,4 @@ async def create_user(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.User.Model:
     """Create new AiiDA user."""
-    try:
-        return service.add_one(user_model)
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception))
+    return service.add_one(user_model)
