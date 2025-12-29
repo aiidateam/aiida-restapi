@@ -6,7 +6,7 @@ import json
 import typing as t
 
 import pydantic as pdt
-from fastapi import HTTPException, Query
+from fastapi import Query
 
 
 class QueryParams(pdt.BaseModel):
@@ -67,21 +67,9 @@ def query_params(
     query_filters: dict[str, t.Any] = {}
     query_order_by: str | list[str] | dict[str, t.Any] | None = None
     if filters:
-        try:
-            query_filters = json.loads(filters)
-        except Exception as exception:
-            raise HTTPException(
-                status_code=400,
-                detail=f'Could not parse filters as JSON: {exception}',
-            ) from exception
+        query_filters = json.loads(filters)
     if order_by:
-        try:
-            query_order_by = json.loads(order_by)
-        except Exception as exception:
-            raise HTTPException(
-                status_code=400,
-                detail=f'Could not parse order_by as JSON: {exception}',
-            ) from exception
+        query_order_by = json.loads(order_by)
     return QueryParams(
         filters=query_filters,
         order_by=query_order_by,
