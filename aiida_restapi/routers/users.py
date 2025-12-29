@@ -31,13 +31,7 @@ async def get_users_schema(
         description='Type of schema to retrieve: "get" or "post"',
     ),
 ) -> dict:
-    """Get JSON schema for AiiDA users.
-
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        500 for any other failures.
-    """
+    """Get JSON schema for AiiDA users."""
     try:
         return service.get_schema(which=which)
     except ValueError as exception:
@@ -51,10 +45,7 @@ async def get_users_schema(
     response_model=list[str],
 )
 async def get_user_projections() -> list[str]:
-    """Get queryable projections for AiiDA users.
-
-    :return: The list of queryable projections for AiiDA users.
-    """
+    """Get queryable projections for AiiDA users."""
     return service.get_projections()
 
 
@@ -68,11 +59,7 @@ async def get_user_projections() -> list[str]:
 async def get_users(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.User.Model]:
-    """Get AiiDA users with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of user models.
-    """
+    """Get AiiDA users with optional filtering, sorting, and/or pagination."""
     return service.get_many(queries)
 
 
@@ -82,13 +69,7 @@ async def get_users(
 )
 @with_dbenv()
 async def get_user(pk: int) -> orm.User.Model:
-    """Get AiiDA user by pk.
-
-    :param pk: The pk of the user to retrieve.
-    :return: The AiiDA user model.
-    :raises HTTPException: 404 if the user with the given pk does not exist,
-        500 for any other failures.
-    """
+    """Get AiiDA user by pk."""
     try:
         return service.get_one(pk)
     except NotExistent as exception:
@@ -108,13 +89,7 @@ async def create_user(
     user_model: orm.User.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.User.Model:
-    """Create new AiiDA user.
-
-    :param user_model: The Pydantic model of the user to create.
-    :param current_user: The current authenticated user.
-    :return: The created AiiDA User model.
-    :raises HTTPException: 500 for any failures during user creation.
-    """
+    """Create new AiiDA user."""
     try:
         return service.add_one(user_model)
     except Exception as exception:

@@ -49,18 +49,10 @@ async def get_nodes_schema(
     ),
     which: t.Literal['get', 'post'] = Query(
         'get',
-        description='The type of schema to retrieve: "get" for the response model, "post" for the creation model.',
+        description='Type of schema to retrieve',
     ),
 ) -> dict:
-    """Get JSON schema for the base AiiDA node 'get' model.
-
-    :param node_type: The AiiDA node type string.
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: The JSON schema for the base AiiDA node 'get' model.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        422 if the node type is not recognized,
-        500 for any other failures.
-    """
+    """Get JSON schema for the base AiiDA node 'get' model."""
     if not node_type:
         return orm.Node.Model.model_json_schema()
     try:
@@ -84,13 +76,7 @@ async def get_node_projections(
         alias='type',
     ),
 ) -> list[str]:
-    """Get queryable projections for AiiDA nodes.
-
-    :param node_type: The AiiDA node type string.
-    :return: The list of queryable projections for AiiDA nodes.
-    :raises HTTPException: 422 if the node type is not recognized,
-        500 for any other failures.
-    """
+    """Get queryable projections for AiiDA nodes."""
     try:
         return service.get_projections(node_type)
     except ValueError as exception:
@@ -105,25 +91,7 @@ async def get_node_projections(
 )
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
-    """Get node statistics.
-
-    :param user: Optional user PK to filter statistics by user.
-    :return: A dictionary containing total node count, counts by node type, and creation time statistics.
-
-    >>> {
-    >>>   "total": 47,
-    >>>   "types": {
-    >>>       "data.core.int.Int.": 42,
-    >>>       "data.core.singlefile.SinglefileData.": 5,
-    >>>       ...
-    >>>   },
-    >>>   "ctime_by_day": {
-    >>>       "2012-01-01": 10,
-    >>>       "2012-01-02": 15,
-    >>>       ...
-    >>>   },
-    >>> }
-    """
+    """Get node statistics."""
 
     from aiida.manage import get_manager
 
@@ -133,12 +101,7 @@ async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
 
 @read_router.get('/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
-    """Get download formats for AiiDA nodes.
-
-    :return: A dictionary with available download formats as keys and their descriptions as values.
-    :raises HTTPException: 404 if the download formats are not available,
-        500 for other failures during retrieval.
-    """
+    """Get download formats for AiiDA nodes."""
     try:
         return service.get_download_formats()
     except EntryPointError as exception:
@@ -157,11 +120,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 async def get_nodes(
     queries: t.Annotated[QueryParams, Depends(query_params)],
 ) -> PaginatedResults[orm.Node.Model]:
-    """Get AiiDA nodes with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of node models.
-    """
+    """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
     return service.get_many(queries)
 
 
@@ -170,21 +129,7 @@ async def get_nodes(
     response_model=list[NodeType],
 )
 async def get_node_types() -> list:
-    """Get all node types in machine-actionable format.
-
-    :return: A list of dictionaries, each containing information about a node type, e.g.:
-
-    >>> [
-    >>>   {
-    >>>     "label": "Int",
-    >>>     "node_type": "data.core.int.Int.",
-    >>>     "nodes": ".../nodes?filters={\"node_type\":{\"data.core.int.Int.\"}}",
-    >>>     "projections": ".../nodes/projections?type=data.core.int.Int.",
-    >>>     "node_schema": ".../nodes/schema?type=data.core.int.Int.",
-    >>>   },
-    >>>   ...
-    >>> ]
-    """
+    """Get all node types in machine-actionable format."""
     api_prefix = API_CONFIG['PREFIX']
     return [
         {
@@ -208,13 +153,7 @@ async def get_node_types() -> list:
 )
 @with_dbenv()
 async def get_node(uuid: str) -> orm.Node.Model:
-    """Get AiiDA node by uuid.
-
-    :param uuid: The uuid of the node to retrieve.
-    :return: The AiiDA node model, e.g. `orm.Node.Model`,
-    :raises HTTPException: 422 if the node with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get AiiDA node by uuid."""
     try:
         return service.get_one(uuid)
     except NotExistent as exception:
@@ -229,13 +168,7 @@ async def get_node(uuid: str) -> orm.Node.Model:
 )
 @with_dbenv()
 async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
-    """Get the attributes of a node.
-
-    :param uuid: The uuid of the node to retrieve the attributes for.
-    :return: A dictionary with the node attributes.
-    :raises HTTPException: 404 if the node with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get the attributes of a node."""
     try:
         return service.get_field(uuid, 'attributes')
     except NotExistent as exception:
@@ -250,13 +183,7 @@ async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
 )
 @with_dbenv()
 async def get_node_extras(uuid: str) -> dict[str, t.Any]:
-    """Get the extras of a node.
-
-    :param uuid: The uuid of the node to retrieve the extras for.
-    :return: A dictionary with the node extras.
-    :raises HTTPException: 404 if the node with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get the extras of a node."""
     try:
         return service.get_field(uuid, 'extras')
     except NotExistent as exception:
@@ -279,15 +206,7 @@ async def get_node_links(
         description='Specify whether to retrieve incoming or outgoing links.',
     ),
 ) -> PaginatedResults[NodeLink]:
-    """Get the incoming or outgoing links of a node.
-
-    :param uuid: The uuid of the node to retrieve the incoming links for.
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :param direction: Specify whether to retrieve incoming or outgoing links.
-    :return: The paginated requested linked nodes.
-    :raises HTTPException: 404 if the node with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get the incoming or outgoing links of a node."""
     try:
         return service.get_links(uuid, queries, direction=direction)
     except NotExistent as exception:
@@ -308,16 +227,7 @@ async def download_node(
         description='Format to download the node in',
     ),
 ) -> StreamingResponse:
-    """Download AiiDA node by uuid in a given download format provided as a query parameter.
-
-    :param uuid: The uuid of the node to retrieve.
-    :param download_format: The format to download the node in.
-    :return: StreamingResponse with the exported node content.
-    :raises HTTPException: 403 if licensing restrictions prevent export,
-        404 if the node with the given uuid does not exist,
-        422 if the download format is not specified, or if the download format is not supported,
-        500 for other failures during retrieval.
-    """
+    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
     try:
         node = orm.load_node(uuid)
     except NotExistent as exception:
@@ -362,13 +272,7 @@ async def download_node(
 )
 @with_dbenv()
 async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
-    """Get the repository file metadata of a node.
-
-    :param uuid: The uuid of the node to retrieve the repository metadata for.
-    :return: A dictionary with the repository file metadata.
-    :raises HTTPException: 404 if the node with the given uuid does not exist,
-        500 for other failures during retrieval.
-    """
+    """Get the repository file metadata of a node."""
     try:
         return service.get_repository_metadata(uuid)
     except NotExistent as exception:
@@ -389,14 +293,7 @@ async def get_node_repo_file_contents(
         description='Filename of repository content to retrieve',
     ),
 ) -> StreamingResponse:
-    """Get the repository contents of a node.
-
-    :param uuid: The uuid of the node to retrieve the repository contents for.
-    :param filename: The filename of the repository content to retrieve. If None, retrieves all contents.
-    :return: StreamingResponse with the requested file content.
-    :raises HTTPException: 404 if the node with the given uuid does not exist,
-        404 if the requested file does not exist in the node's repository.
-    """
+    """Get the repository contents of a node."""
     from urllib.parse import quote
 
     try:
@@ -447,14 +344,7 @@ async def create_node(
     model: NodeModelUnion,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Create new AiiDA node.
-
-    :param model: The AiiDA ORM model of the node to create.
-    :param current_user: The current authenticated user.
-    :return: The serialized created AiiDA node.
-    :raises HTTPException: 422 if the node type is not recognized,
-        500 for other failures during node creation.
-    """
+    """Create new AiiDA node."""
     try:
         return service.add_one(model)
     except KeyError as exception:
@@ -475,18 +365,7 @@ async def create_node_with_files(
     files: list[UploadFile],
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> orm.Node.Model:
-    """Create new AiiDA node with files.
-
-    :param params: The JSON string representing the AiiDA ORM model of the node to create.
-    :param files: The list of uploaded files.
-    :param current_user: The current authenticated user.
-    :return: The serialized created AiiDA node.
-    :raises HTTPException: 400 if the JSON is invalid,
-        422 if the node type is not recognized,
-        422 if validation of the node model fails,
-        422 if any uploaded file has an invalid path or if there are duplicate target paths,
-        500 for other failures during node creation.
-    """
+    """Create new AiiDA node with files."""
     try:
         parameters = t.cast(dict, json.loads(params))
     except json.JSONDecodeError as exception:
