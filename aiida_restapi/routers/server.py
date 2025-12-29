@@ -19,11 +19,26 @@ read_router = APIRouter(prefix='/server')
 class ServerInfo(pdt.BaseModel):
     """API version information."""
 
-    api_major_version: str = pdt.Field(description='Major version of the API')
-    api_minor_version: str = pdt.Field(description='Minor version of the API')
-    api_revision_version: str = pdt.Field(description='Revision version of the API')
-    api_prefix: str = pdt.Field(description='Prefix for all API endpoints')
-    aiida_version: str = pdt.Field(description='Version of the AiiDA installation')
+    api_major_version: str = pdt.Field(
+        description='Major version of the API',
+        examples=['0'],
+    )
+    api_minor_version: str = pdt.Field(
+        description='Minor version of the API',
+        examples=['1'],
+    )
+    api_revision_version: str = pdt.Field(
+        description='Revision version of the API',
+        examples=['0a1'],
+    )
+    api_prefix: str = pdt.Field(
+        description='Prefix for all API endpoints',
+        examples=['/api/v0'],
+    )
+    aiida_version: str = pdt.Field(
+        description='Version of the AiiDA installation',
+        examples=['2.8.0'],
+    )
 
 
 @read_router.get(
@@ -45,10 +60,23 @@ async def get_server_info() -> dict[str, str]:
 class ServerEndpoint(pdt.BaseModel):
     """API endpoint."""
 
-    path: str = pdt.Field(description='Path of the endpoint')
-    group: str | None = pdt.Field(description='Group of the endpoint')
-    methods: set[str] = pdt.Field(description='HTTP methods supported by the endpoint')
-    description: str = pdt.Field('-', description='Description of the endpoint')
+    path: str = pdt.Field(
+        description='Path of the endpoint',
+        examples=['../server/endpoints'],
+    )
+    group: str | None = pdt.Field(
+        description='Group of the endpoint',
+        examples=['server'],
+    )
+    methods: set[str] = pdt.Field(
+        description='HTTP methods supported by the endpoint',
+        examples=['GET'],
+    )
+    description: str = pdt.Field(
+        '-',
+        description='Description of the endpoint',
+        examples=['Get a JSON-serializable dictionary of all registered API routes.'],
+    )
 
 
 @read_router.get(
@@ -56,11 +84,7 @@ class ServerEndpoint(pdt.BaseModel):
     response_model=dict[str, list[ServerEndpoint]],
 )
 async def get_server_endpoints(request: Request) -> dict[str, list[dict]]:
-    """Get a JSON-serializable dictionary of all registered API routes.
-
-    :param request: The FastAPI request object.
-    :return: A JSON-serializable dictionary of all registered API routes.
-    """
+    """Get a JSON-serializable dictionary of all registered API routes."""
     endpoints: list[dict] = []
 
     for route in request.app.routes:
@@ -88,11 +112,7 @@ async def get_server_endpoints(request: Request) -> dict[str, list[dict]]:
     response_class=HTMLResponse,
 )
 async def get_server_endpoints_table(request: Request) -> HTMLResponse:
-    """Get an HTML table of all registered API routes.
-
-    :param request: The FastAPI request object.
-    :return: An HTML table of all registered API routes.
-    """
+    """Get an HTML table of all registered API routes."""
     routes = request.app.routes
     base_url = str(request.base_url).rstrip('/')
 
