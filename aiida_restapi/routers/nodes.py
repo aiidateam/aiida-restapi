@@ -9,15 +9,26 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, Query, Request, UploadFile
 from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
-from aiida_restapi.common import errors, query
-from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.common import query
 from aiida_restapi.config import API_CONFIG
-from aiida_restapi.models.node import MetadataType, NodeLink, NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import errors
+from aiida_restapi.jsonapi.models.aiida import (
+    ComputerResourceDocument,
+    GroupCollectionDocument,
+    LinkCollectionDocument,
+    NodeCollectionDocument,
+    NodeResourceDocument,
+    UserResourceDocument,
+)
+from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
+from aiida_restapi.jsonapi.responses import JsonApiResponse
+from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeService
 
 from .auth import UserInDB, get_current_active_user
@@ -28,6 +39,7 @@ write_router = APIRouter(prefix='/nodes')
 service = NodeService[orm.Node, orm.Node.Model](orm.Node)
 
 model_registry = NodeModelRegistry()
+
 
 if t.TYPE_CHECKING:
     # Dummy type for static analysis
@@ -41,7 +53,7 @@ else:
     '/schema',
     response_model=dict[str, t.Any],
     responses={
-        422: {'model': errors.InvalidNodeTypeError},
+        422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
     },
 )
 async def get_nodes_schema(
@@ -68,7 +80,7 @@ async def get_nodes_schema(
     '/projections',
     response_model=list[str],
     responses={
-        422: {'model': errors.InvalidNodeTypeError},
+        422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
     },
 )
 @with_dbenv()
@@ -86,7 +98,7 @@ async def get_node_projections(
     '/statistics',
     response_model=NodeStatistics,
     responses={
-        422: {'model': errors.RequestValidationError},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
@@ -107,22 +119,33 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 
 @read_router.get(
     '',
-    response_model=PaginatedResults[orm.Node.Model],
+    response_class=JsonApiResponse,
+    response_model=NodeCollectionDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
     },
 )
 @with_dbenv()
 async def get_nodes(
+    request: Request,
     query_params: t.Annotated[
-        query.QueryParams,
-        Depends(query.query_params),
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
     ],
-) -> PaginatedResults[dict[str, t.Any]]:
+) -> dict[str, t.Any]:
     """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
-    return service.get_many(query_params)
+    results = service.get_many(query_params)
+    return JsonApi.collection(
+        request,
+        results,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+        query_params=query_params,
+    )
 
 
 @read_router.get(
@@ -148,166 +171,268 @@ async def get_node_types() -> list:
 
 @read_router.get(
     '/{uuid}',
-    response_model=orm.Node.Model,
+    response_class=JsonApiResponse,
+    response_model=NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
-async def get_node(uuid: str) -> dict[str, t.Any]:
+async def get_node(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
     """Get AiiDA node by uuid."""
-    return service.get_one(uuid)
+    result = service.get_one(uuid)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+        include=query_params.include,
+    )
 
 
 @read_router.get(
     '/{uuid}/user',
-    response_model=orm.User.Model,
+    response_class=JsonApiResponse,
+    response_model=UserResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
-async def get_node_user(uuid: str) -> dict[str, t.Any]:
+async def get_node_user(request: Request, uuid: str) -> dict[str, t.Any]:
     """Get the user associated with a node."""
-    return service.get_related_one(uuid, orm.User)
+    user = service.get_related_one(uuid, orm.User)
+    return JsonApi.resource(
+        request,
+        user,
+        resource_identity=orm.User.identity_field,
+        resource_type='users',
+    )
 
 
 @read_router.get(
     '/{uuid}/computer',
-    response_model=orm.Computer.Model,
+    response_class=JsonApiResponse,
+    response_model=ComputerResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
-async def get_node_computer(uuid: str) -> dict[str, t.Any]:
+async def get_node_computer(request: Request, uuid: str) -> dict[str, t.Any]:
     """Get the computer associated with a node."""
-    return service.get_related_one(uuid, orm.Computer)
+    computer = service.get_related_one(uuid, orm.Computer)
+    return JsonApi.resource(
+        request,
+        computer,
+        resource_identity=orm.Computer.identity_field,
+        resource_type='computers',
+    )
 
 
 @read_router.get(
     '/{uuid}/groups',
-    response_model=PaginatedResults[orm.Group.Model],
+    response_class=JsonApiResponse,
+    response_model=GroupCollectionDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
     },
 )
 @with_dbenv()
 async def get_node_groups(
+    request: Request,
     uuid: str,
     query_params: t.Annotated[
-        query.QueryParams,
-        Depends(query.query_params),
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
     ],
-) -> PaginatedResults[dict[str, t.Any]]:
+) -> dict[str, t.Any]:
     """Get the groups of a node."""
-    return service.get_related_many(uuid, orm.Group, query_params)
+    groups = service.get_related_many(uuid, orm.Group, query_params)
+    return JsonApi.collection(
+        request,
+        groups,
+        resource_identity=orm.Group.identity_field,
+        resource_type='groups',
+        query_params=query_params,
+    )
 
 
 @read_router.get(
     '/{uuid}/attributes',
-    response_model=dict[str, t.Any],
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
     },
 )
 @with_dbenv()
-async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
+async def get_node_attributes(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
     """Get the attributes of a node."""
-    return service.get_field(uuid, 'attributes')
+    attributes = service.get_field(uuid, 'attributes')
+    return JsonApi.child_resource(
+        request,
+        attributes,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='attributes',
+        include=query_params.include,
+    )
 
 
 @read_router.get(
     '/{uuid}/extras',
-    response_model=dict[str, t.Any],
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
     },
 )
 @with_dbenv()
-async def get_node_extras(uuid: str) -> dict[str, t.Any]:
+async def get_node_extras(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
     """Get the extras of a node."""
-    return service.get_field(uuid, 'extras')
+    extras = service.get_field(uuid, 'extras')
+    return JsonApi.child_resource(
+        request,
+        extras,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='extras',
+        include=query_params.include,
+    )
 
 
 @read_router.get(
     '/{uuid}/links',
-    response_model=PaginatedResults[NodeLink],
+    response_class=JsonApiResponse,
+    response_model=LinkCollectionDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
 async def get_node_links(
+    request: Request,
     uuid: str,
     direction: t.Annotated[
         t.Literal['incoming', 'outgoing'],
         Query(description='Specify whether to retrieve incoming or outgoing links.'),
     ],
     query_params: t.Annotated[
-        query.QueryParams,
-        Depends(query.query_params),
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
     ],
-) -> PaginatedResults[dict[str, t.Any]]:
-    """Get the incoming or outgoing links of a node."""
-    return service.get_links(uuid, direction, query_params)
+) -> dict[str, t.Any]:
+    """Get the incoming/outgoing links of a node."""
+    links = service.get_links(uuid, direction, query_params)
+    return JsonApi.collection(
+        request,
+        links,
+        resource_identity='id',
+        resource_type='links',
+        query_params=query_params,
+    )
 
 
 @read_router.get(
     '/{uuid}/repo/metadata',
-    response_model=dict[str, MetadataType],
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
-async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
+async def get_node_repo_file_metadata(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
     """Get the repository file metadata of a node."""
-    return service.get_repository_metadata(uuid)
+    metadata = service.get_repository_metadata(uuid)
+    return JsonApi.child_resource(
+        request,
+        metadata,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='repo-metadata',
+        include=query_params.include,
+    )
 
 
 @read_router.get(
     '/{uuid}/repo/contents',
     response_class=StreamingResponse,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.RequestValidationError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
 @with_dbenv()
 async def get_node_repo_file_contents(
     uuid: str,
-    filename: str | None = Query(
-        None,
-        description='Filename of repository content to retrieve',
-    ),
+    filename: t.Annotated[
+        str | None,
+        Query(description='Filename of repository content to retrieve'),
+    ] = None,
 ) -> StreamingResponse:
     """Get the repository contents of a node."""
     from urllib.parse import quote
@@ -345,10 +470,10 @@ async def get_node_repo_file_contents(
     '/{uuid}/download',
     response_class=StreamingResponse,
     responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.InvalidInputError},
-        451: {'model': errors.InvalidLicenseError},
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.InvalidInputError, 'description': 'Validation Error'},
+        451: {'model': errors.InvalidLicenseError, 'description': 'Invalid License'},
     },
 )
 @with_dbenv()
@@ -388,36 +513,50 @@ async def download_node(
 
 @write_router.post(
     '',
-    response_model=orm.Node.Model,
+    response_class=JsonApiResponse,
+    response_model=NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
         403: {'model': errors.StoringNotAllowedError},
-        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
     },
 )
 @with_dbenv()
 async def create_node(
+    request: Request,
     model: NodeModelUnion,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node."""
-    return service.add_one(model)
+    result = service.add_one(model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )
 
 
 @write_router.post(
     '/file-upload',
-    response_model=orm.Node.Model,
+    response_class=JsonApiResponse,
+    response_model=NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
-        400: {'model': errors.JsonDecodingError},
-        403: {'model': errors.StoringNotAllowedError},
-        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+        400: {'model': errors.JsonDecodingError, 'description': 'JSON Decoding Error'},
+        403: {'model': errors.StoringNotAllowedError, 'description': 'Storing Not Allowed'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
     },
 )
 @with_dbenv()
 async def create_node_with_files(
+    request: Request,
     params: t.Annotated[str, Form()],
     files: list[UploadFile],
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
@@ -438,4 +577,10 @@ async def create_node_with_files(
             raise ValidationException(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
 
-    return service.add_one(model, files=files_dict)
+    result = service.add_one(model, files=files_dict)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )

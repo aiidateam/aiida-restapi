@@ -54,8 +54,7 @@ def test_get_computer_metadata(client: TestClient):
 
     response = client.get(f'/computers/{computer.pk}/metadata')
     assert response.status_code == 200
-    data = response.json()
-    assert data == metadata
+    assert response.json()['data']['attributes'] == metadata
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -71,6 +70,8 @@ def test_create_computer(client: TestClient):
         },
     )
     assert response.status_code == 200, response.content
-    response = client.get('/computers')
-    computers = [comp['label'] for comp in response.json()['data']]
-    assert 'test_comp' in computers
+    attributes = response.json()['data']['attributes']
+    assert attributes['label'] == 'test_comp'
+    assert attributes['hostname'] == 'fake_host'
+    assert attributes['transport_type'] == 'core.local'
+    assert attributes['scheduler_type'] == 'core.pbspro'
