@@ -99,9 +99,7 @@ def test_get_nodes_statistics(client: TestClient):
 def test_get_download_formats(client: TestClient):
     """Test get download formats for nodes."""
     response = client.get('/nodes/download_formats')
-
     assert response.status_code == 200
-
     reference = {
         'data.core.array.ArrayData.|': ['json'],
         'data.core.array.bands.BandsData.|': [
@@ -124,13 +122,12 @@ def test_get_download_formats(client: TestClient):
         'data.core.structure.StructureData.|': ['chemdoodle', 'cif', 'xsf', 'xyz'],
         'data.core.upf.UpfData.|': ['json', 'upf'],
     }
-    response_json = response.json()
-
+    result = response.json()
     for key, value in reference.items():
-        if key not in response_json:
-            raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
-        if not set(value) <= set(response_json[key]):
-            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
+        if key not in result:
+            raise AssertionError(f'The key {key!r} is not found in the response: {result}')
+        if not set(value) <= set(result[key]):
+            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {result}')
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -139,9 +136,6 @@ def test_get_nodes(client: TestClient):
     response = client.get('/nodes')
     assert response.status_code == 200
     assert len(response.json()['data']) == 4
-    result = next(iter(response.json()['data']), None)
-    assert result is not None
-    assert set(result.keys()) == {'pk', 'uuid', 'node_type', 'label', 'description', 'ctime', 'mtime', 'user'}
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -150,10 +144,10 @@ def test_get_nodes_by_type(client: TestClient):
     filters = {'node_type': {'in': ['data.core.int.Int.', 'data.core.float.Float.']}}
     response = client.get(f'/nodes?filters={json.dumps(filters)}')
     assert response.status_code == 200
-    results = response.json()['data']
-    assert len(results) == 2
-    assert any(result['node_type'] == 'data.core.int.Int.' for result in results)
-    assert any(result['node_type'] == 'data.core.float.Float.' for result in results)
+    data = response.json()['data']
+    assert len(data) == 2
+    assert data[0]['attributes']['node_type'] == 'data.core.float.Float.'
+    assert data[1]['attributes']['node_type'] == 'data.core.int.Int.'
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -162,14 +156,14 @@ def test_get_nodes_with_filters(client: TestClient):
     filters = {'attributes.value': 1.1}
     response = client.get(f'/nodes?filters={json.dumps(filters)}')
     assert response.status_code == 200
-    results = response.json()['data']
-    assert len(results) == 1
-    assert results[0]['node_type'] == 'data.core.float.Float.'
+    data = response.json()['data']
+    assert len(data) == 1
+    assert data[0]['attributes']['node_type'] == 'data.core.float.Float.'
 
     # Attributes are excluded, so we need to check separately by id
-    check = client.get(f'/nodes/{results[0]["uuid"]}/attributes')
+    check = client.get(f'/nodes/{data[0]["id"]}/attributes')
     assert check.status_code == 200
-    assert check.json()['value'] == 1.1
+    assert check.json()['data']['attributes']['value'] == 1.1
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -178,9 +172,9 @@ def test_get_nodes_in_order(client: TestClient):
     order_by = {'ctime': 'desc'}
     response = client.get(f'/nodes?order_by={json.dumps(order_by)}')
     assert response.status_code == 200
-    results = response.json()['data']
-    assert len(results) == 4
-    ctimes = [result['ctime'] for result in results]
+    data = response.json()['data']
+    assert len(data) == 4
+    ctimes = [result['attributes']['ctime'] for result in data]
     assert ctimes == sorted(ctimes, reverse=True)
 
 
@@ -189,15 +183,15 @@ def test_get_nodes_pagination(client: TestClient):
     """Test listing existing nodes with pagination."""
     response = client.get('/nodes?page_size=2&page=1')
     assert response.status_code == 200
-    results = response.json()['data']
-    assert len(results) == 2
-    assert all(result['pk'] in (1, 2) for result in results)
+    data = response.json()['data']
+    assert len(data) == 2
+    assert all(result['attributes']['pk'] in (1, 2) for result in data)
 
-    response = client.get('/nodes?page_size=2&page=2')
-    assert response.status_code == 200
-    results = response.json()['data']
-    assert len(results) == 2
-    assert all(result['pk'] in (3, 4) for result in results)
+    check = client.get('/nodes?page_size=2&page=2')
+    assert check.status_code == 200
+    data = check.json()['data']
+    assert len(data) == 2
+    assert all(result['attributes']['pk'] in (3, 4) for result in data)
 
 
 def test_get_node_types(client: TestClient):
@@ -217,10 +211,31 @@ def test_get_node_types(client: TestClient):
 
 def test_get_node(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving a single nodes."""
-    for node_id in default_nodes:
-        response = client.get(f'/nodes/{node_id}')
-        assert response.status_code == 200, response.content
-        assert response.json()['uuid'] == node_id
+    node_id = default_nodes[0]
+    response = client.get(f'/nodes/{node_id}')
+    assert response.status_code == 200, response.content
+    node = response.json()['data']
+    attributes = node['attributes']
+    assert 'uuid' not in attributes  # top-level id
+    assert 'user' not in attributes  # relationship
+    assert set(attributes.keys()) == {
+        'pk',
+        'node_type',
+        'label',
+        'description',
+        'ctime',
+        'mtime',
+    }
+    assert set(node['relationships'].keys()) == {
+        'collection',
+        'user',
+        'groups',
+        'attributes',
+        'extras',
+        'incoming',
+        'outgoing',
+        'repository_metadata',
+    }
 
 
 def test_get_node_user(client: TestClient):
@@ -228,8 +243,7 @@ def test_get_node_user(client: TestClient):
     node = orm.Int(value=5).store()
     response = client.get(f'/nodes/{node.uuid}/user')
     assert response.status_code == 200
-    data = response.json()
-    assert data['email'] == node.user.email
+    assert response.json()['data']['attributes']['email'] == node.user.email
 
 
 def test_get_node_computer(client: TestClient, default_computers: list[int | None]):
@@ -238,8 +252,7 @@ def test_get_node_computer(client: TestClient, default_computers: list[int | Non
     node = orm.Int(value=5, computer=computer).store()
     response = client.get(f'/nodes/{node.uuid}/computer')
     assert response.status_code == 200
-    data = response.json()
-    assert data['pk'] == node.computer.pk
+    assert response.json()['data']['attributes']['uuid'] == node.computer.uuid
 
 
 def test_get_node_no_computer(client: TestClient):
@@ -247,7 +260,7 @@ def test_get_node_no_computer(client: TestClient):
     node = orm.Int(value=5).store()
     response = client.get(f'/nodes/{node.uuid}/computer')
     assert response.status_code == 404
-    assert response.json()['detail'] == f'Computer related to Node<{node.uuid}> not found.'
+    assert response.json()['errors'][0]['detail'] == f'Computer related to Node<{node.uuid}> not found.'
 
 
 def test_get_node_groups(client: TestClient, default_groups: list[str]):
@@ -259,7 +272,7 @@ def test_get_node_groups(client: TestClient, default_groups: list[str]):
     response = client.get(f'/nodes/{node.uuid}/groups')
     assert response.status_code == 200
     data = response.json()['data']
-    returned_group_ids = {item['uuid'] for item in data}
+    returned_group_ids = {item['id'] for item in data}
     assert returned_group_ids == set(default_groups)
 
 
@@ -268,11 +281,11 @@ def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]
     for node_id in default_nodes:
         response = client.get(f'/nodes/{node_id}/attributes')
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()['data']
         node = orm.load_node(node_id)
         for key, value in node.base.attributes.items():
-            assert key in data
-            assert data[key] == value
+            assert key in data['attributes']
+            assert data['attributes'][key] == value
 
 
 def test_get_node_extras(client: TestClient, default_nodes: list[str | None]):
@@ -280,11 +293,11 @@ def test_get_node_extras(client: TestClient, default_nodes: list[str | None]):
     for node_id in default_nodes:
         response = client.get(f'/nodes/{node_id}/extras')
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()['data']
         node = orm.load_node(node_id)
         for key, value in node.base.extras.items():
-            assert key in data
-            assert data[key] == value
+            assert key in data['attributes']
+            assert data['attributes'][key] == value
 
 
 def test_get_node_links(client: TestClient, mock_arithmetic_add: str):
@@ -305,16 +318,16 @@ def test_get_node_repository_metadata(client: TestClient, array_data_node: orm.A
     """Test retrieving repository metadata for a node."""
     response = client.get(f'/nodes/{array_data_node.uuid}/repo/metadata')
     assert response.status_code == 200
-    result = response.json()
+    metadata = response.json()['data']['attributes']
     default = orm.ArrayData.default_array_name + '.npy'
-    assert default in result
-    assert all(t in result[default] for t in ('type', 'binary', 'size', 'download'))
-    assert result[default]['type'] == 'FILE'
-    assert result[default]['binary'] is True
-    assert 'zipped' in result
-    assert all(t in result['zipped'] for t in ('type', 'binary', 'size', 'download'))
-    assert result['zipped']['type'] == 'FILE'
-    assert result['zipped']['binary'] is True
+    assert default in metadata
+    assert all(t in metadata[default] for t in ('type', 'binary', 'size', 'download'))
+    assert metadata[default]['type'] == 'FILE'
+    assert metadata[default]['binary'] is True
+    assert 'zipped' in metadata
+    assert all(t in metadata['zipped'] for t in ('type', 'binary', 'size', 'download'))
+    assert metadata['zipped']['type'] == 'FILE'
+    assert metadata['zipped']['binary'] is True
 
 
 def test_get_node_file_contents(client: TestClient, array_data_node: orm.ArrayData):
@@ -525,13 +538,13 @@ def test_create_single_file(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'test_file.txt' in result
-    assert result['test_file.txt']['type'] == 'FILE'
-    assert result['test_file.txt']['size'] == len(b'Some test strings')
-    assert result['test_file.txt']['binary'] is False
+    metadata = check.json()['data']['attributes']
+    assert 'test_file.txt' in metadata
+    assert metadata['test_file.txt']['type'] == 'FILE'
+    assert metadata['test_file.txt']['size'] == len(b'Some test strings')
+    assert metadata['test_file.txt']['binary'] is False
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -559,13 +572,13 @@ def test_create_single_file_binary(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'binary_file.bin' in result
-    assert result['binary_file.bin']['type'] == 'FILE'
-    assert result['binary_file.bin']['size'] == len(binary_content)
-    assert result['binary_file.bin']['binary'] is True
+    metadata = check.json()['data']['attributes']
+    assert 'binary_file.bin' in metadata
+    assert metadata['binary_file.bin']['type'] == 'FILE'
+    assert metadata['binary_file.bin']['size'] == len(binary_content)
+    assert metadata['binary_file.bin']['binary'] is True
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -600,13 +613,13 @@ def test_create_folder_data(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'folder' in result
-    assert result['folder']['type'] == 'DIRECTORY'
-    assert 'objects' in result['folder']
-    objects = result['folder']['objects']
+    metadata = check.json()['data']['attributes']
+    assert 'folder' in metadata
+    assert metadata['folder']['type'] == 'DIRECTORY'
+    assert 'objects' in metadata['folder']
+    objects = metadata['folder']['objects']
     assert len(objects) == 2
     for file in files:
         filename = file[1][0].split('/', 1)[1]
@@ -650,13 +663,13 @@ def test_create_node_with_files_has_zipped_metadata(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["uuid"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'zipped' in result
-    assert result['zipped']['type'] == 'FILE'
-    assert result['zipped']['binary'] is True
-    assert result['zipped']['size'] == sum(len(file[1][1].getvalue()) for file in files)
+    metadata = check.json()['data']['attributes']
+    assert 'zipped' in metadata
+    assert metadata['zipped']['type'] == 'FILE'
+    assert metadata['zipped']['binary'] is True
+    assert metadata['zipped']['size'] == sum(len(file[1][1].getvalue()) for file in files)
 
 
 @pytest.mark.parametrize(
@@ -708,11 +721,11 @@ def test_create_additional_attribute(client: TestClient):
     )
     assert response.status_code == 200, response.content
 
-    check = client.get(f'/nodes/{response.json()["uuid"]}/attributes')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/attributes')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'value' in result
-    assert 'extra_thing' not in result
+    attributes = check.json()['data']['attributes']
+    assert 'value' in attributes
+    assert 'extra_thing' not in attributes
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -729,11 +742,11 @@ def test_create_bool_with_extra(client: TestClient):
     assert response.status_code == 200, response.content
 
     # We exclude extras from the node response, so we check by retrieving them separately
-    check = client.get(f'/nodes/{response.json()["uuid"]}/extras')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/extras')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert result['extra_one'] == 'value_1'
-    assert result['extra_two'] == 'value_2'
+    extras = check.json()['data']['attributes']
+    assert extras['extra_one'] == 'value_1'
+    assert extras['extra_two'] == 'value_2'
 
 
 @pytest.mark.anyio
@@ -744,17 +757,17 @@ async def test_get_download_node(async_client: AsyncClient, array_data_node: orm
     # Test that array is correctly downloaded as json
     response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=json')
     assert response.status_code == 200, response.json()
-    assert response.json().get('default', None) == array_data_node.get_array().tolist()
+    assert response.json()['default'] == array_data_node.get_array().tolist()
 
     # Test exception when wrong download format given
     response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=cif')
     assert response.status_code == 422, response.json()
-    assert 'format cif is not supported' in response.json()['detail']
+    assert 'format cif is not supported' in response.json()['errors'][0]['detail']
 
     # Test exception when no download format given
     response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
     assert response.status_code == 422, response.json()
-    assert 'Please specify the download format' in response.json()['detail']
+    assert 'Please specify the download format' in response.json()['errors'][0]['detail']
 
 
 @pytest.mark.usefixtures('default_nodes')

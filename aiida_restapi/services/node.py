@@ -19,7 +19,7 @@ from aiida.repository import File
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams
+from aiida_restapi.common.query import QueryBuilderParams
 from aiida_restapi.common.types import NodeModelType, NodeType
 from aiida_restapi.config import API_CONFIG
 
@@ -148,14 +148,14 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         self,
         uuid: str,
         direction: t.Literal['incoming', 'outgoing'],
-        query_params: QueryParams,
+        query_params: QueryBuilderParams = QueryBuilderParams(),
     ) -> PaginatedResults[dict[str, t.Any]]:
         """Get the incoming links of a node.
 
         :param uuid: The uuid of the node to retrieve the incoming links for.
         :type uuid: str
-        :param query_params: The query parameters, including filters, order_by, page_size, and page.
-        :type query_params: QueryParams
+        :param query_params: The query parameters for filtering, sorting, and pagination.
+        :type query_params: QueryBuilderParams
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
@@ -169,7 +169,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
             .append(
                 orm.Node,
                 filters=query_params.filters,
-                project=self.project,
+                project='uuid',
                 tag='link',
             )
             .append(
@@ -187,20 +187,24 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         try:
             total = qb.count()
-            results = qb.dict()
+            results = qb.all()
         except Exception as exception:
             raise QueryBuilderException(str(exception)) from exception
-
-        for result in results:
-            result['link']['link_label'] = result['link--node']['label']
-            result['link']['link_type'] = result['link--node']['type']
-            del result['link--node']
 
         return PaginatedResults(
             total=total,
             page=query_params.page,
             page_size=query_params.page_size,
-            data=[next(iter(result.values())) for result in results],
+            data=[
+                {
+                    'id': f'{uuid}:{target_uuid}',
+                    'source': uuid,
+                    'target': target_uuid,
+                    'link_label': link_label,
+                    'link_type': link_type,
+                }
+                for target_uuid, link_label, link_type in results
+            ],
         )
 
     def add_one(

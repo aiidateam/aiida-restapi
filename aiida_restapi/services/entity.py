@@ -10,7 +10,7 @@ from aiida.common.pydantic import get_metadata
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams
+from aiida_restapi.common.query import QueryBuilderParams
 from aiida_restapi.common.types import EntityModelType, EntityType
 
 
@@ -64,13 +64,13 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
-    def get_many(self, query_params: QueryParams) -> PaginatedResults[dict[str, t.Any]]:
+    def get_many(self, query_params: QueryBuilderParams) -> PaginatedResults[dict[str, t.Any]]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
-        :param query_params: The query parameters, including filters, order_by, page_size, and page.
-        :type query_params: QueryParams
-        :return: The paginated AiiDA entities.
-        :rtype: PaginatedResults[dict[str, t.Any]]
+        :param query_params: The query parameters for filtering, sorting, and pagination.
+        :type query_params: QueryBuilderParams
+        :return: The paginated results, including total count, current page, page size, and list of entity models.
+        :rtype: PaginatedResults[dict[str, t.Any]
         """
         try:
             total = self.entity_class.collection.count(filters=query_params.filters)
@@ -149,7 +149,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         self,
         identifier: str | int,
         related_type: type[orm.Entity],
-        query_params: QueryParams,
+        query_params: QueryBuilderParams,
     ) -> PaginatedResults[dict[str, t.Any]]:
         """Get related foreign entities of an entity.
 

@@ -8,10 +8,6 @@ import pydantic as pdt
 
 ResultType = t.TypeVar('ResultType')
 
-__all__ = [
-    'PaginatedResults',
-]
-
 
 class PaginatedResults(pdt.BaseModel, t.Generic[ResultType]):
     total: int

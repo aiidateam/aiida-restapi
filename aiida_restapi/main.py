@@ -8,11 +8,12 @@ from aiida.common import exceptions as aiida_exceptions
 from aiida.engine.daemon.client import DaemonException
 from fastapi import APIRouter, FastAPI
 from fastapi import exceptions as fastapi_exceptions
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 
 from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.graphql import main
+from aiida_restapi.jsonapi.utils import jsonapi_error
 from aiida_restapi.routers import auth, computers, daemon, groups, nodes, querybuilder, server, submit, users
 
 
@@ -49,10 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
 
     app.exception_handlers |= {
-        error_class: lambda _, exception, sc=status_code: JSONResponse(
-            status_code=sc,
-            content={'detail': str(exception)},
-        )
+        error_class: lambda req, exc, sc=status_code: jsonapi_error(req, exc, sc)
         for error_class, status_code in {
             JSONDecodeError: 400,
             aiida_exceptions.StoringNotAllowed: 403,
@@ -70,7 +68,9 @@ def create_app() -> FastAPI:
             aiida_exceptions.ContentNotExistent: 422,
             restapi_exceptions.QueryBuilderException: 422,
             aiida_exceptions.LicensingException: 451,
+            restapi_exceptions.JsonApiException: 500,
             DaemonException: 500,
+            Exception: 500,
         }.items()
     }
 

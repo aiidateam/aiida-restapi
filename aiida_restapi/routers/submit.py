@@ -11,7 +11,7 @@ from aiida.common import exceptions
 from aiida.plugins.entry_point import load_entry_point_from_string
 from fastapi import APIRouter, Depends
 
-from aiida_restapi.common import errors
+from aiida_restapi.jsonapi.models import errors
 
 from .auth import UserInDB, get_current_active_user
 
@@ -74,7 +74,6 @@ class ProcessSubmitModel(pdt.BaseModel):
     '',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
     responses={
         404: {'model': errors.NonExistentError},
         422: {'model': t.Union[errors.InvalidInputError, errors.InvalidOperationError]},
