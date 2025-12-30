@@ -73,9 +73,8 @@ def test_add_process_invalid_node_id(client: TestClient, default_test_add_proces
         },
     )
     assert response.status_code == 404
-    result = response.json()
-    assert 'detail' in result
-    assert 'no Node found with UUID<891a9efa-f90e-11eb-9a03-0242ac130003>' in result['detail']
+    error = response.json()['errors'][0]
+    assert 'no Node found with UUID<891a9efa-f90e-11eb-9a03-0242ac130003>' in error['detail']
 
 
 @pytest.mark.anyio

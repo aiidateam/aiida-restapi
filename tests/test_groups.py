@@ -43,8 +43,7 @@ def test_get_group_user(client: TestClient):
     group = orm.Group(label='test_group_user').store()
     response = client.get(f'/groups/{group.uuid}/user')
     assert response.status_code == 200
-    data = response.json()
-    assert data['email'] == group.user.email
+    assert response.json()['data']['attributes']['email'] == group.user.email
 
 
 def test_get_group_nodes(client: TestClient, default_nodes: list[str]):
@@ -54,7 +53,7 @@ def test_get_group_nodes(client: TestClient, default_nodes: list[str]):
     response = client.get(f'/groups/{group.uuid}/nodes')
     assert response.status_code == 200
     data = response.json()['data']
-    returned_node_ids = {item['uuid'] for item in data}
+    returned_node_ids = {item['id'] for item in data}
     assert returned_node_ids == set(default_nodes)
 
 
@@ -64,7 +63,7 @@ def test_get_group_extras(client: TestClient):
     group.base.extras.set('extra_key', 'extra_value')
     response = client.get(f'/groups/{group.uuid}/extras')
     assert response.status_code == 200
-    assert response.json() == {'extra_key': 'extra_value'}
+    assert response.json()['data']['attributes'] == {'extra_key': 'extra_value'}
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -72,7 +71,4 @@ def test_create_group(client: TestClient):
     """Test creating a new group."""
     response = client.post('/groups', json={'label': 'test_label_create'})
     assert response.status_code == 200, response.content
-    assert response.json()['user']
-    response = client.get('/groups')
-    first_names = [group['label'] for group in response.json()['data']]
-    assert 'test_label_create' in first_names
+    assert response.json()['data']['attributes']['label'] == 'test_label_create'

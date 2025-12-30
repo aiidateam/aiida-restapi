@@ -18,21 +18,39 @@ def test_querybuilder_all(client: TestClient):
                     'tag': 'nodes',
                 },
             ],
-            'project': {
-                'nodes': [
-                    'attributes.value',
-                ],
-            },
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert len(data['data']) == 4
+    assert len(response.json()['data']['attributes']['results']) == 4
 
 
 @pytest.mark.usefixtures('default_nodes')
-def test_querybuilder_numeric_flat(client: TestClient):
-    """Test a simple QueryBuilder request."""
+def test_querybuilder_full(client: TestClient):
+    """Test QueryBuilder result with full response."""
+    response = client.post(
+        '/querybuilder?flat=true&full=true',
+        json={
+            'path': [
+                {
+                    'entity_type': 'data.core.int.Int.',
+                    'orm_base': 'node',
+                    'tag': 'integer',
+                },
+            ],
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()['data']['attributes']['results'][0]
+    assert 'attributes' in result
+    assert 'value' in result['attributes']
+    assert result['attributes']['value'] == 1
+    assert 'extras' in result
+    assert 'repository_metadata' in result
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_querybuilder_flat(client: TestClient):
+    """Test QueryBuilder result with flat response."""
     response = client.post(
         '/querybuilder?flat=true',
         json={
@@ -51,11 +69,11 @@ def test_querybuilder_numeric_flat(client: TestClient):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data['data'] == [1, 1.1]
+    result = response.json()
+    assert result['data']['attributes']['results'] == [1, 1.1]
 
 
-def test_querybuilder_integer_in_group(client: TestClient, default_nodes: list[str], default_groups: list[str]):
+def test_querybuilder_node_in_group(client: TestClient, default_nodes: list[str], default_groups: list[str]):
     """Test a QueryBuilder request filtering integers by group membership."""
     node = orm.load_node(default_nodes[0])
     group = orm.load_group(default_groups[0])
@@ -94,5 +112,5 @@ def test_querybuilder_integer_in_group(client: TestClient, default_nodes: list[s
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data['data'] == [group.label, node.pk, node.value]
+    result = response.json()['data']['attributes']['results']
+    assert result == [group.label, node.pk, node.value]
