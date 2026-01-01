@@ -27,8 +27,7 @@ def test_querybuilder_all(client: TestClient):
     )
     assert response.status_code == 200
     data = response.json()
-    assert 'results' in data
-    assert len(data['results']) == 4
+    assert len(data['data']) == 4
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -53,8 +52,7 @@ def test_querybuilder_numeric_flat(client: TestClient):
     )
     assert response.status_code == 200
     data = response.json()
-    assert 'results' in data
-    assert data['results'] == [1, 1.1]
+    assert data['data'] == [1, 1.1]
 
 
 def test_querybuilder_integer_in_group(client: TestClient, default_nodes: list[str], default_groups: list[str]):
@@ -97,5 +95,4 @@ def test_querybuilder_integer_in_group(client: TestClient, default_nodes: list[s
     )
     assert response.status_code == 200
     data = response.json()
-    assert 'results' in data
-    assert data['results'] == [group.label, node.pk, node.value]
+    assert data['data'] == [group.label, node.pk, node.value]

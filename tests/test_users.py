@@ -24,7 +24,7 @@ def test_get_users(client: TestClient):
     """
     response = client.get('/users')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2 + 1
+    assert len(response.json()['data']) == 2 + 1
 
 
 def test_get_user(client: TestClient, default_users: list[int | None]):
@@ -41,5 +41,5 @@ async def test_create_user(async_client: AsyncClient):
     response = await async_client.post('/users', json={'first_name': 'New', 'email': 'aiida@localhost'})
     assert response.status_code == 200, response.content
     response = await async_client.get('/users')
-    first_names = [user['first_name'] for user in response.json()['results']]
+    first_names = [user['first_name'] for user in response.json()['data']]
     assert 'New' in first_names
