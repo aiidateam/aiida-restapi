@@ -1,3 +1,5 @@
+"""Pydantic models for AiiDA REST API nodes."""
+
 from __future__ import annotations
 
 import typing as t
@@ -113,8 +115,14 @@ MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
 class NodeLink(Node.Model):
-    link_label: str = pdt.Field(description='The label of the link to the node.')
-    link_type: str = pdt.Field(description='The type of the link to the node.')
+    link_label: str = pdt.Field(
+        description='The label of the link to the node.',
+        examples=['structure'],
+    )
+    link_type: str = pdt.Field(
+        description='The type of the link to the node.',
+        examples=['input_calc'],
+    )
 
 
 class NodeModelRegistry:

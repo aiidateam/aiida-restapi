@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import typing as t
 
-import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Query
@@ -12,103 +11,9 @@ from fastapi import APIRouter, Query
 from aiida_restapi.common import errors
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.models.querybuilder import QueryBuilderDict
 
 read_router = APIRouter(prefix='/querybuilder')
-
-
-class QueryBuilderPathItem(pdt.BaseModel):
-    """Pydantic model for QueryBuilder path items."""
-
-    entity_type: str | list[str] = pdt.Field(
-        description='The AiiDA entity type.',
-    )
-    orm_base: str = pdt.Field(
-        description='The ORM base class of the entity.',
-    )
-    tag: str | None = pdt.Field(
-        None,
-        description='An optional tag for the path item.',
-    )
-    joining_keyword: str | None = pdt.Field(
-        None,
-        description='The joining keyword for relationships (e.g., "input", "output").',
-    )
-    joining_value: str | None = pdt.Field(
-        None,
-        description='The joining value for relationships (e.g., "input", "output").',
-    )
-    edge_tag: str | None = pdt.Field(
-        None,
-        description='An optional tag for the edge.',
-    )
-    outerjoin: bool = pdt.Field(
-        False,
-        description='Whether to perform an outer join.',
-    )
-
-
-class QueryBuilderDict(pdt.BaseModel):
-    """Pydantic model for QueryBuilder POST requests."""
-
-    path: list[str | QueryBuilderPathItem] = pdt.Field(
-        description='The QueryBuilder path as a list of entity types or path items.',
-        examples=[
-            [
-                ['data.core.int.Int.', 'data.core.float.Float.'],
-                {
-                    'entity_type': 'data.core.int.Int.',
-                    'orm_base': 'node',
-                    'tag': 'integers',
-                },
-                {
-                    'entity_type': ['data.core.int.Int.', 'data.core.float.Float.'],
-                    'orm_base': 'node',
-                    'tag': 'numbers',
-                },
-            ]
-        ],
-    )
-    filters: dict[str, dict[str, t.Any]] | None = pdt.Field(
-        None,
-        description='The QueryBuilder filters as a dictionary mapping tags to filter conditions.',
-        examples=[
-            {
-                'integers': {'attributes.value': {'<': 42}},
-            }
-        ],
-    )
-    project: dict[str, str | list[str]] | None = pdt.Field(
-        None,
-        description='The QueryBuilder projection as a dictionary mapping tags to attributes to project.',
-        examples=[
-            {
-                'integers': ['uuid', 'attributes.value'],
-            }
-        ],
-    )
-    limit: pdt.NonNegativeInt | None = pdt.Field(
-        10,
-        description='The maximum number of results to return.',
-        examples=[5],
-    )
-    offset: pdt.NonNegativeInt | None = pdt.Field(
-        0,
-        description='The number of results to skip before starting to collect the result set.',
-        examples=[0],
-    )
-    order_by: str | list[str] | dict[str, t.Any] | None = pdt.Field(
-        None,
-        description='The QueryBuilder order_by as a string, list of strings, '
-        'or dictionary mapping tags to order conditions.',
-        examples=[
-            {'integers': {'pk': 'desc'}},
-        ],
-    )
-    distinct: bool = pdt.Field(
-        False,
-        description='Whether to return only distinct results.',
-        examples=[False],
-    )
 
 
 @read_router.post(
