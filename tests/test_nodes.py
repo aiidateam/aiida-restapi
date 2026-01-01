@@ -223,6 +223,26 @@ def test_get_node(client: TestClient, default_nodes: list[str | None]):
         assert response.json()['uuid'] == node_id
 
 
+def test_get_node_user(client: TestClient):
+    """Test retrieving the user of a single node."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/user')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['email'] == node.user.email
+    orm.Int.collection.delete(node.pk)
+
+
+def test_get_node_computer(client: TestClient):
+    """Test retrieving the computer of a single node."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/computer')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['pk'] == node.computer.pk
+    orm.Int.collection.delete(node.pk)
+
+
 def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving attributes of a single node."""
     for node_id in default_nodes:
