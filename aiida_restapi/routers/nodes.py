@@ -14,9 +14,8 @@ from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
-from aiida_restapi.common import errors
+from aiida_restapi.common import errors, query
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.models.node import MetadataType, NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeLink, NodeService
@@ -46,15 +45,17 @@ else:
     },
 )
 async def get_nodes_schema(
-    node_type: str | None = Query(
-        None,
-        description='The AiiDA node type string.',
-        alias='type',
-    ),
-    which: t.Literal['get', 'post'] = Query(
-        'get',
-        description='Type of schema to retrieve',
-    ),
+    node_type: t.Annotated[
+        str | None,
+        Query(
+            description='The AiiDA node type string.',
+            alias='type',
+        ),
+    ] = None,
+    which: t.Annotated[
+        t.Literal['get', 'post'],
+        Query(description='Type of schema to retrieve'),
+    ] = 'get',
 ) -> dict:
     """Get JSON schema for the base AiiDA node 'get' model."""
     if not node_type:
@@ -72,11 +73,10 @@ async def get_nodes_schema(
 )
 @with_dbenv()
 async def get_node_projections(
-    node_type: str | None = Query(
-        None,
-        description='The AiiDA node type string.',
-        alias='type',
-    ),
+    node_type: t.Annotated[
+        str | None,
+        Query(description='The AiiDA node type string.', alias='type'),
+    ] = None,
 ) -> list[str]:
     """Get queryable projections for AiiDA nodes."""
     return service.get_projections(node_type)
@@ -116,10 +116,13 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 )
 @with_dbenv()
 async def get_nodes(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
 ) -> PaginatedResults[orm.Node.Model]:
     """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
-    return service.get_many(queries)
+    return service.get_many(query_params)
 
 
 @read_router.get(
@@ -204,13 +207,17 @@ async def get_node_extras(uuid: str) -> dict[str, t.Any]:
 @with_dbenv()
 async def get_node_links(
     uuid: str,
-    queries: t.Annotated[QueryParams, Depends(query_params)],
-    direction: t.Literal['incoming', 'outgoing'] = Query(
-        description='Specify whether to retrieve incoming or outgoing links.',
-    ),
+    direction: t.Annotated[
+        t.Literal['incoming', 'outgoing'],
+        Query(description='Specify whether to retrieve incoming or outgoing links.'),
+    ],
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
 ) -> PaginatedResults[NodeLink]:
     """Get the incoming or outgoing links of a node."""
-    return service.get_links(uuid, queries, direction=direction)
+    return service.get_links(uuid, direction, query_params)
 
 
 @read_router.get(
@@ -226,7 +233,10 @@ async def get_node_links(
 @with_dbenv()
 async def download_node(
     uuid: str,
-    download_format: str | None = Query(None, description='Format to download the node in'),
+    download_format: t.Annotated[
+        str | None,
+        Query(description='Format to download the node in'),
+    ] = None,
 ) -> StreamingResponse:
     """Download AiiDA node by uuid in a given download format provided as a query parameter."""
     node = orm.load_node(uuid)

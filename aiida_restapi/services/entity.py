@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import typing as t
 
-from aiida import orm
 from aiida.common.exceptions import NotExistent
 
 from aiida_restapi.common.exceptions import QueryBuilderException
@@ -51,28 +50,28 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
-    def get_many(self, queries: QueryParams) -> PaginatedResults[EntityModelType]:
+    def get_many(self, query_params: QueryParams) -> PaginatedResults[EntityModelType]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
-        :param queries: The query parameters, including filters, order_by, page_size, and page.
-        :type queries: QueryParams
+        :param query_params: The query parameters, including filters, order_by, page_size, and page.
+        :type query_params: QueryParams
         :return: The paginated results, including total count, current page, page size, and list of entity models.
         :rtype: PaginatedResults[EntityModelType]
         """
         try:
-            total = self.entity_class.collection.count(filters=queries.filters)
+            total = self.entity_class.collection.count(filters=query_params.filters)
             results = self.entity_class.collection.find(
-                filters=queries.filters,
-                order_by=queries.order_by,
-                limit=queries.page_size,
-                offset=queries.page_size * (queries.page - 1),
+                filters=query_params.filters,
+                order_by=query_params.order_by,
+                limit=query_params.page_size,
+                offset=query_params.page_size * (query_params.page - 1),
             )
         except Exception as exception:
             raise QueryBuilderException(str(exception)) from exception
         return PaginatedResults(
             total=total,
-            page=queries.page,
-            page_size=queries.page_size,
+            page=query_params.page,
+            page_size=query_params.page_size,
             data=[self._to_model(result) for result in results],
         )
 
@@ -110,7 +109,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         if not result:
             raise NotExistent(f'{self.entity_class.__name__}<{identifier}> does not exist.')
 
-        return t.cast(orm.Entity, result[0])
+        return result[0]
 
     def add_one(self, model: EntityModelType) -> EntityModelType:
         """Create new AiiDA entity from its model.
