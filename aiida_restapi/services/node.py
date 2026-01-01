@@ -184,7 +184,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
             total=len(all_links),
             page=queries.page,
             page_size=queries.page_size,
-            results=links,
+            data=links,
         )
 
     def add_one(

@@ -53,7 +53,7 @@ async def query_builder(
                 total=total,
                 page=offset // limit + 1,
                 page_size=limit,
-                results=[entity.to_model(minimal=True) for entity in t.cast(list[orm.Entity], qb.all(flat=True))],
+                data=[entity.to_model(minimal=True) for entity in t.cast(list[orm.Entity], qb.all(flat=True))],
             )
         else:
             # Projecting specific attributes
@@ -61,7 +61,7 @@ async def query_builder(
                 total=total,
                 page=offset // limit + 1,
                 page_size=limit,
-                results=qb.all(flat=flat),
+                data=qb.all(flat=flat),
             )
 
     except Exception as exception:

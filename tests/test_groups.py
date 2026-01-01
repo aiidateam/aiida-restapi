@@ -19,7 +19,7 @@ def test_get_groups(client: TestClient):
     """Test listing existing groups."""
     response = client.get('/groups')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2
+    assert len(response.json()['data']) == 2
 
 
 def test_get_group(client: TestClient, default_groups: list[str]):
@@ -36,5 +36,5 @@ def test_create_group(client: TestClient):
     assert response.status_code == 200, response.content
     assert response.json()['user']
     response = client.get('/groups')
-    first_names = [group['label'] for group in response.json()['results']]
+    first_names = [group['label'] for group in response.json()['data']]
     assert 'test_label_create' in first_names

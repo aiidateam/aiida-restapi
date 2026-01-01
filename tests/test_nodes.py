@@ -91,8 +91,8 @@ def test_get_nodes(client: TestClient):
     """Test listing existing nodes."""
     response = client.get('/nodes')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 4
-    result = next(iter(response.json()['results']), None)
+    assert len(response.json()['data']) == 4
+    result = next(iter(response.json()['data']), None)
     assert result is not None
     assert set(result.keys()) == {'pk', 'uuid', 'node_type', 'label', 'description', 'ctime', 'mtime', 'user'}
 
@@ -103,7 +103,7 @@ def test_get_nodes_by_type(client: TestClient):
     filters = {'node_type': {'in': ['data.core.int.Int.', 'data.core.float.Float.']}}
     response = client.get(f'/nodes?filters={json.dumps(filters)}')
     assert response.status_code == 200
-    results = response.json()['results']
+    results = response.json()['data']
     assert len(results) == 2
     assert any(result['node_type'] == 'data.core.int.Int.' for result in results)
     assert any(result['node_type'] == 'data.core.float.Float.' for result in results)
@@ -115,7 +115,7 @@ def test_get_nodes_with_filters(client: TestClient):
     filters = {'attributes.value': 1.1}
     response = client.get(f'/nodes?filters={json.dumps(filters)}')
     assert response.status_code == 200
-    results = response.json()['results']
+    results = response.json()['data']
     assert len(results) == 1
     assert results[0]['node_type'] == 'data.core.float.Float.'
 
@@ -131,7 +131,7 @@ def test_get_nodes_in_order(client: TestClient):
     order_by = {'ctime': 'desc'}
     response = client.get(f'/nodes?order_by={json.dumps(order_by)}')
     assert response.status_code == 200
-    results = response.json()['results']
+    results = response.json()['data']
     assert len(results) == 4
     ctimes = [result['ctime'] for result in results]
     assert ctimes == sorted(ctimes, reverse=True)
@@ -142,13 +142,13 @@ def test_get_nodes_pagination(client: TestClient):
     """Test listing existing nodes with pagination."""
     response = client.get('/nodes?page_size=2&page=1')
     assert response.status_code == 200
-    results = response.json()['results']
+    results = response.json()['data']
     assert len(results) == 2
     assert all(result['pk'] in (1, 2) for result in results)
 
     response = client.get('/nodes?page_size=2&page=2')
     assert response.status_code == 200
-    results = response.json()['results']
+    results = response.json()['data']
     assert len(results) == 2
     assert all(result['pk'] in (3, 4) for result in results)
 

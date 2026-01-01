@@ -19,7 +19,7 @@ def test_get_computers(client: TestClient):
     """Test listing existing computer."""
     response = client.get('/computers/')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2
+    assert len(response.json()['data']) == 2
 
 
 def test_get_computer(client: TestClient, default_computers: list[int | None]):
@@ -43,5 +43,5 @@ def test_create_computer(client: TestClient):
     )
     assert response.status_code == 200, response.content
     response = client.get('/computers')
-    computers = [comp['label'] for comp in response.json()['results']]
+    computers = [comp['label'] for comp in response.json()['data']]
     assert 'test_comp' in computers

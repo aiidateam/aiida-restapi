@@ -73,7 +73,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
             total=total,
             page=queries.page,
             page_size=queries.page_size,
-            results=[self._to_model(result) for result in results],
+            data=[self._to_model(result) for result in results],
         )
 
     def get_one(self, identifier: str | int) -> EntityModelType:
