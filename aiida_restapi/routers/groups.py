@@ -8,9 +8,8 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends, Query
 
-from aiida_restapi.common import errors
+from aiida_restapi.common import errors, query
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
 from aiida_restapi.services.entity import EntityService
 
 from .auth import UserInDB, get_current_active_user
@@ -29,10 +28,10 @@ service = EntityService[orm.Group, orm.Group.Model](orm.Group)
     },
 )
 async def get_groups_schema(
-    which: t.Literal['get', 'post'] = Query(
-        'get',
-        description='Type of schema to retrieve: "get" or "post"',
-    ),
+    which: t.Annotated[
+        t.Literal['get', 'post'],
+        Query(description='Type of schema to retrieve: "get" or "post"'),
+    ] = 'get',
 ) -> dict:
     """Get JSON schema for AiiDA groups."""
     return service.get_schema(which=which)
@@ -58,10 +57,13 @@ async def get_group_projections() -> list[str]:
 )
 @with_dbenv()
 async def get_groups(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
 ) -> PaginatedResults[orm.Group.Model]:
     """Get AiiDA groups with optional filtering, sorting, and/or pagination."""
-    return service.get_many(queries)
+    return service.get_many(query_params)
 
 
 @read_router.get(
