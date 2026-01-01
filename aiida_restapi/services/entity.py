@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
+from aiida import orm
 from aiida.common.exceptions import NotExistent
 
 from aiida_restapi.common.exceptions import QueryBuilderException
@@ -22,6 +23,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
     def __init__(self, entity_class: type[EntityType]) -> None:
         self.entity_class = entity_class
+        self.with_key = entity_class.__name__.lower()
 
     def get_schema(self, which: t.Literal['get', 'post'] | None = None) -> dict:
         """Get JSON schema for the AiiDA entity.
@@ -85,6 +87,46 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         entity = self.entity_class.collection.get(**{self.entity_class.identity_field: identifier})
         return self._to_model(entity)
+
+    def get_related_one(
+        self,
+        identifier: str | int,
+        related_type: type[orm.Entity],
+    ) -> orm.Entity.Model:
+        """Get a related foreign entity of an entity.
+
+        :param identifier: The id of the entity to retrieve the foreign entity for.
+        :type identifier: str | int
+        :param related_type: The related AiiDA ORM entity class to retrieve.
+        :type related_type: type[orm.Entity]
+        :return: The related foreign entity.
+        :rtype: EntityModelType
+        """
+        qb = (
+            orm.QueryBuilder()
+            .append(
+                self.entity_class,
+                filters={self.entity_class.identity_field: identifier},
+                tag='entity',
+            )
+            .append(
+                related_type,
+                joining_keyword=f'with_{self.with_key}',
+                joining_value='entity',
+            )
+        )
+
+        try:
+            result = qb.first()
+        except Exception as exception:
+            raise QueryBuilderException(str(exception)) from exception
+
+        if not result:
+            raise NotExistent(
+                f'{related_type.__name__} related to {self.entity_class.__name__}<{identifier}> not found.'
+            )
+
+        return self._to_model(result[0])
 
     def get_field(self, identifier: str | int, field: str) -> t.Any:
         """Get a specific field of an entity.

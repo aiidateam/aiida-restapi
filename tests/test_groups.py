@@ -38,6 +38,16 @@ def test_get_group(client: TestClient, default_groups: list[str]):
         assert response.status_code == 200
 
 
+def test_get_group_user(client: TestClient):
+    """Test retrieving the user of a single group."""
+    group = orm.Group(label='test_group_user').store()
+    response = client.get(f'/groups/{group.uuid}/user')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['email'] == group.user.email
+    orm.Group.collection.delete(group.pk)
+
+
 def test_get_group_extras(client: TestClient):
     """Test retrieving extras of a single group."""
     group = orm.Group(label='test_group_extras').store()
