@@ -19,6 +19,7 @@ from aiida.repository import File
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
+from aiida_restapi.config import API_CONFIG
 from aiida_restapi.models.node import NodeLink
 
 from .entity import EntityService
@@ -122,7 +123,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                         'type': 'FILE',
                         'binary': binary,
                         'size': size,
-                        'download': f'/nodes/{uuid}/repo/contents?filename={obj_name}',
+                        'download': f'{API_CONFIG["PREFIX"]}/nodes/{uuid}/repo/contents?filename={obj_name}',
                     }
                     total_size += size
 
@@ -135,7 +136,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                 'type': 'FILE',
                 'binary': True,
                 'size': total_size,
-                'download': f'/nodes/{uuid}/repo/contents',
+                'download': f'{API_CONFIG["PREFIX"]}/nodes/{uuid}/repo/contents',
             }
 
         return metadata
@@ -143,15 +144,15 @@ class NodeService(EntityService[NodeType, NodeModelType]):
     def get_links(
         self,
         uuid: str,
-        queries: QueryParams,
         direction: t.Literal['incoming', 'outgoing'],
+        query_params: QueryParams,
     ) -> PaginatedResults[NodeLink]:
         """Get the incoming links of a node.
 
         :param uuid: The uuid of the node to retrieve the incoming links for.
         :type uuid: str
-        :param queries: The query parameters, including filters, order_by, page_size, and page.
-        :type queries: QueryParams
+        :param query_params: The query parameters, including filters, order_by, page_size, and page.
+        :type query_params: QueryParams
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
@@ -167,8 +168,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         all_links = link_collection.all()
 
         start, end = (
-            queries.page_size * (queries.page - 1),
-            queries.page_size * queries.page,
+            query_params.page_size * (query_params.page - 1),
+            query_params.page_size * query_params.page,
         )
 
         links = [
@@ -182,8 +183,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         return PaginatedResults(
             total=len(all_links),
-            page=queries.page,
-            page_size=queries.page_size,
+            page=query_params.page,
+            page_size=query_params.page_size,
             data=links,
         )
 

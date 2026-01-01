@@ -89,7 +89,7 @@ async def get_server_endpoints_table(request: Request) -> HTMLResponse:
                     if param.required
                 )
             )
-            or (route.methods and 'POST' in route.methods)
+            or 'POST' in (route.methods or {})
             or 'auth' in path
         )
 
