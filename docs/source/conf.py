@@ -86,7 +86,6 @@ nitpick_ignore = [
             'aiida.common.exceptions.InputValidationError',
             'aiida.common.exceptions.EntryPointError',
             'aiida_restapi.aiida_db_mappings.Config',
-            'aiida_restapi.models.Config',
             'aiida_restapi.routers.auth.Config',
             'aiida_restapi.graphql.orm_factories.AiidaOrmObjectType',
             'aiida_restapi.graphql.nodes.LinkObjectType',
