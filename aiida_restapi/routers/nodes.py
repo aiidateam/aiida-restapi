@@ -164,6 +164,40 @@ async def get_node(uuid: str) -> orm.Node.Model:
 
 
 @read_router.get(
+    '/{uuid}/user',
+    response_model=orm.User.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_user(uuid: str) -> orm.User.Model:
+    """Get the user associated with a node."""
+    return t.cast(orm.User.Model, service.get_related_one(uuid, orm.User))
+
+
+@read_router.get(
+    '/{uuid}/computer',
+    response_model=orm.Computer.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_computer(uuid: str) -> orm.Computer.Model:
+    """Get the computer associated with a node."""
+    return t.cast(orm.Computer.Model, service.get_related_one(uuid, orm.Computer))
+
+
+@read_router.get(
     '/{uuid}/attributes',
     response_model=dict[str, t.Any],
     responses={
