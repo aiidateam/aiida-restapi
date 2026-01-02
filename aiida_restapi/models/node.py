@@ -188,7 +188,7 @@ class NodeModelRegistry:
         """Build mapping of node type to node creation model."""
         self._models: dict[str, dict[str, type[Node.Model]]] = {}
         entry_point: EntryPoint
-        for entry_point in get_entry_points('aiida.data'):
+        for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
                 node_cls = t.cast(Node, entry_point.load())
             except Exception as exception:
