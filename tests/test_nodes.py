@@ -243,6 +243,20 @@ def test_get_node_computer(client: TestClient):
     orm.Int.collection.delete(node.pk)
 
 
+def test_get_node_groups(client: TestClient, default_groups: list[str]):
+    """Test retrieving groups of a single node."""
+    node = orm.Int(value=10).store()
+    for group_id in default_groups:
+        group = orm.load_group(group_id)
+        group.add_nodes([node])
+    response = client.get(f'/nodes/{node.uuid}/groups')
+    assert response.status_code == 200
+    data = response.json()['data']
+    returned_group_ids = {item['uuid'] for item in data}
+    assert returned_group_ids == set(default_groups)
+    orm.Int.collection.delete(node.pk)
+
+
 def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving attributes of a single node."""
     for node_id in default_nodes:

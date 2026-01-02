@@ -128,6 +128,57 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
         return self._to_model(result[0])
 
+    def get_related_many(
+        self,
+        identifier: str | int,
+        related_type: type[orm.Entity],
+        query_params: QueryParams,
+    ) -> PaginatedResults[orm.Entity.Model]:
+        """Get related foreign entities of an entity.
+
+        :param identifier: The id of the entity to retrieve the foreign entities for.
+        :type identifier: str | int
+        :param related_type: The related AiiDA ORM entity class to retrieve.
+        :type related_type: type[orm.Entity]
+        :param query_params: The query parameters, including filters, order_by, page_size, and page.
+        :type query_params: QueryParams
+        :return: The paginated results of related foreign entities.
+        :rtype: PaginatedResults[EntityModelType]
+        """
+        qb = (
+            orm.QueryBuilder(
+                limit=query_params.page_size,
+                offset=query_params.page_size * (query_params.page - 1),
+            )
+            .append(
+                self.entity_class,
+                filters={self.entity_class.identity_field: identifier},
+                tag='entity',
+            )
+            .append(
+                related_type,
+                joining_keyword=f'with_{self.with_key}',
+                joining_value='entity',
+                filters=query_params.filters,
+            )
+        )
+
+        order_by = {related_type: query_params.order_by} if query_params.order_by else {}
+        qb.order_by([order_by])
+
+        try:
+            total = qb.count()
+            results = qb.all()
+        except Exception as exception:
+            raise QueryBuilderException(str(exception)) from exception
+
+        return PaginatedResults(
+            total=total,
+            page=query_params.page,
+            page_size=query_params.page_size,
+            data=[self._to_model(result[0]) for result in results],
+        )
+
     def get_field(self, identifier: str | int, field: str) -> t.Any:
         """Get a specific field of an entity.
 
