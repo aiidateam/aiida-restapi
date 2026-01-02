@@ -45,7 +45,6 @@ def test_get_group_extras(client: TestClient):
     response = client.get(f'/groups/{group.uuid}/extras')
     assert response.status_code == 200
     assert response.json() == {'extra_key': 'extra_value'}
-    orm.Group.collection.delete(group.pk)
 
 
 @pytest.mark.usefixtures('authenticate')

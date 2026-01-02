@@ -247,14 +247,16 @@ def test_get_node_extras(client: TestClient, default_nodes: list[str | None]):
             assert data[key] == value
 
 
-def test_get_node_links(client: TestClient, arithmetic_add_calcjob: str):
+def test_get_node_links(client: TestClient, mock_arithmetic_add: str):
     """Test retrieving links of a single node."""
-    node = orm.load_node(arithmetic_add_calcjob)
-    response = client.get(f'/nodes/{node.uuid}/links?direction=incoming')
+
+    calc = orm.load_node(mock_arithmetic_add)
+
+    response = client.get(f'/nodes/{calc.uuid}/links?direction=incoming')
     assert response.status_code == 200
     assert len(response.json()['data']) == 2  # x and y
 
-    response = client.get(f'/nodes/{node.uuid}/links?direction=outgoing')
+    response = client.get(f'/nodes/{calc.uuid}/links?direction=outgoing')
     assert response.status_code == 200
     assert len(response.json()['data']) == 1  # sum
 
