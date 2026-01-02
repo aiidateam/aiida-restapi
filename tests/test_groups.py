@@ -45,7 +45,6 @@ def test_get_group_user(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data['email'] == group.user.email
-    orm.Group.collection.delete(group.pk)
 
 
 def test_get_group_nodes(client: TestClient, default_nodes: list[str]):
@@ -57,7 +56,6 @@ def test_get_group_nodes(client: TestClient, default_nodes: list[str]):
     data = response.json()['data']
     returned_node_ids = {item['uuid'] for item in data}
     assert returned_node_ids == set(default_nodes)
-    orm.Group.collection.delete(group.pk)
 
 
 def test_get_group_extras(client: TestClient):
