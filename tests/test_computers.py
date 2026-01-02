@@ -56,7 +56,6 @@ def test_get_computer_metadata(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data == metadata
-    orm.Computer.collection.delete(computer.pk)
 
 
 @pytest.mark.usefixtures('authenticate')
