@@ -168,7 +168,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
         try:
             total = qb.count()
-            results = qb.all()
+            results = qb.all(flat=True)
         except Exception as exception:
             raise QueryBuilderException(str(exception)) from exception
 
@@ -176,7 +176,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
             total=total,
             page=query_params.page,
             page_size=query_params.page_size,
-            data=[self._to_model(result[0]) for result in results],
+            data=[self._to_model(result) for result in results],
         )
 
     def get_field(self, identifier: str | int, field: str) -> t.Any:
