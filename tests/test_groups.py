@@ -7,8 +7,17 @@ from aiida import orm
 from fastapi.testclient import TestClient
 
 
-def test_get_group_projectable_properties(client: TestClient):
-    """Test get projectable properties for group."""
+def test_get_group_schema(client: TestClient):
+    """Test retrieving the group schema."""
+    response = client.get('/groups/schema')
+    assert response.status_code == 200
+    result = response.json()
+    assert 'properties' in result
+    assert sorted(result['properties'].keys()) == sorted(orm.Group.fields.keys())
+
+
+def test_get_group_projections(client: TestClient):
+    """Test get projections for group."""
     response = client.get('/groups/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Group.fields.keys())
@@ -27,6 +36,16 @@ def test_get_group(client: TestClient, default_groups: list[str]):
     for group_id in default_groups:
         response = client.get(f'/groups/{group_id}')
         assert response.status_code == 200
+
+
+def test_get_group_extras(client: TestClient):
+    """Test retrieving extras of a single group."""
+    group = orm.Group(label='test_group_extras').store()
+    group.base.extras.set('extra_key', 'extra_value')
+    response = client.get(f'/groups/{group.uuid}/extras')
+    assert response.status_code == 200
+    assert response.json() == {'extra_key': 'extra_value'}
+    orm.Group.collection.delete(group.pk)
 
 
 @pytest.mark.usefixtures('authenticate')

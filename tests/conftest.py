@@ -186,6 +186,24 @@ def default_test_add_process():
 
 
 @pytest.fixture(scope='function')
+def arithmetic_add_calcjob(default_test_add_process):
+    """Populate database with an arithmetic.add CalcJobNode"""
+    from aiida import engine
+    from aiida.calculations.arithmetic.add import ArithmeticAddCalculation
+
+    code, x, y = default_test_add_process
+
+    calc = engine.submit(
+        ArithmeticAddCalculation,
+        code=orm.load_code(code),
+        x=orm.load_node(x),
+        y=orm.load_node(y),
+    )
+
+    return calc.uuid
+
+
+@pytest.fixture(scope='function')
 def default_groups():
     """Populate database with some groups."""
     test_user_1 = orm.User(email='verdi@opera.net', first_name='Giuseppe', last_name='Verdi').store()
