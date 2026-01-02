@@ -198,6 +198,29 @@ async def get_node_computer(uuid: str) -> orm.Computer.Model:
 
 
 @read_router.get(
+    '/{uuid}/groups',
+    response_model=PaginatedResults[orm.Group.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_node_groups(
+    uuid: str,
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Group.Model]:
+    """Get the groups of a node."""
+    return service.get_related_many(uuid, orm.Group, query_params)
+
+
+@read_router.get(
     '/{uuid}/attributes',
     response_model=dict[str, t.Any],
     responses={
