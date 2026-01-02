@@ -15,29 +15,6 @@ if t.TYPE_CHECKING:
     from pydantic import BaseModel
 
 
-def test_get_node_projectable_properties(client: TestClient):
-    """Test get projectable properties for nodes."""
-    response = client.get('/nodes/projections')
-    assert response.status_code == 200
-    assert response.json() == sorted(orm.Node.fields.keys())
-
-
-def test_get_node_projectable_properties_by_type(client: TestClient):
-    """Test get projectable properties for nodes by valid type."""
-    response = client.get('/nodes/projections?type=data.core.int.Int.')
-    assert response.status_code == 200
-    result = response.json()
-    assert result == sorted(orm.Int.fields.keys())
-    assert 'attributes.source' in result
-    assert 'attributes.value' in result
-
-
-def test_get_node_projectable_properties_by_invalid_type(client: TestClient):
-    """Test get projectable properties for nodes with invalid type."""
-    response = client.get('/nodes/projections?type=this_is_not_a_valid_type')
-    assert response.status_code == 422
-
-
 def test_get_node_schema(client: TestClient):
     """Test get schema for nodes."""
     response = client.get('/nodes/schema')
@@ -84,6 +61,76 @@ def test_get_node_schema_by_invalid_type(client: TestClient):
     """Test get schema for nodes with invalid type."""
     response = client.get('/nodes/schema?type=this_is_not_a_valid_type')
     assert response.status_code == 422
+
+
+def test_get_node_projections(client: TestClient):
+    """Test get projections for nodes."""
+    response = client.get('/nodes/projections')
+    assert response.status_code == 200
+    assert response.json() == sorted(orm.Node.fields.keys())
+
+
+def test_get_node_projections_by_type(client: TestClient):
+    """Test get projections for nodes by valid type."""
+    response = client.get('/nodes/projections?type=data.core.int.Int.')
+    assert response.status_code == 200
+    result = response.json()
+    assert result == sorted(orm.Int.fields.keys())
+    assert 'attributes.source' in result
+    assert 'attributes.value' in result
+
+
+def test_get_node_projections_by_invalid_type(client: TestClient):
+    """Test get projections for nodes with invalid type."""
+    response = client.get('/nodes/projections?type=this_is_not_a_valid_type')
+    assert response.status_code == 422
+
+
+def test_get_nodes_statistics(client: TestClient):
+    """Test get statistics for nodes."""
+    from aiida_restapi.models.node import NodeStatistics
+
+    response = client.get('/nodes/statistics')
+    assert response.status_code == 200
+    result = response.json()
+    assert NodeStatistics.model_validate(result)
+
+
+def test_get_download_formats(client: TestClient):
+    """Test get download formats for nodes."""
+    response = client.get('/nodes/download_formats')
+
+    assert response.status_code == 200
+
+    reference = {
+        'data.core.array.ArrayData.|': ['json'],
+        'data.core.array.bands.BandsData.|': [
+            'agr',
+            'agr_batch',
+            'dat_blocks',
+            'dat_multicolumn',
+            'gnuplot',
+            'json',
+            'mpl_pdf',
+            'mpl_png',
+            'mpl_singlefile',
+            'mpl_withjson',
+        ],
+        'data.core.array.kpoints.KpointsData.|': ['json'],
+        'data.core.array.projection.ProjectionData.|': ['json'],
+        'data.core.array.trajectory.TrajectoryData.|': ['cif', 'json', 'xsf'],
+        'data.core.array.xy.XyData.|': ['json'],
+        'data.core.cif.CifData.|': ['cif'],
+        'data.core.structure.StructureData.|': ['chemdoodle', 'cif', 'xsf', 'xyz'],
+        'data.core.upf.UpfData.|': ['json', 'upf'],
+    }
+    response_json = response.json()
+
+    for key, value in reference.items():
+        if key not in response_json:
+            raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
+        if not set(value) <= set(response_json[key]):
+            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
 
 
 @pytest.mark.usefixtures('default_nodes')
@@ -153,6 +200,21 @@ def test_get_nodes_pagination(client: TestClient):
     assert all(result['pk'] in (3, 4) for result in results)
 
 
+def test_get_node_types(client: TestClient):
+    """Test retrieving the available node types."""
+    from aiida.plugins import get_entry_points
+
+    from aiida_restapi.models.node import NodeType
+
+    response = client.get('/nodes/types')
+    assert response.status_code == 200
+    result = response.json()
+    entry_points = get_entry_points('aiida.data') + get_entry_points('aiida.node')
+    assert len(result) == len(entry_points)
+    first = result[0]
+    assert NodeType.model_validate(first)
+
+
 def test_get_node(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving a single nodes."""
     for node_id in default_nodes:
@@ -161,41 +223,40 @@ def test_get_node(client: TestClient, default_nodes: list[str | None]):
         assert response.json()['uuid'] == node_id
 
 
-def test_get_download_formats(client: TestClient):
-    """Test get download formats for nodes."""
-    response = client.get('/nodes/download_formats')
+def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]):
+    """Test retrieving attributes of a single node."""
+    for node_id in default_nodes:
+        response = client.get(f'/nodes/{node_id}/attributes')
+        assert response.status_code == 200
+        data = response.json()
+        node = orm.load_node(node_id)
+        for key, value in node.base.attributes.items():
+            assert key in data
+            assert data[key] == value
 
+
+def test_get_node_extras(client: TestClient, default_nodes: list[str | None]):
+    """Test retrieving extras of a single node."""
+    for node_id in default_nodes:
+        response = client.get(f'/nodes/{node_id}/extras')
+        assert response.status_code == 200
+        data = response.json()
+        node = orm.load_node(node_id)
+        for key, value in node.base.extras.items():
+            assert key in data
+            assert data[key] == value
+
+
+def test_get_node_links(client: TestClient, arithmetic_add_calcjob: str):
+    """Test retrieving links of a single node."""
+    node = orm.load_node(arithmetic_add_calcjob)
+    response = client.get(f'/nodes/{node.uuid}/links?direction=incoming')
     assert response.status_code == 200
+    assert len(response.json()['data']) == 2  # x and y
 
-    reference = {
-        'data.core.array.ArrayData.|': ['json'],
-        'data.core.array.bands.BandsData.|': [
-            'agr',
-            'agr_batch',
-            'dat_blocks',
-            'dat_multicolumn',
-            'gnuplot',
-            'json',
-            'mpl_pdf',
-            'mpl_png',
-            'mpl_singlefile',
-            'mpl_withjson',
-        ],
-        'data.core.array.kpoints.KpointsData.|': ['json'],
-        'data.core.array.projection.ProjectionData.|': ['json'],
-        'data.core.array.trajectory.TrajectoryData.|': ['cif', 'json', 'xsf'],
-        'data.core.array.xy.XyData.|': ['json'],
-        'data.core.cif.CifData.|': ['cif'],
-        'data.core.structure.StructureData.|': ['chemdoodle', 'cif', 'xsf', 'xyz'],
-        'data.core.upf.UpfData.|': ['json', 'upf'],
-    }
-    response_json = response.json()
-
-    for key, value in reference.items():
-        if key not in response_json:
-            raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
-        if not set(value) <= set(response_json[key]):
-            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
+    response = client.get(f'/nodes/{node.uuid}/links?direction=outgoing')
+    assert response.status_code == 200
+    assert len(response.json()['data']) == 1  # sum
 
 
 def test_get_node_repository_metadata(client: TestClient, array_data_node: orm.ArrayData):
@@ -212,6 +273,18 @@ def test_get_node_repository_metadata(client: TestClient, array_data_node: orm.A
     assert all(t in result['zipped'] for t in ('type', 'binary', 'size', 'download'))
     assert result['zipped']['type'] == 'FILE'
     assert result['zipped']['binary'] is True
+
+
+def test_get_node_file_contents(client: TestClient, array_data_node: orm.ArrayData):
+    """Test retrieving file contents for a node."""
+    import numpy as np
+
+    default = orm.ArrayData.default_array_name
+    response = client.get(f'/nodes/{array_data_node.uuid}/repo/contents?filename={default}.npy')
+    assert response.status_code == 200
+    assert isinstance(response.content, bytes)
+    array = np.load(io.BytesIO(response.content))
+    assert np.array_equal(array, array_data_node.get_array(default))
 
 
 @pytest.mark.usefixtures('authenticate')

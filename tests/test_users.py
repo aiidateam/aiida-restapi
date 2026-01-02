@@ -8,8 +8,17 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 
-def test_get_user_projectable_properties(client: TestClient):
-    """Test get projectable properties for users."""
+def test_get_user_schema(client: TestClient):
+    """Test retrieving the user schema."""
+    response = client.get('/users/schema')
+    assert response.status_code == 200
+    result = response.json()
+    assert 'properties' in result
+    assert sorted(result['properties'].keys()) == sorted(orm.User.fields.keys())
+
+
+def test_get_user_projections(client: TestClient):
+    """Test get projections for users."""
     response = client.get('/users/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.User.fields.keys())
