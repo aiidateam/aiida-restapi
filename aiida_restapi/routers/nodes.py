@@ -221,51 +221,6 @@ async def get_node_links(
 
 
 @read_router.get(
-    '/{uuid}/download',
-    response_class=StreamingResponse,
-    responses={
-        404: {'model': errors.NonExistentError},
-        409: {'model': errors.MultipleObjectsError},
-        422: {'model': errors.InvalidInputError},
-        451: {'model': errors.InvalidLicenseError},
-    },
-)
-@with_dbenv()
-async def download_node(
-    uuid: str,
-    download_format: t.Annotated[
-        str | None,
-        Query(description='Format to download the node in'),
-    ] = None,
-) -> StreamingResponse:
-    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
-    node = orm.load_node(uuid)
-
-    if download_format is None:
-        raise ValidationException(
-            'Please specify the download format. '
-            'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.',
-        )
-
-    if download_format in node.get_export_formats():
-        # byteobj, dict with {filename: filecontent}
-        exported_bytes, _ = node._exportcontent(download_format)
-
-        def stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(exported_bytes) as handler:
-                yield from handler
-
-        return StreamingResponse(stream(), media_type=f'application/{download_format}')
-
-    raise ValidationException(
-        'The format {} is not supported. '
-        'The available download formats can be '
-        'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
-    )
-
-
-@read_router.get(
     '/{uuid}/repo/metadata',
     response_model=dict[str, MetadataType],
     responses={
@@ -327,6 +282,51 @@ async def get_node_repo_file_contents(
     headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
 
     return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+
+
+@read_router.get(
+    '/{uuid}/download',
+    response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.InvalidInputError},
+        451: {'model': errors.InvalidLicenseError},
+    },
+)
+@with_dbenv()
+async def download_node(
+    uuid: str,
+    download_format: t.Annotated[
+        str | None,
+        Query(description='Format to download the node in'),
+    ] = None,
+) -> StreamingResponse:
+    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
+    node = orm.load_node(uuid)
+
+    if download_format is None:
+        raise ValidationException(
+            'Please specify the download format. '
+            'The available download formats can be '
+            'queried using the /nodes/download_formats/ endpoint.',
+        )
+
+    if download_format in node.get_export_formats():
+        # byteobj, dict with {filename: filecontent}
+        exported_bytes, _ = node._exportcontent(download_format)
+
+        def stream() -> t.Generator[bytes, None, None]:
+            with io.BytesIO(exported_bytes) as handler:
+                yield from handler
+
+        return StreamingResponse(stream(), media_type=f'application/{download_format}')
+
+    raise ValidationException(
+        'The format {} is not supported. '
+        'The available download formats can be '
+        'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
+    )
 
 
 @write_router.post(
