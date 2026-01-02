@@ -101,6 +101,29 @@ async def get_group_user(uuid: str) -> orm.User.Model:
 
 
 @read_router.get(
+    '/{uuid}/nodes',
+    response_model=PaginatedResults[orm.Node.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_group_nodes(
+    uuid: str,
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Node.Model]:
+    """Get the nodes of a group."""
+    return service.get_related_many(uuid, orm.Node, query_params)
+
+
+@read_router.get(
     '/{uuid}/extras',
     response_model=dict[str, t.Any],
     responses={

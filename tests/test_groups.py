@@ -48,6 +48,18 @@ def test_get_group_user(client: TestClient):
     orm.Group.collection.delete(group.pk)
 
 
+def test_get_group_nodes(client: TestClient, default_nodes: list[str]):
+    """Test retrieving nodes of a single group."""
+    group = orm.Group(label='test_group_nodes').store()
+    group.add_nodes([orm.load_node(node_id) for node_id in default_nodes])
+    response = client.get(f'/groups/{group.uuid}/nodes')
+    assert response.status_code == 200
+    data = response.json()['data']
+    returned_node_ids = {item['uuid'] for item in data}
+    assert returned_node_ids == set(default_nodes)
+    orm.Group.collection.delete(group.pk)
+
+
 def test_get_group_extras(client: TestClient):
     """Test retrieving extras of a single group."""
     group = orm.Group(label='test_group_extras').store()
