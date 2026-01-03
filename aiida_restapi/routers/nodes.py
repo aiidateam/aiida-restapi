@@ -354,7 +354,7 @@ async def get_node_repo_file_contents(
 @with_dbenv()
 async def download_node(
     uuid: str,
-    download_format: t.Annotated[
+    format: t.Annotated[
         str | None,
         Query(description='Format to download the node in'),
     ] = None,
@@ -362,27 +362,27 @@ async def download_node(
     """Download AiiDA node by uuid in a given download format provided as a query parameter."""
     node = orm.load_node(uuid)
 
-    if download_format is None:
+    if format is None:
         raise ValidationException(
             'Please specify the download format. '
             'The available download formats can be '
             'queried using the /nodes/download_formats/ endpoint.',
         )
 
-    if download_format in node.get_export_formats():
+    if format in node.get_export_formats():
         # byteobj, dict with {filename: filecontent}
-        exported_bytes, _ = node._exportcontent(download_format)
+        exported_bytes, _ = node._exportcontent(format)
 
         def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
                 yield from handler
 
-        return StreamingResponse(stream(), media_type=f'application/{download_format}')
+        return StreamingResponse(stream(), media_type=f'application/{format}')
 
     raise ValidationException(
         'The format {} is not supported. '
         'The available download formats can be '
-        'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
+        'queried using the /nodes/download_formats/ endpoint.'.format(format),
     )
 
 
