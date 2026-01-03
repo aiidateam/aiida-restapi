@@ -742,12 +742,12 @@ async def test_get_download_node(async_client: AsyncClient, array_data_node: orm
     The async client is needed to avoid an error caused by an I/O operation on closed file"""
 
     # Test that array is correctly downloaded as json
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=json')
+    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=json')
     assert response.status_code == 200, response.json()
     assert response.json().get('default', None) == array_data_node.get_array().tolist()
 
     # Test exception when wrong download format given
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=cif')
+    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=cif')
     assert response.status_code == 422, response.json()
     assert 'format cif is not supported' in response.json()['detail']
 
