@@ -13,7 +13,7 @@ def test_group(create_group, orm_regression):
     fields = field_names_from_orm(type(group))
     schema = create_schema([GroupQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ group(id: %r) { %s } }' % (group.id, ' '.join(fields)))
+    executed = client.execute('{ group(id: %r) { %s } }' % (group.pk, ' '.join(fields)))
     orm_regression(executed)
 
 
@@ -34,7 +34,7 @@ def test_group_nodes(create_group, create_node, orm_regression):
     group.add_nodes([create_node(label='node 1'), create_node(label='node 2')])
     schema = create_schema([GroupQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ group(id: %r) { nodes { count rows{ label } } } }' % (group.id))
+    executed = client.execute('{ group(id: %r) { nodes { count rows{ label } } } }' % (group.pk))
     orm_regression(executed)
 
 

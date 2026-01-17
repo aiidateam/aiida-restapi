@@ -9,5 +9,5 @@ def test_full(create_node, orm_regression):
     """Test loading the full schema."""
     node = create_node(label='node 1')
     client = Client(SCHEMA)
-    executed = client.execute('{ aiidaVersion node(id: %r) { label } }' % (node.id))
+    executed = client.execute('{ aiidaVersion node(id: %r) { label } }' % (node.pk))
     orm_regression(executed)
