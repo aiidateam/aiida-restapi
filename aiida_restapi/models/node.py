@@ -66,7 +66,8 @@ class NodeType(pdt.BaseModel):
 class RepoFileMetadata(pdt.BaseModel):
     """Pydantic model representing the metadata of a file in the AiiDA repository."""
 
-    type: t.Literal['FILE'] = pdt.Field(
+    file_type: t.Literal['FILE'] = pdt.Field(
+        alias='type',
         description='The type of the repository object.',
         examples=['FILE'],
     )
@@ -88,7 +89,8 @@ class RepoFileMetadata(pdt.BaseModel):
 class RepoDirMetadata(pdt.BaseModel):
     """Pydantic model representing the metadata of a directory in the AiiDA repository."""
 
-    type: t.Literal['DIRECTORY'] = pdt.Field(
+    file_type: t.Literal['DIRECTORY'] = pdt.Field(
+        alias='type',
         description='The type of the repository object.',
         examples=['DIRECTORY'],
     )
