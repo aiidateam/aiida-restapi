@@ -170,7 +170,9 @@ def _get_route_parts(route: Route) -> tuple[str | None, set[str], str]:
     """Return the parts of a route: path, group, methods, description.
 
     :param route: A FastAPI/Starlette Route object.
+    :type route: Route
     :return: A tuple containing the group, methods, and description of the route.
+    :rtype: tuple[str | None, set[str], str]
     """
     prefix = re.escape(API_CONFIG['PREFIX'])
     match = re.match(rf'^{prefix}/([^/]+)/?.*', route.path)
