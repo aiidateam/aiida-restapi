@@ -58,10 +58,15 @@ def query_params(
     """Parse query parameters into a structured object.
 
     :param filters: AiiDA QueryBuilder filters as JSON string.
+    :type filters: str | None
     :param order_by: Comma-separated string of fields to sort by.
+    :type order_by: str | None
     :param page_size: Number of results per page.
+    :type page_size: pdt.PositiveInt
     :param page: Page number.
+    :type page: pdt.PositiveInt
     :return: Structured query parameters.
+    :rtype: QueryParams
     :raises HTTPException: If filters cannot be parsed as JSON.
     """
     query_filters: dict[str, t.Any] = {}

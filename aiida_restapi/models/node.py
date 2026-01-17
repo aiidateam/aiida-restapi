@@ -153,7 +153,9 @@ class NodeModelRegistry:
         """Get the AiiDA node class name for a given node type.
 
         :param node_type: The AiiDA node type string.
+        :type node_type: str
         :return: The corresponding node class name.
+        :rtype: str
         """
         return node_type.rsplit('.', 2)[-2]
 
@@ -161,7 +163,9 @@ class NodeModelRegistry:
         """Get the Pydantic model class for a given node type.
 
         :param node_type: The AiiDA node type string.
+        :type node_type: str
         :return: The corresponding Pydantic model class.
+        :rtype: type[Node.Model]
         """
         if (Model := self._models.get(node_type)) is None:
             raise MissingEntryPointError(f'Unknown node type: {node_type}')
@@ -173,7 +177,9 @@ class NodeModelRegistry:
         """Return a patched Model for the given node class with a literal `node_type` field.
 
         :param node_cls: The AiiDA node class.
+        :type node_cls: Node
         :return: The patched ORM Node model.
+        :rtype: type[Node.Model]
         """
         Model = node_cls.CreateModel
         node_type = node_cls.class_node_type
@@ -207,6 +213,7 @@ class NodeModelRegistry:
         """Get a union type of all node 'post' models.
 
         :return: A union type of all node 'post' models.
+        :rtype: tuple[type[Node.Model], ...]
         """
         post_models = [model_dict['post'] for model_dict in self._models.values()]
         return tuple(post_models)

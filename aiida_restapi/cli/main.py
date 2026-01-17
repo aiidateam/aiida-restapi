@@ -15,7 +15,17 @@ def cli() -> None:
 @click.option('--read-only', is_flag=True)
 @click.option('--watch', is_flag=True)
 def start(read_only: bool, watch: bool, host: str, port: int) -> None:
-    """Start the AiiDA REST API service."""
+    """Start the AiiDA REST API service.
+
+    :param read_only: If set, the API will be started in read-only mode.
+    :type read_only: bool
+    :param watch: If set, the API will watch for code changes and reload automatically.
+    :type watch: bool
+    :param host: The host address to bind the API service to.
+    :type host: str
+    :param port: The port number to bind the API service to.
+    :type port: int
+    """
 
     os.environ['AIIDA_RESTAPI_READ_ONLY'] = '1' if read_only else '0'
 

@@ -24,7 +24,9 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
     A node UUID is indicated by the key ending with the suffix ``.uuid``.
 
     :param inputs: The inputs dictionary.
+    :type inputs: dict[str, t.Any]
     :returns: The deserialized inputs dictionary.
+    :rtype: dict[str, t.Any]
     """
     uuid_suffix = '.uuid'
     results = {}
@@ -61,7 +63,9 @@ class ProcessSubmitModel(pdt.BaseModel):
         """Process the inputs dictionary.
 
         :param inputs: The inputs to validate.
+        :type inputs: dict[str, t.Any]
         :returns: The validated inputs.
+        :rtype: dict[str, t.Any]
         """
         return process_inputs(inputs)
 
