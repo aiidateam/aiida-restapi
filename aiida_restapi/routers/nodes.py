@@ -1,175 +1,441 @@
-"""Declaration of FastAPI application."""
+"""Declaration of FastAPI router for nodes."""
 
+from __future__ import annotations
+
+import io
 import json
-import os
-import tempfile
-from pathlib import Path
-from typing import Any, Generator, List, Optional
+import typing as t
 
+import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
-from aiida.plugins.entry_point import load_entry_point
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, Query, UploadFile
+from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
+from typing_extensions import TypeAlias
 
-from aiida_restapi import models, resources
+from aiida_restapi.common import errors, query
+from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.config import API_CONFIG
+from aiida_restapi.models.node import MetadataType, NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.services.node import NodeLink, NodeService
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter(prefix='/nodes')
+write_router = APIRouter(prefix='/nodes')
+
+service = NodeService[orm.Node, orm.Node.Model](orm.Node)
+
+model_registry = NodeModelRegistry()
+
+if t.TYPE_CHECKING:
+    # Dummy type for static analysis
+    NodeModelUnion: TypeAlias = pdt.BaseModel
+else:
+    # The real discriminated union built at runtime
+    NodeModelUnion = model_registry.ModelUnion
 
 
-@router.get('/nodes', response_model=List[models.Node])
+@read_router.get(
+    '/schema',
+    response_model=dict,
+    responses={
+        422: {'model': errors.InvalidNodeTypeError},
+    },
+)
+async def get_nodes_schema(
+    node_type: t.Annotated[
+        str | None,
+        Query(
+            description='The AiiDA node type string.',
+            alias='type',
+        ),
+    ] = None,
+    which: t.Annotated[
+        t.Literal['get', 'post'],
+        Query(description='Type of schema to retrieve'),
+    ] = 'get',
+) -> dict:
+    """Get JSON schema for the base AiiDA node 'get' model."""
+    if not node_type:
+        return orm.Node.Model.model_json_schema()
+    model = model_registry.get_model(node_type, which)
+    return model.model_json_schema()
+
+
+@read_router.get(
+    '/projections',
+    response_model=list[str],
+    responses={
+        422: {'model': errors.InvalidNodeTypeError},
+    },
+)
 @with_dbenv()
-async def read_nodes() -> List[models.Node]:
-    """Get list of all nodes"""
-    return models.Node.get_entities()
+async def get_node_projections(
+    node_type: t.Annotated[
+        str | None,
+        Query(description='The AiiDA node type string.', alias='type'),
+    ] = None,
+) -> list[str]:
+    """Get queryable projections for AiiDA nodes."""
+    return service.get_projections(node_type)
 
 
-@router.get('/nodes/projectable_properties', response_model=List[str])
-async def get_nodes_projectable_properties() -> List[str]:
-    """Get projectable properties for nodes endpoint"""
-
-    return models.Node.get_projectable_properties()
-
-
-@router.get('/nodes/download_formats', response_model=dict[str, Any])
-async def get_nodes_download_formats() -> dict[str, Any]:
-    """Get download formats for nodes endpoint"""
-
-    return resources.get_all_download_formats()
-
-
-@router.get('/nodes/{nodes_id}/download')
+@read_router.get(
+    '/statistics',
+    response_model=NodeStatistics,
+    responses={
+        422: {'model': errors.RequestValidationError},
+    },
+)
 @with_dbenv()
-async def download_node(nodes_id: int, download_format: Optional[str] = None) -> StreamingResponse:
-    """Get nodes by id."""
-    from aiida.orm import load_node
+async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
+    """Get node statistics."""
 
-    try:
-        node = load_node(nodes_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could no find any node with id {nodes_id}')
+    from aiida.manage import get_manager
+
+    backend = get_manager().get_profile_storage()
+    return backend.query().get_creation_statistics(user_pk=user)
+
+
+@read_router.get('/download_formats')
+async def get_nodes_download_formats() -> dict[str, t.Any]:
+    """Get download formats for AiiDA nodes."""
+    return service.get_download_formats()
+
+
+@read_router.get(
+    '',
+    response_model=PaginatedResults[orm.Node.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_nodes(
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Node.Model]:
+    """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
+    return service.get_many(query_params)
+
+
+@read_router.get(
+    '/types',
+    response_model=list[NodeType],
+)
+async def get_node_types() -> list:
+    """Get all node types in machine-actionable format."""
+    api_prefix = API_CONFIG['PREFIX']
+    return [
+        {
+            'label': model_registry.get_node_class_name(node_type),
+            'node_type': node_type,
+            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
+            'projections': f'{api_prefix}/nodes/projections?type={node_type}',
+            'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
+        }
+        for node_type in sorted(
+            model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
+        )
+    ]
+
+
+@read_router.get(
+    '/{uuid}',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node(uuid: str) -> orm.Node.Model:
+    """Get AiiDA node by uuid."""
+    return service.get_one(uuid)
+
+
+@read_router.get(
+    '/{uuid}/user',
+    response_model=orm.User.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_user(uuid: str) -> orm.User.Model:
+    """Get the user associated with a node."""
+    return t.cast(orm.User.Model, service.get_related_one(uuid, orm.User))
+
+
+@read_router.get(
+    '/{uuid}/computer',
+    response_model=orm.Computer.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_computer(uuid: str) -> orm.Computer.Model:
+    """Get the computer associated with a node."""
+    return t.cast(orm.Computer.Model, service.get_related_one(uuid, orm.Computer))
+
+
+@read_router.get(
+    '/{uuid}/groups',
+    response_model=PaginatedResults[orm.Group.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_node_groups(
+    uuid: str,
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Group.Model]:
+    """Get the groups of a node."""
+    return service.get_related_many(uuid, orm.Group, query_params)
+
+
+@read_router.get(
+    '/{uuid}/attributes',
+    response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_node_attributes(uuid: str) -> dict[str, t.Any]:
+    """Get the attributes of a node."""
+    return service.get_field(uuid, 'attributes')
+
+
+@read_router.get(
+    '/{uuid}/extras',
+    response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_node_extras(uuid: str) -> dict[str, t.Any]:
+    """Get the extras of a node."""
+    return service.get_field(uuid, 'extras')
+
+
+@read_router.get(
+    '/{uuid}/links',
+    response_model=PaginatedResults[NodeLink],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_links(
+    uuid: str,
+    direction: t.Annotated[
+        t.Literal['incoming', 'outgoing'],
+        Query(description='Specify whether to retrieve incoming or outgoing links.'),
+    ],
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[NodeLink]:
+    """Get the incoming or outgoing links of a node."""
+    return service.get_links(uuid, direction, query_params)
+
+
+@read_router.get(
+    '/{uuid}/repo/metadata',
+    response_model=dict[str, MetadataType],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_repo_file_metadata(uuid: str) -> dict[str, dict]:
+    """Get the repository file metadata of a node."""
+    return service.get_repository_metadata(uuid)
+
+
+@read_router.get(
+    '/{uuid}/repo/contents',
+    response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_node_repo_file_contents(
+    uuid: str,
+    filename: str | None = Query(
+        None,
+        description='Filename of repository content to retrieve',
+    ),
+) -> StreamingResponse:
+    """Get the repository contents of a node."""
+    from urllib.parse import quote
+
+    node = orm.load_node(uuid)
+    repo = node.base.repository
+
+    if filename:
+        file_content = repo.get_object_content(filename, mode='rb')
+
+        def file_stream() -> t.Generator[bytes, None, None]:
+            with io.BytesIO(file_content) as handler:
+                yield from handler
+
+        download_name = filename.split('/')[-1] or 'download'
+        quoted = quote(download_name)
+        headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
+
+        return StreamingResponse(file_stream(), media_type='application/octet-stream', headers=headers)
+
+    zip_bytes = repo.get_zipped_objects()
+
+    def zip_stream() -> t.Generator[bytes, None, None]:
+        with io.BytesIO(zip_bytes) as handler:
+            yield from handler
+
+    download_name = f'node_{uuid}_repo.zip'
+    quoted = quote(download_name)
+    headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
+
+    return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+
+
+@read_router.get(
+    '/{uuid}/download',
+    response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.InvalidInputError},
+        451: {'model': errors.InvalidLicenseError},
+    },
+)
+@with_dbenv()
+async def download_node(
+    uuid: str,
+    download_format: t.Annotated[
+        str | None,
+        Query(description='Format to download the node in'),
+    ] = None,
+) -> StreamingResponse:
+    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
+    node = orm.load_node(uuid)
 
     if download_format is None:
-        raise HTTPException(
-            status_code=422,
-            detail='Please specify the download format. '
+        raise ValidationException(
+            'Please specify the download format. '
             'The available download formats can be '
             'queried using the /nodes/download_formats/ endpoint.',
         )
 
-    elif download_format in node.get_export_formats():
+    if download_format in node.get_export_formats():
         # byteobj, dict with {filename: filecontent}
-        import io
+        exported_bytes, _ = node._exportcontent(download_format)
 
-        try:
-            exported_bytes, _ = node._exportcontent(download_format)
-        except LicensingException as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
-
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(exported_bytes) as handler:
                 yield from handler
 
         return StreamingResponse(stream(), media_type=f'application/{download_format}')
 
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail='The format {} is not supported. '
-            'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
-        )
+    raise ValidationException(
+        'The format {} is not supported. '
+        'The available download formats can be '
+        'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
+    )
 
 
-@router.get('/nodes/{nodes_id}', response_model=models.Node)
-@with_dbenv()
-async def read_node(nodes_id: int) -> Optional[models.Node]:
-    """Get nodes by id."""
-    qbobj = orm.QueryBuilder()
-    qbobj.append(orm.Node, filters={'id': nodes_id}, project='**', tag='node').limit(1)
-    return qbobj.dict()[0]['node']
-
-
-@router.post('/nodes', response_model=models.Node)
+@write_router.post(
+    '',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+    },
+)
 @with_dbenv()
 async def create_node(
-    node: models.Node_Post,
-    current_user: models.User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> models.Node:
+    model: NodeModelUnion,
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> orm.Node.Model:
     """Create new AiiDA node."""
-    node_dict = node.dict(exclude_unset=True)
-    entry_point = node_dict.pop('entry_point', None)
-
-    try:
-        cls = load_entry_point(group='aiida.data', name=entry_point)
-    except EntryPointError as exception:
-        raise HTTPException(status_code=404, detail=str(exception)) from exception
-
-    try:
-        orm_object = models.Node_Post.create_new_node(cls, node_dict)
-    except (TypeError, ValueError, KeyError) as exception:
-        raise HTTPException(status_code=400, detail=str(exception)) from exception
-
-    return models.Node.from_orm(orm_object)
+    return service.add_one(model)
 
 
-@router.post('/nodes/singlefile', response_model=models.Node)
+@write_router.post(
+    '/file-upload',
+    response_model=orm.Node.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        400: {'model': errors.JsonDecodingError},
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError]},
+    },
+)
 @with_dbenv()
-async def create_upload_file(
-    params: str = Form(...),
-    upload_file: UploadFile = File(...),
-    current_user: models.User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> models.Node:
-    """Endpoint for uploading file data
+async def create_node_with_files(
+    params: t.Annotated[str, Form()],
+    files: list[UploadFile],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> orm.Node.Model:
+    """Create new AiiDA node with files."""
+    parameters = t.cast(dict, json.loads(params))
 
-    Note that in this multipart form case, json input can't be used.
-    Get the parameters as a string and manually pass through pydantic.
-    """
-    try:
-        # Parse the JSON string into a dictionary
-        params_dict = json.loads(params)
-        # Validate against the Pydantic model
-        params_obj = models.Node_Post(**params_dict)
-    except json.JSONDecodeError as exception:
-        raise HTTPException(
-            status_code=400,
-            detail=f'Invalid JSON format: {exception!s}',
-        ) from exception
-    except ValidationError as exception:
-        raise HTTPException(
-            status_code=422,
-            detail=f'Validation failed: {exception}',
-        ) from exception
+    if not (node_type := parameters.get('node_type')):
+        raise ValidationException("The 'node_type' field is missing in the parameters.")
 
-    node_dict = params_obj.dict(exclude_unset=True)
-    entry_point = node_dict.pop('entry_point', None)
+    model_cls = model_registry.get_model(node_type, which='post')
+    model = model_cls(**parameters)
 
-    try:
-        cls = load_entry_point(group='aiida.data', name=entry_point)
-    except EntryPointError as exception:
-        raise HTTPException(
-            status_code=404,
-            detail=f'Could not load entry point: {exception}',
-        ) from exception
+    files_dict: dict[str, UploadFile] = {}
 
-    with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
-        # Todo: read in chunks
-        content = await upload_file.read()
-        temp_file.write(content)
-        temp_path = temp_file.name
+    for upload in files:
+        if (target := upload.filename) in files_dict:
+            raise ValidationException(f"Duplicate target path '{target}' in upload")
+        files_dict[target] = upload
 
-    orm_object = models.Node_Post.create_new_node_with_file(cls, node_dict, Path(temp_path))
-
-    # Clean up the temporary file
-    if os.path.exists(temp_path):
-        os.unlink(temp_path)
-
-    return models.Node.from_orm(orm_object)
+    return service.add_one(model, files=files_dict)
