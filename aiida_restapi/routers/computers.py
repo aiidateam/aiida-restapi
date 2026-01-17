@@ -22,7 +22,7 @@ service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
 
 @read_router.get(
     '/schema',
-    response_model=dict,
+    response_model=dict[str, t.Any],
     responses={
         422: {'model': errors.RequestValidationError},
     },
@@ -32,7 +32,7 @@ async def get_computers_schema(
         t.Literal['get', 'post'],
         Query(description='Type of schema to retrieve: "get" or "post"'),
     ] = 'get',
-) -> dict:
+) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA computers."""
     return service.get_schema(which=which)
 
@@ -61,7 +61,7 @@ async def get_computers(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.Computer.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get AiiDA computers with optional filtering, sorting, and/or pagination."""
     return service.get_many(query_params)
 
@@ -78,7 +78,7 @@ async def get_computers(
     },
 )
 @with_dbenv()
-async def get_computer(pk: str) -> orm.Computer.Model:
+async def get_computer(pk: str) -> dict[str, t.Any]:
     """Get AiiDA computer by pk."""
     return service.get_one(pk)
 
@@ -112,6 +112,6 @@ async def get_computer_metadata(pk: str) -> dict[str, t.Any]:
 async def create_computer(
     computer_model: orm.Computer.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Computer.Model:
+) -> dict[str, t.Any]:
     """Create new AiiDA computer."""
     return service.add_one(computer_model)

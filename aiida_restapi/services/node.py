@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
+from aiida import orm
 from aiida.common import EntryPointError, exceptions
 from aiida.common.escaping import escape_for_sql_like
 from aiida.common.lang import type_check
@@ -16,11 +17,11 @@ from aiida.plugins.entry_point import (
 )
 from aiida.repository import File
 
+from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
 from aiida_restapi.config import API_CONFIG
-from aiida_restapi.models.node import NodeLink
 
 from .entity import EntityService
 
@@ -148,7 +149,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         uuid: str,
         direction: t.Literal['incoming', 'outgoing'],
         query_params: QueryParams,
-    ) -> PaginatedResults[NodeLink]:
+    ) -> PaginatedResults[dict[str, t.Any]]:
         """Get the incoming links of a node.
 
         :param uuid: The uuid of the node to retrieve the incoming links for.
@@ -158,43 +159,55 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
-        :rtype: PaginatedResults[NodeLink]
+        :rtype: PaginatedResults[dict[str, t.Any]]
         """
-        node = self.entity_class.collection.get(uuid=uuid)
-
-        if direction == 'incoming':
-            link_collection = node.base.links.get_incoming()
-        else:
-            link_collection = node.base.links.get_outgoing()
-
-        all_links = link_collection.all()
-
-        start, end = (
-            query_params.page_size * (query_params.page - 1),
-            query_params.page_size * query_params.page,
+        qb = (
+            orm.QueryBuilder(
+                limit=query_params.page_size,
+                offset=query_params.page_size * (query_params.page - 1),
+            )
+            .append(
+                orm.Node,
+                filters=query_params.filters,
+                project=self.project,
+                tag='link',
+            )
+            .append(
+                self.entity_class,
+                filters={self.entity_class.identity_field: uuid},
+                joining_keyword=f'with_{direction}',
+                joining_value='link',
+                edge_project=['label', 'type'],
+                tag='node',
+            )
         )
 
-        links = [
-            NodeLink(
-                **link.node.serialize(minimal=True),
-                link_label=link.link_label,
-                link_type=link.link_type.value,
-            )
-            for link in all_links[start:end]
-        ]
+        order_by = {'link': query_params.order_by} if query_params.order_by else {}
+        qb.order_by([order_by])
+
+        try:
+            total = qb.count()
+            results = qb.dict()
+        except Exception as exception:
+            raise QueryBuilderException(str(exception)) from exception
+
+        for result in results:
+            result['link']['link_label'] = result['link--node']['label']
+            result['link']['link_type'] = result['link--node']['type']
+            del result['link--node']
 
         return PaginatedResults(
-            total=len(all_links),
+            total=total,
             page=query_params.page,
             page_size=query_params.page_size,
-            data=links,
+            data=[next(iter(result.values())) for result in results],
         )
 
     def add_one(
         self,
         model: NodeModelType,
         files: dict[str, UploadFile] | None = None,
-    ) -> NodeModelType:
+    ) -> dict[str, t.Any]:
         """Create new AiiDA node from its model.
 
         :param node_model: The AiiDA ORM model of the node to create.
@@ -202,7 +215,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :param files: Optional list of files to attach to the node.
         :type files: dict[str, UploadFile] | None
         :return: The created and stored AiiDA node instance.
-        :rtype: NodeModelType
+        :rtype: dict[str, t.Any]
         """
         node_cls = self._load_entry_point_from_node_type(model.node_type)
         node = t.cast(NodeType, node_cls.from_model(model))
@@ -210,7 +223,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
             upload.file.seek(0)
             node.base.repository.put_object_from_filelike(upload.file, path)
         node.store()
-        return self._to_model(node)
+        return node.serialize(minimal=True)
 
     def _validate_full_type(self, full_type: str) -> None:
         """Validate that the `full_type` is a valid full type unique node identifier.
