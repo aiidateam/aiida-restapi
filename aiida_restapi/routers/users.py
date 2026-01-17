@@ -22,7 +22,7 @@ service = EntityService[orm.User, orm.User.Model](orm.User)
 
 @read_router.get(
     '/schema',
-    response_model=dict,
+    response_model=dict[str, t.Any],
     responses={
         422: {'model': errors.RequestValidationError},
     },
@@ -32,7 +32,7 @@ async def get_users_schema(
         t.Literal['get', 'post'],
         Query(description='Type of schema to retrieve: "get" or "post"'),
     ] = 'get',
-) -> dict:
+) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA users."""
     return service.get_schema(which=which)
 
@@ -61,7 +61,7 @@ async def get_users(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.User.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get AiiDA users with optional filtering, sorting, and/or pagination."""
     return service.get_many(query_params)
 
@@ -76,7 +76,7 @@ async def get_users(
     },
 )
 @with_dbenv()
-async def get_user(pk: int) -> orm.User.Model:
+async def get_user(pk: int) -> dict[str, t.Any]:
     """Get AiiDA user by pk."""
     return service.get_one(pk)
 
@@ -95,6 +95,6 @@ async def get_user(pk: int) -> orm.User.Model:
 async def create_user(
     user_model: orm.User.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.User.Model:
+) -> dict[str, t.Any]:
     """Create new AiiDA user."""
     return service.add_one(user_model)

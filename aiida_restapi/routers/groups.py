@@ -22,7 +22,7 @@ service = EntityService[orm.Group, orm.Group.Model](orm.Group)
 
 @read_router.get(
     '/schema',
-    response_model=dict,
+    response_model=dict[str, t.Any],
     responses={
         422: {'model': errors.RequestValidationError},
     },
@@ -32,7 +32,7 @@ async def get_groups_schema(
         t.Literal['get', 'post'],
         Query(description='Type of schema to retrieve: "get" or "post"'),
     ] = 'get',
-) -> dict:
+) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA groups."""
     return service.get_schema(which=which)
 
@@ -61,7 +61,7 @@ async def get_groups(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.Group.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get AiiDA groups with optional filtering, sorting, and/or pagination."""
     return service.get_many(query_params)
 
@@ -78,7 +78,7 @@ async def get_groups(
     },
 )
 @with_dbenv()
-async def get_group(uuid: str) -> orm.Group.Model:
+async def get_group(uuid: str) -> dict[str, t.Any]:
     """Get AiiDA group by uuid."""
     return service.get_one(uuid)
 
@@ -95,9 +95,9 @@ async def get_group(uuid: str) -> orm.Group.Model:
     },
 )
 @with_dbenv()
-async def get_group_user(uuid: str) -> orm.User.Model:
+async def get_group_user(uuid: str) -> dict[str, t.Any]:
     """Get the user associated with a group."""
-    return t.cast(orm.User.Model, service.get_related_one(uuid, orm.User))
+    return service.get_related_one(uuid, orm.User)
 
 
 @read_router.get(
@@ -118,7 +118,7 @@ async def get_group_nodes(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.Node.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get the nodes of a group."""
     return service.get_related_many(uuid, orm.Node, query_params)
 
@@ -152,6 +152,6 @@ async def get_group_extras(uuid: str) -> dict[str, t.Any]:
 async def create_group(
     group_model: orm.Group.CreateModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Group.Model:
+) -> dict[str, t.Any]:
     """Create new AiiDA group."""
     return service.add_one(group_model)
