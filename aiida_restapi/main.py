@@ -1,16 +1,41 @@
 """Declaration of FastAPI application."""
 
-from fastapi import FastAPI
+import os
 
+from fastapi import APIRouter, FastAPI
+from fastapi.responses import RedirectResponse
+
+from aiida_restapi.config import API_CONFIG
 from aiida_restapi.graphql import main
-from aiida_restapi.routers import auth, computers, daemon, groups, nodes, process, users
+from aiida_restapi.routers import auth, computers, daemon, groups, nodes, querybuilder, server, submit, users
 
-app = FastAPI()
-app.include_router(auth.router)
-app.include_router(computers.router)
-app.include_router(daemon.router)
-app.include_router(nodes.router)
-app.include_router(groups.router)
-app.include_router(users.router)
-app.include_router(process.router)
-app.add_route('/graphql', main.app, name='graphql')
+
+def create_app() -> FastAPI:
+    """Create the FastAPI application and include the routers."""
+
+    read_only = os.getenv('AIIDA_RESTAPI_READ_ONLY') == '1'
+
+    app = FastAPI()
+
+    api_router = APIRouter(prefix=API_CONFIG['PREFIX'])
+
+    api_router.add_route(
+        '/',
+        lambda _: RedirectResponse(url=api_router.url_path_for('endpoints')),
+    )
+
+    for module in (auth, server, users, computers, groups, nodes, querybuilder, submit, daemon):
+        if read_router := getattr(module, 'read_router', None):
+            api_router.include_router(read_router)
+        if not read_only and (write_router := getattr(module, 'write_router', None)):
+            api_router.include_router(write_router)
+
+    api_router.add_route(
+        '/graphql',
+        main.app,
+        methods=['POST'],
+    )
+
+    app.include_router(api_router)
+
+    return app
