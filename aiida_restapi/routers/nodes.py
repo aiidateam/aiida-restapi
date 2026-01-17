@@ -17,8 +17,8 @@ from typing_extensions import TypeAlias
 from aiida_restapi.common import errors, query
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.config import API_CONFIG
-from aiida_restapi.models.node import MetadataType, NodeModelRegistry, NodeStatistics, NodeType
-from aiida_restapi.services.node import NodeLink, NodeService
+from aiida_restapi.models.node import MetadataType, NodeLink, NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.services.node import NodeService
 
 from .auth import UserInDB, get_current_active_user
 
@@ -39,7 +39,7 @@ else:
 
 @read_router.get(
     '/schema',
-    response_model=dict,
+    response_model=dict[str, t.Any],
     responses={
         422: {'model': errors.InvalidNodeTypeError},
     },
@@ -56,7 +56,7 @@ async def get_nodes_schema(
         t.Literal['get', 'post'],
         Query(description='Type of schema to retrieve'),
     ] = 'get',
-) -> dict:
+) -> dict[str, t.Any]:
     """Get JSON schema for the base AiiDA node 'get' model."""
     if not node_type:
         return orm.Node.Model.model_json_schema()
@@ -120,7 +120,7 @@ async def get_nodes(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.Node.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
     return service.get_many(query_params)
 
@@ -158,7 +158,7 @@ async def get_node_types() -> list:
     },
 )
 @with_dbenv()
-async def get_node(uuid: str) -> orm.Node.Model:
+async def get_node(uuid: str) -> dict[str, t.Any]:
     """Get AiiDA node by uuid."""
     return service.get_one(uuid)
 
@@ -175,9 +175,9 @@ async def get_node(uuid: str) -> orm.Node.Model:
     },
 )
 @with_dbenv()
-async def get_node_user(uuid: str) -> orm.User.Model:
+async def get_node_user(uuid: str) -> dict[str, t.Any]:
     """Get the user associated with a node."""
-    return t.cast(orm.User.Model, service.get_related_one(uuid, orm.User))
+    return service.get_related_one(uuid, orm.User)
 
 
 @read_router.get(
@@ -192,9 +192,9 @@ async def get_node_user(uuid: str) -> orm.User.Model:
     },
 )
 @with_dbenv()
-async def get_node_computer(uuid: str) -> orm.Computer.Model:
+async def get_node_computer(uuid: str) -> dict[str, t.Any]:
     """Get the computer associated with a node."""
-    return t.cast(orm.Computer.Model, service.get_related_one(uuid, orm.Computer))
+    return service.get_related_one(uuid, orm.Computer)
 
 
 @read_router.get(
@@ -215,7 +215,7 @@ async def get_node_groups(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[orm.Group.Model]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get the groups of a node."""
     return service.get_related_many(uuid, orm.Group, query_params)
 
@@ -272,7 +272,7 @@ async def get_node_links(
         query.QueryParams,
         Depends(query.query_params),
     ],
-) -> PaginatedResults[NodeLink]:
+) -> PaginatedResults[dict[str, t.Any]]:
     """Get the incoming or outgoing links of a node."""
     return service.get_links(uuid, direction, query_params)
 
@@ -400,7 +400,7 @@ async def download_node(
 async def create_node(
     model: NodeModelUnion,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
+) -> dict[str, t.Any]:
     """Create new AiiDA node."""
     return service.add_one(model)
 
@@ -421,7 +421,7 @@ async def create_node_with_files(
     params: t.Annotated[str, Form()],
     files: list[UploadFile],
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
+) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
     parameters = t.cast(dict, json.loads(params))
 
