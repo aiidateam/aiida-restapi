@@ -1,10 +1,12 @@
 """Handle API authentication and authorization."""
 
-# pylint: disable=missing-function-docstring,missing-class-docstring
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+import typing as t
+from datetime import datetime, timedelta, timezone
 
 import bcrypt
+from aiida import orm
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,7 +15,6 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from aiida_restapi import config
-from aiida_restapi.models import User
 
 
 class Token(BaseModel):
@@ -25,16 +26,17 @@ class TokenData(BaseModel):
     email: str
 
 
-class UserInDB(User):
+class UserInDB(orm.User.Model):
     hashed_password: str
-    disabled: Optional[bool] = None
+    disabled: t.Optional[bool] = None
 
 
 pwd_context = PasswordHasher()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f'{config.API_CONFIG["PREFIX"]}/auth/token')
 
-router = APIRouter()
+read_router = APIRouter(prefix='/auth')
+write_router = APIRouter(prefix='/auth')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -54,14 +56,14 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def get_user(db: dict, email: str) -> Optional[UserInDB]:
+def get_user(db: dict, email: str) -> UserInDB | None:
     if email in db:
         user_dict = db[email]
         return UserInDB(**user_dict)
     return None
 
 
-def authenticate_user(fake_db: dict, email: str, password: str) -> Optional[UserInDB]:
+def authenticate_user(fake_db: dict, email: str, password: str) -> UserInDB | None:
     user = get_user(fake_db, email)
 
     if not user:
@@ -73,18 +75,18 @@ def authenticate_user(fake_db: dict, email: str, password: str) -> Optional[User
     return user
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({'exp': expire})
     encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+async def get_current_user(token: t.Annotated[str, Depends(oauth2_scheme)]) -> orm.User.Model:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail='Could not validate credentials',
@@ -92,7 +94,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     )
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
-        email: str = payload.get('sub')
+        email = payload.get('sub')
         if email is None:
             raise credentials_exception
         token_data = TokenData(email=email)
@@ -105,17 +107,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 
 
 async def get_current_active_user(
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: t.Annotated[UserInDB, Depends(get_current_user)],
 ) -> UserInDB:
     if current_user.disabled:
         raise HTTPException(status_code=400, detail='Inactive user')
     return current_user
 
 
-@router.post('/token', response_model=Token)
+@write_router.post(
+    '/token',
+    response_model=Token,
+)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
-) -> Dict[str, Any]:
+) -> dict[str, t.Any]:
+    """Login to get access token."""
     user = authenticate_user(config.fake_users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -128,12 +134,12 @@ async def login_for_access_token(
     return {'access_token': access_token, 'token_type': 'bearer'}
 
 
-@router.get('/auth/me/', response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)) -> User:
+@read_router.get(
+    '/me/',
+    response_model=orm.User.Model,
+)
+async def read_users_me(
+    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
+) -> orm.User.Model:
+    """Get the current authenticated user."""
     return current_user
-
-
-# @router.get('/users/me/items/')
-# async def read_own_items(
-#         current_user: User = Depends(get_current_active_user)):
-#     return [{'item_id': 'Foo', 'owner': current_user.email}]

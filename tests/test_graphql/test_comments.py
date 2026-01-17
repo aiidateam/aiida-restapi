@@ -13,7 +13,7 @@ def test_comment(create_comment, orm_regression):
     fields = field_names_from_orm(type(comment))
     schema = create_schema([CommentQueryPlugin])
     client = Client(schema)
-    executed = client.execute('{ comment(id: %r) { %s } }' % (comment.id, ' '.join(fields)))
+    executed = client.execute('{ comment(id: %r) { %s } }' % (comment.pk, ' '.join(fields)))
     orm_regression(executed)
 
 

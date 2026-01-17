@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 import graphene as gr
 from aiida import orm
 
-from aiida_restapi.filter_syntax import parse_filter_str
+from aiida_restapi.graphql.filter_syntax import parse_filter_str
 from aiida_restapi.graphql.plugins import QueryPlugin
 
 from .comments import CommentsQuery
