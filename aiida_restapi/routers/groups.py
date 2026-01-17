@@ -1,51 +1,157 @@
-"""Declaration of FastAPI application."""
+"""Declaration of FastAPI router for groups."""
 
-from typing import List, Optional
+from __future__ import annotations
+
+import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
-from aiida_restapi.models import Group, Group_Post, User
+from aiida_restapi.common import errors, query
+from aiida_restapi.common.pagination import PaginatedResults
+from aiida_restapi.services.entity import EntityService
 
-from .auth import get_current_active_user
+from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter(prefix='/groups')
+write_router = APIRouter(prefix='/groups')
+
+service = EntityService[orm.Group, orm.Group.Model](orm.Group)
 
 
-@router.get('/groups', response_model=List[Group])
+@read_router.get(
+    '/schema',
+    response_model=dict,
+    responses={
+        422: {'model': errors.RequestValidationError},
+    },
+)
+async def get_groups_schema(
+    which: t.Annotated[
+        t.Literal['get', 'post'],
+        Query(description='Type of schema to retrieve: "get" or "post"'),
+    ] = 'get',
+) -> dict:
+    """Get JSON schema for AiiDA groups."""
+    return service.get_schema(which=which)
+
+
+@read_router.get(
+    '/projections',
+    response_model=list[str],
+)
+async def get_group_projections() -> list[str]:
+    """Get queryable projections for AiiDA groups."""
+    return service.get_projections()
+
+
+@read_router.get(
+    '',
+    response_model=PaginatedResults[orm.Group.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
 @with_dbenv()
-async def read_groups() -> List[Group]:
-    """Get list of all groups"""
-
-    return Group.get_entities()
-
-
-@router.get('/groups/projectable_properties', response_model=List[str])
-async def get_groups_projectable_properties() -> List[str]:
-    """Get projectable properties for groups endpoint"""
-
-    return Group.get_projectable_properties()
+async def get_groups(
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Group.Model]:
+    """Get AiiDA groups with optional filtering, sorting, and/or pagination."""
+    return service.get_many(query_params)
 
 
-@router.get('/groups/{group_id}', response_model=Group)
+@read_router.get(
+    '/{uuid}',
+    response_model=orm.Group.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
 @with_dbenv()
-async def read_group(group_id: int) -> Optional[Group]:
-    """Get group by id."""
-    qbobj = orm.QueryBuilder()
-
-    qbobj.append(orm.Group, filters={'id': group_id}, project='**', tag='group').limit(1)
-    return qbobj.dict()[0]['group']
+async def get_group(uuid: str) -> orm.Group.Model:
+    """Get AiiDA group by uuid."""
+    return service.get_one(uuid)
 
 
-@router.post('/groups', response_model=Group)
+@read_router.get(
+    '/{uuid}/user',
+    response_model=orm.User.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': errors.RequestValidationError},
+    },
+)
+@with_dbenv()
+async def get_group_user(uuid: str) -> orm.User.Model:
+    """Get the user associated with a group."""
+    return t.cast(orm.User.Model, service.get_related_one(uuid, orm.User))
+
+
+@read_router.get(
+    '/{uuid}/nodes',
+    response_model=PaginatedResults[orm.Node.Model],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_group_nodes(
+    uuid: str,
+    query_params: t.Annotated[
+        query.QueryParams,
+        Depends(query.query_params),
+    ],
+) -> PaginatedResults[orm.Node.Model]:
+    """Get the nodes of a group."""
+    return service.get_related_many(uuid, orm.Node, query_params)
+
+
+@read_router.get(
+    '/{uuid}/extras',
+    response_model=dict[str, t.Any],
+    responses={
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
+)
+@with_dbenv()
+async def get_group_extras(uuid: str) -> dict[str, t.Any]:
+    """Get the extras of a group."""
+    return service.get_field(uuid, 'extras')
+
+
+@write_router.post(
+    '',
+    response_model=orm.Group.Model,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {'model': t.Union[errors.RequestValidationError, errors.InvalidInputError]},
+    },
+)
 @with_dbenv()
 async def create_group(
-    group: Group_Post,
-    current_user: User = Depends(  # pylint: disable=unused-argument
-        get_current_active_user
-    ),
-) -> Group:
+    group_model: orm.Group.CreateModel,
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> orm.Group.Model:
     """Create new AiiDA group."""
-    orm_group = orm.Group(**group.dict(exclude_unset=True)).store()
-    return Group.from_orm(orm_group)
+    return service.add_one(group_model)
