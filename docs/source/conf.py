@@ -71,20 +71,40 @@ intersphinx_mapping = {
 }
 autodoc_typehints = 'none'
 nitpick_ignore = [
-    ('py:class', name)
-    for name in [
-        'pydantic.main.BaseModel',
-        'pydantic.types.Json',
-        'graphene.types.generic.GenericScalar',
-        'graphene.types.objecttype.ObjectType',
-        'graphene.types.scalars.String',
-        'aiida_restapi.aiida_db_mappings.Config',
-        'aiida_restapi.models.Config',
-        'aiida_restapi.routers.auth.Config',
-        'aiida_restapi.graphql.orm_factories.AiidaOrmObjectType',
-        'aiida_restapi.graphql.nodes.LinkObjectType',
-        'aiida_restapi.graphql.orm_factories.multirow_cls_factory.<locals>.AiidaOrmRowsType',
-    ]
+    *[
+        ('py:class', name)
+        for name in [
+            'pydantic.main.BaseModel',
+            'pydantic.types.Json',
+            'graphene.types.generic.GenericScalar',
+            'graphene.types.objecttype.ObjectType',
+            'graphene.types.scalars.String',
+            'graphene.types.objecttype.ObjectTypeMeta.__new__.<locals>.InterObjectType',
+            'graphene.types.objecttype.AiidaOrmObjectType',
+            'graphene.types.scalars.Scalar',
+            'aiida.orm.users.User.Model',
+            'aiida.common.exceptions.FeatureNotAvailable',
+            'aiida.common.exceptions.InputValidationError',
+            'aiida.common.exceptions.EntryPointError',
+            'aiida_restapi.aiida_db_mappings.Config',
+            'aiida_restapi.models.Config',
+            'aiida_restapi.routers.auth.Config',
+            'aiida_restapi.routers.nodes.NodeType',
+            'aiida_restapi.graphql.orm_factories.AiidaOrmObjectType',
+            'aiida_restapi.graphql.nodes.LinkObjectType',
+            'aiida_restapi.graphql.orm_factories.multirow_cls_factory.<locals>.AiidaOrmRowsType',
+        ]
+    ],
+    *[
+        ('py:obj', name)
+        for name in [
+            'aiida_restapi.common.types.EntityModelType',
+            'aiida_restapi.common.types.EntityType',
+            'aiida_restapi.common.types.NodeType',
+            'aiida_restapi.common.types.NodeModelType',
+        ]
+    ],
+    ('py:exc', 'HTTPException'),
 ]
 
 suppress_warnings = ['etoc.toctree']
