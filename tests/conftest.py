@@ -1,6 +1,6 @@
 """Test fixtures specific to this package."""
 
-# pylint: disable=too-many-arguments
+import os
 import tempfile
 from datetime import datetime
 from typing import Any, Callable, Mapping, MutableMapping, Optional, Union
@@ -12,13 +12,47 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida.engine import ProcessState
 from aiida.orm import WorkChainNode, WorkFunctionNode
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
-from aiida_restapi import app, config
+from aiida_restapi import config
+from aiida_restapi.config import API_CONFIG
+from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
 
 pytest_plugins = ['aiida.tools.pytest_fixtures']
+
+
+class PrefixMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: FastAPI, prefix: str = ''):
+        super().__init__(app)
+        self.prefix = prefix or API_CONFIG['PREFIX']
+
+    async def dispatch(self, request: Request, call_next):
+        if not request.url.path.startswith(self.prefix):
+            request.scope['path'] = self.prefix + request.url.path
+        return await call_next(request)
+
+
+@pytest.fixture(scope='session')
+def app():
+    """Return fastapi app."""
+    app = create_app()
+    app.add_middleware(PrefixMiddleware)
+    yield app
+
+
+@pytest.fixture(scope='function')
+def read_only_app():
+    """Return fastapi app."""
+    os.environ['AIIDA_RESTAPI_READ_ONLY'] = '1'
+    app = create_app()
+    app.add_middleware(PrefixMiddleware)
+    yield app
+    os.environ['AIIDA_RESTAPI_READ_ONLY'] = '0'
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -34,7 +68,7 @@ def clear_database_auto(aiida_profile_clean):  # pylint: disable=unused-argument
 
 
 @pytest.fixture(scope='function')
-def client():
+def client(app):
     """Return fastapi test client."""
     yield TestClient(app)
 
@@ -50,7 +84,7 @@ def anyio_backend():
 
 
 @pytest.fixture(scope='function')
-async def async_client():
+async def async_client(app):
     """Return fastapi async test client."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as async_test_client:
         yield async_test_client
@@ -103,7 +137,7 @@ def example_processes():
         calc.base.attributes.set('process_label', process_label)
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
 
         calc = WorkChainNode()
         calc.set_process_state(state)
@@ -117,7 +151,7 @@ def example_processes():
             calc.pause()
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
     return calcs
 
 
@@ -152,13 +186,37 @@ def default_test_add_process():
 
 
 @pytest.fixture(scope='function')
+def mock_arithmetic_add():
+    """Populate database with an arithmetic.add CalcJobNode"""
+    from aiida.common.links import LinkType
+
+    x = orm.Int(1)
+    y = orm.Int(2)
+
+    calc = orm.CalcJobNode(process_type='aiida.calculations:arithmetic.add')
+
+    calc.base.links.add_incoming(x, LinkType.INPUT_CALC, link_label='x')
+    calc.base.links.add_incoming(y, LinkType.INPUT_CALC, link_label='y')
+
+    result = orm.Int(3)
+    result.base.links.add_incoming(calc, LinkType.CREATE, link_label='sum')
+
+    x.store()
+    y.store()
+    calc.store()
+    result.store()
+
+    return calc.uuid
+
+
+@pytest.fixture(scope='function')
 def default_groups():
     """Populate database with some groups."""
     test_user_1 = orm.User(email='verdi@opera.net', first_name='Giuseppe', last_name='Verdi').store()
     test_user_2 = orm.User(email='stravinsky@symphony.org', first_name='Igor', last_name='Stravinsky').store()
     group_1 = orm.Group(label='test_label_1', user=test_user_1).store()
     group_2 = orm.Group(label='test_label_2', user=test_user_2).store()
-    return [group_1.pk, group_2.pk]
+    return [group_1.uuid, group_2.uuid]
 
 
 @pytest.fixture(scope='function')
@@ -169,18 +227,18 @@ def default_nodes():
     node_3 = orm.Str('test_string').store()
     node_4 = orm.Bool(False).store()
 
-    return [node_1.pk, node_2.pk, node_3.pk, node_4.pk]
+    return [node_1.uuid, node_2.uuid, node_3.uuid, node_4.uuid]
 
 
 @pytest.fixture(scope='function')
 def array_data_node():
-    """Populate database with downloadable node (implmenting a _prepare_* function)."""
+    """Populate database with downloadable node (implementing a _prepare_* function)."""
 
     return orm.ArrayData(np.arange(4)).store()
 
 
 @pytest.fixture(scope='function')
-def authenticate():
+def authenticate(app):
     """Authenticate user.
 
     Since this goes via modifying the app, undo modifications afterwards.
@@ -213,7 +271,7 @@ def mutate_mapping(
 
 @pytest.fixture
 def orm_regression(data_regression):
-    """A variant of data_regression.check, that replaces nondetermistic fields (like uuid)."""
+    """A variant of data_regression.check, that replaces non-deterministic fields (like uuid)."""
 
     def _func(
         data: dict,
@@ -289,7 +347,7 @@ def create_log():
         level_name: str = 'level 1',
         message='',
         node: Optional[orm.nodes.Node] = None,
-    ) -> orm.Comment:
+    ) -> orm.Log:
         orm_node = node or orm.Data().store()
         return orm.Log(datetime.now(pytz.UTC), loggername, level_name, orm_node.pk, message=message).store()
 
