@@ -22,6 +22,6 @@ fake_users_db = {
 }
 
 API_CONFIG = {
-    'PREFIX': '/api/v0',
+    'PREFIX': '/v0',
     'VERSION': __version__,
 }
