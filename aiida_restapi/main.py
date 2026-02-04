@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
             api_router.include_router(write_router)
 
     api_router.add_route(
-        '/graphql',
+        f'{API_CONFIG["PREFIX"]}/graphql',
         main.app,
         methods=['POST'],
     )
