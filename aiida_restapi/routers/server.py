@@ -19,24 +19,27 @@ read_router = APIRouter()
 class ServerInfo(pdt.BaseModel):
     """API version information."""
 
-    API_major_version: str = pdt.Field(description='Major version of the API')
-    API_minor_version: str = pdt.Field(description='Minor version of the API')
-    API_revision_version: str = pdt.Field(description='Revision version of the API')
-    API_prefix: str = pdt.Field(description='Prefix for all API endpoints')
-    AiiDA_version: str = pdt.Field(description='Version of the AiiDA installation')
+    api_major_version: str = pdt.Field(description='Major version of the API')
+    api_minor_version: str = pdt.Field(description='Minor version of the API')
+    api_revision_version: str = pdt.Field(description='Revision version of the API')
+    api_prefix: str = pdt.Field(description='Prefix for all API endpoints')
+    aiida_version: str = pdt.Field(description='Version of the AiiDA installation')
 
 
-@read_router.get('/server/info', response_model=ServerInfo)
-async def get_server_info() -> ServerInfo:
+@read_router.get(
+    '/server/info',
+    response_model=ServerInfo,
+)
+async def get_server_info() -> dict[str, str]:
     """Get the API version information."""
     api_version = API_CONFIG['VERSION'].split('.')
-    return ServerInfo(
-        API_major_version=api_version[0],
-        API_minor_version=api_version[1],
-        API_revision_version=api_version[2],
-        API_prefix=API_CONFIG['PREFIX'],
-        AiiDA_version=aiida_version,
-    )
+    return {
+        'api_major_version': api_version[0],
+        'api_minor_version': api_version[1],
+        'api_revision_version': api_version[2],
+        'api_prefix': API_CONFIG['PREFIX'],
+        'aiida_version': aiida_version,
+    }
 
 
 class ServerEndpoint(pdt.BaseModel):
@@ -52,13 +55,13 @@ class ServerEndpoint(pdt.BaseModel):
     '/server/endpoints',
     response_model=dict[str, list[ServerEndpoint]],
 )
-async def get_server_endpoints(request: Request) -> dict[str, list[ServerEndpoint]]:
+async def get_server_endpoints(request: Request) -> dict[str, list[dict]]:
     """Get a JSON-serializable dictionary of all registered API routes.
 
     :param request: The FastAPI request object.
     :return: A JSON-serializable dictionary of all registered API routes.
     """
-    endpoints: list[ServerEndpoint] = []
+    endpoints: list[dict] = []
 
     for route in request.app.routes:
         if route.path == '/':
@@ -74,7 +77,7 @@ async def get_server_endpoints(request: Request) -> dict[str, list[ServerEndpoin
             'description': description,
         }
 
-        endpoints.append(ServerEndpoint(**endpoint))
+        endpoints.append(endpoint)
 
     return {'endpoints': endpoints}
 
