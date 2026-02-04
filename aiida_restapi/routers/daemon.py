@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 
 class DaemonStatusModel(BaseModel):
@@ -21,7 +22,7 @@ class DaemonStatusModel(BaseModel):
     num_workers: t.Optional[int] = Field(description='The number of workers if the daemon is running.')
 
 
-@router.get(
+@read_router.get(
     '/daemon/status',
     response_model=DaemonStatusModel,
 )
@@ -44,7 +45,7 @@ async def get_daemon_status() -> DaemonStatusModel:
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post(
+@write_router.post(
     '/daemon/start',
     response_model=DaemonStatusModel,
 )
@@ -71,7 +72,7 @@ async def get_daemon_start(
     return DaemonStatusModel(running=True, num_workers=response['numprocesses'])
 
 
-@router.post(
+@write_router.post(
     '/daemon/stop',
     response_model=DaemonStatusModel,
 )

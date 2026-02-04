@@ -21,7 +21,8 @@ from aiida_restapi.repository.node import NodeRepository
 
 from .auth import UserInDB, get_current_active_user
 
-router = APIRouter()
+read_router = APIRouter()
+write_router = APIRouter()
 
 repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
 model_registry = NodeModelRegistry()
@@ -34,7 +35,7 @@ else:
     NodeModelUnion = model_registry.ModelUnion
 
 
-@router.get('/nodes/schema')
+@read_router.get('/nodes/schema')
 async def get_nodes_schema(
     node_type: str | None = Query(
         None,
@@ -63,7 +64,7 @@ async def get_nodes_schema(
         raise HTTPException(status_code=422, detail=str(exception)) from exception
 
 
-@router.get('/nodes/projectable_properties')
+@read_router.get('/nodes/projectable_properties')
 @with_dbenv()
 async def get_node_projectable_properties(
     node_type: str | None = Query(
@@ -84,7 +85,7 @@ async def get_node_projectable_properties(
         raise HTTPException(status_code=422, detail=str(err)) from err
 
 
-@router.get('/nodes/download_formats')
+@read_router.get('/nodes/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes.
 
@@ -100,7 +101,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
-@router.get(
+@read_router.get(
     '/nodes',
     response_model=PaginatedResults[orm.Node.Model],
     response_model_exclude_none=True,
@@ -128,7 +129,7 @@ class NodeType(pdt.BaseModel):
     node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
 
 
-@router.get('/nodes/types', response_model=list[NodeType])
+@read_router.get('/nodes/types', response_model=list[NodeType])
 async def get_node_types() -> list:
     """Get all node types in machine-actionable format.
 
@@ -159,7 +160,7 @@ async def get_node_types() -> list:
     ]
 
 
-@router.get(
+@read_router.get(
     '/nodes/{node_id}',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
@@ -182,7 +183,7 @@ async def get_node(node_id: int) -> orm.Node.Model:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
-@router.get(
+@read_router.get(
     '/nodes/{node_id}/attributes',
     response_model=dict[str, t.Any],
 )
@@ -203,7 +204,7 @@ async def get_node_attributes(node_id: int) -> dict[str, t.Any]:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
-@router.get(
+@read_router.get(
     '/nodes/{node_id}/extras',
     response_model=dict[str, t.Any],
 )
@@ -224,7 +225,7 @@ async def get_node_extras(node_id: int) -> dict[str, t.Any]:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
-@router.get('/nodes/{node_id}/download')
+@read_router.get('/nodes/{node_id}/download')
 @with_dbenv()
 async def download_node(
     node_id: int,
@@ -307,7 +308,7 @@ class RepoDirMetadata(pdt.BaseModel):
 MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
-@router.get(
+@read_router.get(
     '/nodes/{node_id}/repo/metadata',
     response_model=dict[str, MetadataType],
 )
@@ -328,7 +329,7 @@ async def get_node_repo_file_metadata(node_id: int) -> dict[str, dict]:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
 
-@router.get('/nodes/{node_id}/repo/contents')
+@read_router.get('/nodes/{node_id}/repo/contents')
 @with_dbenv()
 async def get_node_repo_file_contents(
     node_id: int,
@@ -384,7 +385,7 @@ async def get_node_repo_file_contents(
         return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
 
 
-@router.post(
+@write_router.post(
     '/nodes',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
@@ -411,7 +412,7 @@ async def create_node(
         raise HTTPException(status_code=500, detail=str(exception)) from exception
 
 
-@router.post(
+@write_router.post(
     '/nodes/file-upload',
     response_model=orm.Node.Model,
     response_model_exclude_none=True,
