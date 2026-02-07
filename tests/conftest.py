@@ -12,27 +12,46 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida.engine import ProcessState
 from aiida.orm import WorkChainNode, WorkFunctionNode
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from aiida_restapi import config
+from aiida_restapi.config import API_CONFIG
 from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
 
 pytest_plugins = ['aiida.tools.pytest_fixtures']
 
 
+class PrefixMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: FastAPI, prefix: str = ''):
+        super().__init__(app)
+        self.prefix = prefix or API_CONFIG['PREFIX']
+
+    async def dispatch(self, request: Request, call_next):
+        if not request.url.path.startswith(self.prefix):
+            request.scope['path'] = self.prefix + request.url.path
+        return await call_next(request)
+
+
 @pytest.fixture(scope='session')
 def app():
     """Return fastapi app."""
-    yield create_app()
+    app = create_app()
+    app.add_middleware(PrefixMiddleware)
+    yield app
 
 
 @pytest.fixture(scope='function')
 def read_only_app():
-    """Return fastapi app read-only mode."""
+    """Return fastapi app."""
     os.environ['AIIDA_RESTAPI_READ_ONLY'] = '1'
-    yield create_app()
+    app = create_app()
+    app.add_middleware(PrefixMiddleware)
+    yield app
     os.environ['AIIDA_RESTAPI_READ_ONLY'] = '0'
 
 

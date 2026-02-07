@@ -16,6 +16,7 @@ from typing_extensions import TypeAlias
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.config import API_CONFIG
 from aiida_restapi.models.node import NodeModelRegistry
 from aiida_restapi.repository.node import NodeRepository
 
@@ -146,13 +147,14 @@ async def get_node_types() -> list:
     >>>   ...
     >>> ]
     """
+    api_prefix = API_CONFIG['PREFIX']
     return [
         {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
-            'nodes': f'/nodes?filters={{"node_type":"{node_type}"}}',
-            'projections': f'/nodes/projectable_properties?type={node_type}',
-            'node_schema': f'/nodes/schema?type={node_type}',
+            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
+            'projections': f'{api_prefix}/nodes/projectable_properties?type={node_type}',
+            'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
         for node_type in sorted(
             model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
