@@ -14,7 +14,7 @@ from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.graphql import main
 from aiida_restapi.jsonapi.utils import jsonapi_error
-from aiida_restapi.routers import auth, computers, daemon, groups, nodes, querybuilder, server, submit, users
+from aiida_restapi.routers import auth, computers, daemon, groups, nodes, querybuilder, server, submit, tests, users
 
 
 def create_app() -> FastAPI:
@@ -35,7 +35,7 @@ def create_app() -> FastAPI:
         lambda _: RedirectResponse(url=api_router.url_path_for('endpoints')),
     )
 
-    for module in (auth, server, users, computers, groups, nodes, querybuilder, submit, daemon):
+    for module in (auth, server, users, computers, groups, nodes, querybuilder, submit, daemon, tests):
         if read_router := getattr(module, 'read_router', None):
             api_router.include_router(read_router)
         if not read_only and (write_router := getattr(module, 'write_router', None)):

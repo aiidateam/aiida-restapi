@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Test POST /nodes</title>
+    <style>
+        {{ css | safe }}
+    </style>
+  </head>
+
+  <body>
+    <h1>Test POST /nodes</h1>
+
+    <div class="row">
+      <h3>Auth (fake user)</h3>
+      <div class="params">
+        <div>
+          <label>Email</label>
+          <input type="text" id="authEmail" value="johndoe@example.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="authPassword" value="secret" />
+        </div>
+        <div class="row">
+          <button type="button" class="btn-secondary" id="authBtn">
+            Authenticate
+          </button>
+          <button type="button" class="btn-secondary" id="logoutBtn">
+            Clear token
+          </button>
+          <span id="authStatus" class="hint small muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <h3>Params (JSON)</h3>
+      <div id="params" class="params">
+        <div>
+          <select id="nodeTypeSelect">
+            {{ options | safe }}
+          </select>
+        </div>
+        <div>
+          <label>
+            <input type="checkbox" id="includeAttributesCheckbox" checked />
+            Include attributes
+          </label>
+        </div>
+        <div>
+          <textarea id="attributes">
+{
+  "value": 42
+}
+          </textarea>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <h3>Attachments (optional)</h3>
+      <div id="fileRows"></div>
+
+      <div class="row">
+        <button type="button" class="btn-secondary" id="addFileBtn">
+          + Add file
+        </button>
+        <span class="hint small muted"
+          >Start with one file row; add/remove as needed.</span
+        >
+      </div>
+
+    <div class="row">
+      <button id="sendBtn" class="btn-primary">Send</button>
+      <button id="clearBtn" class="btn-secondary" type="button">
+        Clear output
+      </button>
+      <span id="clientError" class="error"></span>
+    </div>
+
+    <h3>Result</h3>
+    <pre id="out"></pre>
+    <div id="successLinks"></div>
+
+    <script>
+      const out = document.getElementById("out");
+      const clientError = document.getElementById("clientError");
+      const fileRows = document.getElementById("fileRows");
+      const successLinks = document.getElementById("successLinks");
+      const authStatus = document.getElementById("authStatus");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      const API_PREFIX = {{ api_prefix | tojson }};
+      const TOKEN_STORAGE_KEY = "aiida_restapi_access_token";
+
+      function getAccessToken() {
+        return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+      }
+
+      function setAccessToken(token) {
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        updateAuthUi();
+      }
+
+      function clearAccessToken() {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        updateAuthUi();
+      }
+
+      function updateAuthUi() {
+        const token = getAccessToken();
+        authStatus.textContent = token
+          ? "Authenticated (token stored)"
+          : "Not authenticated";
+        logoutBtn.disabled = !token;
+      }
+
+      function setClientError(msg) {
+        clientError.textContent = msg ? " " + msg : "";
+      }
+
+      function clearSuccessLinks() {
+        successLinks.innerHTML = "";
+      }
+
+      function showRepoMetadataLink(nodeId) {
+        // Build absolute-ish link so it works behind prefixes too.
+        // (Uses current origin; path is absolute)
+        const href = `/nodes/${nodeId}/repo/metadata`;
+
+        const box = document.createElement("div");
+        box.className = "success";
+
+        const title = document.createElement("div");
+        title.innerHTML = `<b>Success:</b> created node <code>${nodeId}</code>`;
+
+        const a = document.createElement("a");
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = `/nodes/${nodeId}/repo/metadata`;
+
+        box.appendChild(title);
+        box.appendChild(a);
+
+        successLinks.appendChild(box);
+      }
+
+      function safeJsonParse(text) {
+        try {
+          return { ok: true, value: JSON.parse(text) };
+        } catch (e) {
+          return { ok: false, err: e };
+        }
+      }
+
+      async function readResponse(resp) {
+        const contentType = resp.headers.get("content-type") || "";
+        const text = await resp.text();
+        return { contentType, text };
+      }
+
+      function normalizeRelPath(p) {
+        return (p || "").trim().replace(/\\\\/g, "/");
+      }
+
+      function looksUnsafeRelPath(p) {
+        const s = normalizeRelPath(p);
+        if (!s) return true;
+        if (s.startsWith("/")) return true;
+        if (s.split("/").includes("..")) return true;
+        // reject empty segments like "a//b"
+        if (s.split("/").some((seg) => seg.length === 0)) return true;
+        return false;
+      }
+
+      function createFileRow() {
+        const row = document.createElement("div");
+        row.className = "file-row";
+
+        const colFile = document.createElement("div");
+        colFile.className = "col";
+        const fileLabel = document.createElement("label");
+        fileLabel.textContent = "File";
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        colFile.appendChild(fileLabel);
+        colFile.appendChild(fileInput);
+
+        const colPath = document.createElement("div");
+        colPath.className = "col grow";
+        const pathLabel = document.createElement("label");
+        pathLabel.textContent = "Target path (optional, relative)";
+        const pathInput = document.createElement("input");
+        pathInput.type = "text";
+        pathInput.placeholder = "e.g. sub/a.txt";
+        colPath.appendChild(pathLabel);
+        colPath.appendChild(pathInput);
+
+        const colBtns = document.createElement("div");
+        colBtns.className = "col";
+        const btnSpacer = document.createElement("label");
+        btnSpacer.textContent = " ";
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "btn-danger";
+        removeBtn.textContent = "Remove";
+        colBtns.appendChild(btnSpacer);
+        colBtns.appendChild(removeBtn);
+
+        removeBtn.onclick = () => {
+          row.remove();
+          setClientError("");
+        };
+
+        fileInput.onchange = () => {
+          setClientError("");
+          if (fileInput.files && fileInput.files.length === 1) {
+            const f = fileInput.files[0];
+            // auto-fill only if empty
+            if (!pathInput.value) pathInput.value = f.name;
+          }
+        };
+
+        pathInput.oninput = () => setClientError("");
+
+        row.appendChild(colFile);
+        row.appendChild(colPath);
+        row.appendChild(colBtns);
+
+        return row;
+      }
+
+      function ensureAtLeastOneRow() {
+        if (!fileRows.children.length) {
+          fileRows.appendChild(createFileRow());
+        }
+      }
+
+      function gatherRows() {
+        // Returns list of { file: File, relPath?: string }
+        const items = [];
+        for (const row of fileRows.children) {
+          const fileInput = row.querySelector('input[type="file"]');
+          const pathInput = row.querySelector('input[type="text"]');
+          const file =
+            fileInput && fileInput.files && fileInput.files.length
+              ? fileInput.files[0]
+              : null;
+          const relPath = normalizeRelPath(pathInput ? pathInput.value : "");
+          if (!file) continue;
+
+          items.push({ file, relPath });
+        }
+        return items;
+      }
+
+      document.getElementById("addFileBtn").addEventListener("click", () => {
+        fileRows.appendChild(createFileRow());
+      });
+
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        out.textContent = "";
+        setClientError("");
+        clearSuccessLinks();
+      });
+
+      document.getElementById("authBtn").addEventListener("click", async () => {
+        setClientError("");
+        clearSuccessLinks();
+
+        const email = document.getElementById("authEmail").value.trim();
+        const password = document.getElementById("authPassword").value;
+
+        const ENDPOINT = API_PREFIX + "/auth/token";
+        out.textContent = "Authenticating at: " + ENDPOINT + "\n";
+
+        try {
+          const resp = await fetch(ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json",
+            },
+            body: new URLSearchParams({ username: email, password }),
+          });
+
+          const { contentType, text } = await readResponse(resp);
+
+          let bodyJson = null;
+          if (contentType.includes("application/json")) {
+            try {
+              bodyJson = JSON.parse(text);
+            } catch {
+              // fall back to raw text
+            }
+          }
+
+          if (!resp.ok) {
+            out.textContent += "\nAuth failed:\n" + text;
+            return;
+          }
+
+          if (!bodyJson || !bodyJson.access_token) {
+            out.textContent += "\nAuth response did not include access_token:\n" + text;
+            return;
+          }
+
+          setAccessToken(bodyJson.access_token);
+          out.textContent += "\nAuth OK. Token stored in localStorage.\n";
+        } catch (err) {
+          out.textContent = "Auth request error: " + err;
+        }
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        clearAccessToken();
+        setClientError("");
+        clearSuccessLinks();
+      });
+
+      document.getElementById("sendBtn").addEventListener("click", async () => {
+        setClientError("");
+        clearSuccessLinks();
+
+        const paramsDiv = document.getElementById("params");
+        const nodeTypeSelect = document.getElementById("nodeTypeSelect");
+        const includeAttributesCheckbox = document.getElementById("includeAttributesCheckbox");
+        const attributesTextarea = document.getElementById("attributes");
+
+        const nodeType = nodeTypeSelect.value;
+        const includeAttributes = includeAttributesCheckbox.checked;
+        let params = {
+          "schema": nodeType
+        };
+        if (includeAttributes) {
+          const attrsText = attributesTextarea.value;
+          const parsedAttrs = safeJsonParse(attrsText);
+          if (!parsedAttrs.ok) {
+            setClientError("Invalid JSON in attributes: " + parsedAttrs.err);
+            return;
+          }
+          params.attributes = parsedAttrs.value;
+        }
+
+        const rows = gatherRows();
+        const hasFiles = rows.length > 0;
+        let ENDPOINT = API_PREFIX + "/nodes";
+        ENDPOINT += hasFiles ? "/file-upload" : "";
+
+        out.textContent = "Sending to: " + ENDPOINT + "\n";
+
+        try {
+          let resp;
+          const token = getAccessToken();
+
+          if (!hasFiles) {
+            // JSON representation
+            resp = await fetch(ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                ...(token ? { Authorization: "Bearer " + token } : {}),
+              },
+              body: JSON.stringify(params),
+            });
+          } else {
+            // multipart representation
+            const fd = new FormData();
+            fd.append("params", JSON.stringify(params));
+
+            // validate paths + build upload parts
+            const targets = new Set();
+            for (const { file, relPath } of rows) {
+              const target = relPath ? relPath : file.name;
+
+              if (looksUnsafeRelPath(target)) {
+                setClientError("Unsafe target path: " + target);
+                return;
+              }
+              if (targets.has(target)) {
+                setClientError("Duplicate target path: " + target);
+                return;
+              }
+              targets.add(target);
+
+              if (relPath) {
+                // Create a new File that carries the relPath as the multipart filename.
+                const renamed = new File([file], target, {
+                  type: file.type,
+                  lastModified: file.lastModified,
+                });
+                fd.append("files", renamed, target);
+              } else {
+                // fallback: backend uses original filename
+                fd.append("files", file, file.name);
+              }
+            }
+
+            resp = await fetch(ENDPOINT, {
+              method: "POST",
+              headers: {
+                Accept: "application/json",
+                ...(token ? { Authorization: "Bearer " + token } : {}),
+              },
+              body: fd,
+            });
+          }
+
+          const { contentType, text } = await readResponse(resp);
+
+          let bodyText = text;
+          let bodyJson = null;
+
+          if (contentType.includes("application/json")) {
+            try {
+              bodyJson = JSON.parse(text);
+              bodyText = JSON.stringify(bodyJson, null, 2);
+            } catch {
+              // fall back to raw text if parsing fails
+            }
+          }
+
+          out.textContent =
+            "POST " +
+            ENDPOINT +
+            "\n" +
+            "Representation: " +
+            (hasFiles ? "multipart/form-data" : "application/json") +
+            "\n" +
+            "Status: " +
+            resp.status +
+            " " +
+            resp.statusText +
+            "\n" +
+            "Response Content-Type: " +
+            contentType +
+            "\n\n" +
+            bodyText;
+
+          // Add quick link to repo metadata on success if we can extract node id.
+          if (resp.ok && bodyJson) {
+            const nodeId =
+              bodyJson.id ??
+              bodyJson.pk ??
+              bodyJson.uuid ??
+              bodyJson.node_id ??
+              (bodyJson.data &&
+                (bodyJson.data.id ?? bodyJson.data.pk ?? bodyJson.data.uuid));
+
+            if (
+              nodeId !== undefined &&
+              nodeId !== null &&
+              String(nodeId).length
+            ) {
+              showRepoMetadataLink(String(nodeId));
+            }
+          }
+        } catch (err) {
+          out.textContent = "Request error: " + err;
+        }
+      });
+
+      // start with one row
+      ensureAtLeastOneRow();
+      updateAuthUi();
+    </script>
+  </body>
+</html>

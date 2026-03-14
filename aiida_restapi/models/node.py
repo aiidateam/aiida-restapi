@@ -144,15 +144,13 @@ class NodeModelRegistry:
 
     This class maintains mappings of node types and their corresponding Pydantic models.
 
-    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type` field.
+    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type|create_mode`
+        compositefield.
     """
 
     def __init__(self) -> None:
         self._build_node_mappings()
-        self.ModelUnion = t.Annotated[
-            t.Union[self._get_post_models()],
-            pdt.Field(discriminator='node_type'),
-        ]
+        self.ModelUnion = self._build_model_union()
 
     def get_node_types(self) -> list[str]:
         """Get the list of registered node class names.
@@ -171,13 +169,17 @@ class NodeModelRegistry:
         """
         return node_type.rsplit('.', 2)[-2]
 
-    def get_model(self, node_type: str, which: t.Literal['get', 'post'] = 'get') -> type[Node.Model]:
+    def get_model(
+        self,
+        node_type: str,
+        which: t.Literal['get', 'post', 'constructor'] = 'get',
+    ) -> type[Node.BaseNodeModel]:
         """Get the Pydantic model class for a given node type.
 
         :param node_type: The AiiDA node type string.
         :type node_type: str
         :return: The corresponding Pydantic model class.
-        :rtype: type[Node.Model]
+        :rtype: type[Node.BaseNodeModel]
         """
         if (Model := self._models.get(node_type)) is None:
             raise MissingEntryPointError(f'Unknown node type: {node_type}')
@@ -185,28 +187,60 @@ class NodeModelRegistry:
             raise KeyError(f'Unknown model type: {which}')
         return Model[which]
 
-    def _get_node_post_model(self, node_cls: Node) -> type[Node.Model]:
-        """Return a patched Model for the given node class with a literal `node_type` field.
+    def _patch_discriminator_fields(
+        self,
+        Model: type['Node.BaseNodeModel'],
+        *,
+        node_type: str,
+        create_mode: t.Literal['post', 'constructor'],
+    ) -> type['Node.BaseNodeModel']:
+        """Patch discriminator fields onto a model.
+
+        Assumes the model class is already subclass-local, i.e. safe to mutate.
+        """
+        Model.model_fields['node_type'] = pdt.fields.FieldInfo(
+            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_type]],
+            default=node_type,
+        )
+        Model.model_fields['create_mode'] = pdt.fields.FieldInfo(
+            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[create_mode]],
+            default=create_mode,
+        )
+        Model.model_rebuild(force=True)
+        return Model
+
+    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[Node.BaseNodeModel]]:
+        """Get the 'post' and 'constructor' Pydantic models for a given AiiDA node class.
 
         :param node_cls: The AiiDA node class.
         :type node_cls: Node
         :return: The patched ORM Node model.
-        :rtype: type[Node.Model]
+        :rtype: type[Node.BaseNodeModel]
         """
-        Model = node_cls.CreateModel
         node_type = node_cls.class_node_type
-        # Here we patch in the `node_type` union descriminator field.
-        # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema.
-        Model.model_fields['node_type'] = pdt.fields.FieldInfo(
-            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_type]],  # type: ignore[misc,valid-type]
-            default=node_type,
+        models: dict[str, type[Node.BaseNodeModel]] = {}
+
+        PostModel = self._patch_discriminator_fields(
+            node_cls.CreateModel,
+            node_type=node_type,
+            create_mode='post',
         )
-        Model.model_rebuild(force=True)
-        return t.cast(type[Node.Model], Model)
+        models['post'] = PostModel
+
+        ConstructorModel = getattr(node_cls, 'ConstructorModel', None)
+        if ConstructorModel is not None:
+            ConstructorModel = self._patch_discriminator_fields(
+                ConstructorModel,
+                node_type=node_type,
+                create_mode='constructor',
+            )
+            models['constructor'] = ConstructorModel
+
+        return models
 
     def _build_node_mappings(self) -> None:
         """Build mapping of node type to node creation model."""
-        self._models: dict[str, dict[str, type[Node.Model]]] = {}
+        self._models: dict[str, dict[str, type[Node.BaseNodeModel]]] = {}
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
@@ -218,14 +252,58 @@ class NodeModelRegistry:
 
             self._models[node_cls.class_node_type] = {
                 'get': node_cls.Model,
-                'post': self._get_node_post_model(node_cls),
+                **self._get_node_post_models(node_cls),
             }
 
-    def _get_post_models(self) -> tuple[type[Node.Model], ...]:
+    def _get_post_models(self) -> tuple[type[Node.BaseNodeModel], ...]:
         """Get a union type of all node 'post' models.
 
         :return: A union type of all node 'post' models.
-        :rtype: tuple[type[Node.Model], ...]
+        :rtype: tuple[type[Node.BaseNodeModel], ...]
         """
-        post_models = [model_dict['post'] for model_dict in self._models.values()]
-        return tuple(post_models)
+        models: list[type[Node.BaseNodeModel]] = []
+
+        for model_dict in self._models.values():
+            models.append(model_dict['post'])
+            if 'constructor' in model_dict:
+                models.append(model_dict['constructor'])
+
+        return tuple(models)
+
+    def _build_model_union(self):
+        """Build a union type of all node models.
+
+        The union uses a nested discriminator:
+        - outer: `node_type`
+        - inner: `create_mode` (post or constructor)
+        """
+
+        tagged_models: list[object] = []
+
+        for node_type, model_dict in self._models.items():
+            post_model = model_dict['post']
+            tagged_models.append(
+                t.Annotated[
+                    post_model,
+                    pdt.Tag(f'{node_type}|post'),
+                ]
+            )
+
+            if 'constructor' in model_dict:
+                constructor_model = model_dict['constructor']
+                tagged_models.append(
+                    t.Annotated[
+                        constructor_model,
+                        pdt.Tag(f'{node_type}|constructor'),
+                    ]
+                )
+
+        def discriminator(value):
+            if isinstance(value, dict):
+                return f'{value.get("node_type")}|{value.get("create_mode")}'
+            return f'{value.node_type}|{value.create_mode}'
+
+        return t.Annotated[
+            t.Union.__getitem__(tuple(tagged_models)),
+            pdt.Discriminator(discriminator),
+        ]

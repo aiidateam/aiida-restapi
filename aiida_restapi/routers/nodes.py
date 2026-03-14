@@ -163,9 +163,7 @@ async def get_node_types() -> list:
             'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
-        for node_type in sorted(
-            model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
-        )
+        for node_type in sorted(model_registry.get_node_types(), key=model_registry.get_node_class_name)
     ]
 
 
@@ -528,7 +526,7 @@ async def download_node(
 async def create_node(
     request: Request,
     model: NodeModelUnion,
-    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node."""
     result = service.add_one(model)
