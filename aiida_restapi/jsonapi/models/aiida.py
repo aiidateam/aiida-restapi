@@ -11,7 +11,7 @@ def attributes_of(orm_class: type[orm.Entity]) -> type[Attributes]:
     """Dynamically derive Attributes class for a given AiiDA ORM class."""
 
     fields = {}
-    for key, field in orm_class.Model.model_fields.items():
+    for key, field in orm_class.ReadModel.model_fields.items():
         if key == orm_class.identity_field:
             continue
         if get_metadata(field, 'may_be_large') or get_metadata(field, 'write_only'):

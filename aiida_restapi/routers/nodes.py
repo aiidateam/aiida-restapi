@@ -9,7 +9,7 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, Form, Query, Request, UploadFile
 from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
@@ -36,7 +36,7 @@ from .auth import UserInDB, get_current_active_user
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
 
-service = NodeService[orm.Node, orm.Node.Model](orm.Node)
+service = NodeService[orm.Node, orm.Node.ReadModel](orm.Node)
 
 model_registry = NodeModelRegistry()
 
@@ -71,7 +71,7 @@ async def get_nodes_schema(
 ) -> dict[str, t.Any]:
     """Get JSON schema for the base AiiDA node 'get' model."""
     if not node_type:
-        return orm.Node.Model.model_json_schema()
+        return orm.Node.ReadModel.model_json_schema()
     model = model_registry.get_model(node_type, which)
     return model.model_json_schema()
 
@@ -525,7 +525,7 @@ async def download_node(
 @with_dbenv()
 async def create_node(
     request: Request,
-    model: NodeModelUnion,
+    model: t.Annotated[NodeModelUnion, Body(...)],
     # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node."""
@@ -557,7 +557,7 @@ async def create_node_with_files(
     request: Request,
     params: t.Annotated[str, Form()],
     files: list[UploadFile],
-    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
     parameters = t.cast(dict, json.loads(params))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typing as t
+from copy import deepcopy
 
 import pydantic as pdt
 from aiida.common.exceptions import MissingEntryPointError
@@ -144,8 +145,8 @@ class NodeModelRegistry:
 
     This class maintains mappings of node types and their corresponding Pydantic models.
 
-    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type|create_mode`
-        compositefield.
+    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type|write_mode`
+        composite field.
     """
 
     def __init__(self) -> None:
@@ -173,13 +174,13 @@ class NodeModelRegistry:
         self,
         node_type: str,
         which: t.Literal['get', 'post', 'constructor'] = 'get',
-    ) -> type[Node.BaseNodeModel]:
+    ) -> type[Node.BaseWriteModel]:
         """Get the Pydantic model class for a given node type.
 
         :param node_type: The AiiDA node type string.
         :type node_type: str
         :return: The corresponding Pydantic model class.
-        :rtype: type[Node.BaseNodeModel]
+        :rtype: type[Node.BaseWriteModel]
         """
         if (Model := self._models.get(node_type)) is None:
             raise MissingEntryPointError(f'Unknown node type: {node_type}')
@@ -189,11 +190,11 @@ class NodeModelRegistry:
 
     def _patch_discriminator_fields(
         self,
-        Model: type['Node.BaseNodeModel'],
+        Model: type[Node.BaseWriteModel],
         *,
         node_type: str,
-        create_mode: t.Literal['post', 'constructor'],
-    ) -> type['Node.BaseNodeModel']:
+        write_mode: t.Literal['post', 'constructor'],
+    ) -> type[Node.BaseWriteModel]:
         """Patch discriminator fields onto a model.
 
         Assumes the model class is already subclass-local, i.e. safe to mutate.
@@ -202,37 +203,54 @@ class NodeModelRegistry:
             annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_type]],
             default=node_type,
         )
-        Model.model_fields['create_mode'] = pdt.fields.FieldInfo(
-            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[create_mode]],
-            default=create_mode,
+        Model.model_fields['write_mode'] = pdt.fields.FieldInfo(
+            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[write_mode]],
+            default=write_mode,
         )
         Model.model_rebuild(force=True)
         return Model
 
-    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[Node.BaseNodeModel]]:
+    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[Node.BaseWriteModel]]:
         """Get the 'post' and 'constructor' Pydantic models for a given AiiDA node class.
 
         :param node_cls: The AiiDA node class.
         :type node_cls: Node
         :return: The patched ORM Node model.
-        :rtype: type[Node.BaseNodeModel]
+        :rtype: type[Node.BaseWriteModel]
         """
         node_type = node_cls.class_node_type
-        models: dict[str, type[Node.BaseNodeModel]] = {}
+        models: dict[str, type[Node.BaseWriteModel]] = {}
 
-        PostModel = self._patch_discriminator_fields(
-            node_cls.CreateModel,
+        def clone_model_class(Model: type[Node.BaseWriteModel]) -> type[Node.BaseWriteModel]:
+            field_definitions: dict[str, tuple[t.Any, t.Any]] = {}
+            for field_name, field_info in Model.model_fields.items():
+                field_definitions[field_name] = (field_info.annotation, deepcopy(field_info))
+
+            Clone = t.cast(
+                type[Node.BaseWriteModel],
+                pdt.create_model(
+                    f'{Model.__name__}Discriminated',
+                    __module__=Model.__module__,
+                    __base__=pdt.BaseModel,
+                    **field_definitions,
+                ),  # type: ignore[call-arg]
+            )
+            Clone.model_config['extra'] = Model.model_config.get('extra', 'ignore')
+            Clone.model_config['title'] = Model.model_config.get('title', Model.__qualname__.replace('.', ''))
+            return Clone
+
+        WriteModel = self._patch_discriminator_fields(
+            clone_model_class(node_cls.WriteModel),
             node_type=node_type,
-            create_mode='post',
+            write_mode='post',
         )
-        models['post'] = PostModel
+        models['post'] = WriteModel
 
-        ConstructorModel = getattr(node_cls, 'ConstructorModel', None)
-        if ConstructorModel is not None:
+        if node_cls.ConstructorModel is not None:
             ConstructorModel = self._patch_discriminator_fields(
-                ConstructorModel,
+                clone_model_class(node_cls.ConstructorModel),
                 node_type=node_type,
-                create_mode='constructor',
+                write_mode='constructor',
             )
             models['constructor'] = ConstructorModel
 
@@ -240,7 +258,7 @@ class NodeModelRegistry:
 
     def _build_node_mappings(self) -> None:
         """Build mapping of node type to node creation model."""
-        self._models: dict[str, dict[str, type[Node.BaseNodeModel]]] = {}
+        self._models: dict[str, dict[str, type[Node.BaseWriteModel]]] = {}
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
@@ -251,17 +269,17 @@ class NodeModelRegistry:
                 continue
 
             self._models[node_cls.class_node_type] = {
-                'get': node_cls.Model,
+                'get': node_cls.ReadModel,
                 **self._get_node_post_models(node_cls),
             }
 
-    def _get_post_models(self) -> tuple[type[Node.BaseNodeModel], ...]:
+    def _get_post_models(self) -> tuple[type[Node.BaseWriteModel], ...]:
         """Get a union type of all node 'post' models.
 
         :return: A union type of all node 'post' models.
-        :rtype: tuple[type[Node.BaseNodeModel], ...]
+        :rtype: tuple[type[Node.BaseWriteModel], ...]
         """
-        models: list[type[Node.BaseNodeModel]] = []
+        models: list[type[Node.BaseWriteModel]] = []
 
         for model_dict in self._models.values():
             models.append(model_dict['post'])
@@ -275,7 +293,7 @@ class NodeModelRegistry:
 
         The union uses a nested discriminator:
         - outer: `node_type`
-        - inner: `create_mode` (post or constructor)
+        - inner: `write_mode` (post or constructor)
         """
 
         tagged_models: list[object] = []
@@ -300,8 +318,8 @@ class NodeModelRegistry:
 
         def discriminator(value):
             if isinstance(value, dict):
-                return f'{value.get("node_type")}|{value.get("create_mode")}'
-            return f'{value.node_type}|{value.create_mode}'
+                return f'{value.get("node_type")}|{value.get("write_mode")}'
+            return f'{value.node_type}|{value.write_mode}'
 
         return t.Annotated[
             t.Union.__getitem__(tuple(tagged_models)),

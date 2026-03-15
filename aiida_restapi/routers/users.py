@@ -20,7 +20,7 @@ from .auth import UserInDB, get_current_active_user
 read_router = APIRouter(prefix='/users')
 write_router = APIRouter(prefix='/users')
 
-service = EntityService[orm.User, orm.User.Model](orm.User)
+service = EntityService[orm.User, orm.User.ReadModel](orm.User)
 
 
 @read_router.get(
@@ -127,7 +127,7 @@ async def get_user(
 @with_dbenv()
 async def create_user(
     request: Request,
-    user_model: orm.User.CreateModel,
+    user_model: orm.User.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA user."""

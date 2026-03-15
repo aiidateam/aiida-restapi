@@ -21,7 +21,7 @@ from .auth import UserInDB, get_current_active_user
 read_router = APIRouter(prefix='/computers')
 write_router = APIRouter(prefix='/computers')
 
-service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
+service = EntityService[orm.Computer, orm.Computer.ReadModel](orm.Computer)
 
 
 @read_router.get(
@@ -163,7 +163,7 @@ async def get_computer_metadata(
 @with_dbenv()
 async def create_computer(
     request: Request,
-    computer_model: orm.Computer.CreateModel,
+    computer_model: orm.Computer.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA computer."""

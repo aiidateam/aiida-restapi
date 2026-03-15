@@ -48,13 +48,13 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         if not which:
             return {
-                'get': self.entity_class.Model.model_json_schema(),
-                'post': self.entity_class.CreateModel.model_json_schema(),
+                'get': self.entity_class.ReadModel.model_json_schema(),
+                'post': self.entity_class.WriteModel.model_json_schema(),
             }
         elif which == 'post':
-            return self.entity_class.CreateModel.model_json_schema()
+            return self.entity_class.WriteModel.model_json_schema()
         else:
-            return self.entity_class.Model.model_json_schema()
+            return self.entity_class.ReadModel.model_json_schema()
 
     def get_projections(self) -> list[str]:
         """Get queryable projections for the AiiDA entity.
@@ -245,4 +245,11 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :rtype: list[str]
         """
         orm_class = orm_class or self.entity_class
-        return [key for key, field in orm_class.Model.model_fields.items() if not get_metadata(field, 'may_be_large')]
+        return [
+            key
+            for key, field in orm_class.ReadModel.model_fields.items()
+            if not get_metadata(
+                field,
+                'may_be_large',
+            )
+        ]
