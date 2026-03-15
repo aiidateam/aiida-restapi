@@ -34,8 +34,8 @@ def test_get_node_schema(client: TestClient):
 @pytest.mark.parametrize(
     'which, model, name',
     [
-        ['get', orm.Int.ReadModel, 'AttributesModel'],
-        ['post', orm.Int.WriteModel, 'AttributesCreateModel'],
+        ['read', orm.Int.ReadModel, 'AttributesModel'],
+        ['write', orm.Int.WriteModel, 'AttributesCreateModel'],
     ],
 )
 def test_get_node_schema_by_type(client: TestClient, which: str, model: type[BaseModel], name: str):

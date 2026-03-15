@@ -65,11 +65,11 @@ async def get_nodes_schema(
         ),
     ] = None,
     which: t.Annotated[
-        t.Literal['get', 'post'],
+        t.Literal['read', 'write'],
         Query(description='Type of schema to retrieve'),
-    ] = 'get',
+    ] = 'read',
 ) -> dict[str, t.Any]:
-    """Get JSON schema for the base AiiDA node 'get' model."""
+    """Get JSON schema for the base AiiDA node 'read' model."""
     if not node_type:
         return orm.Node.ReadModel.model_json_schema()
     model = model_registry.get_model(node_type, which)
@@ -565,7 +565,7 @@ async def create_node_with_files(
     if not (node_type := parameters.get('node_type')):
         raise ValidationException("The 'node_type' field is missing in the parameters.")
 
-    model_cls = model_registry.get_model(node_type, which='post')
+    model_cls = model_registry.get_model(node_type, which='write')
     model = model_cls(**parameters)
 
     files_dict: dict[str, UploadFile] = {}

@@ -32,9 +32,9 @@ service = EntityService[orm.User, orm.User.ReadModel](orm.User)
 )
 async def get_users_schema(
     which: t.Annotated[
-        t.Literal['get', 'post'],
-        Query(description='Type of schema to retrieve: "get" or "post"'),
-    ] = 'get',
+        t.Literal['read', 'write'],
+        Query(description='Type of schema to retrieve: "read" or "write"'),
+    ] = 'read',
 ) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA users."""
     return service.get_schema(which=which)
