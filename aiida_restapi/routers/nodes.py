@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
 from aiida_restapi.common import query
+from aiida_restapi.common.exceptions import SchemaNotSupported
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
 from aiida_restapi.jsonapi.models import errors
@@ -30,8 +31,6 @@ from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.jsonapi.responses import JsonApiResponse
 from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeService
-
-from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
@@ -53,7 +52,10 @@ else:
     '/schema',
     response_model=dict[str, t.Any],
     responses={
-        422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
+        422: {
+            'model': t.Union[errors.InvalidNodeTypeError, errors.SchemaNotSupported],
+            'description': 'Invalid Node Type | Schema Not Supported',
+        },
     },
 )
 async def get_nodes_schema(
@@ -65,7 +67,7 @@ async def get_nodes_schema(
         ),
     ] = None,
     which: t.Annotated[
-        t.Literal['read', 'write'],
+        t.Literal['read', 'write', 'constructor'],
         Query(description='Type of schema to retrieve'),
     ] = 'read',
 ) -> dict[str, t.Any]:
@@ -73,6 +75,8 @@ async def get_nodes_schema(
     if not node_type:
         return orm.Node.ReadModel.model_json_schema()
     model = model_registry.get_model(node_type, which)
+    if not model:
+        raise SchemaNotSupported(f"'{node_type}' does not support {which} schema")
     return model.model_json_schema()
 
 
@@ -566,6 +570,9 @@ async def create_node_with_files(
         raise ValidationException("The 'node_type' field is missing in the parameters.")
 
     model_cls = model_registry.get_model(node_type, which='write')
+    if not model_cls:
+        # This is only here for sanity - there should always be a 'write' model!
+        raise SchemaNotSupported(f"'{node_type}' does not support write schema")
     model = model_cls(**parameters)
 
     files_dict: dict[str, UploadFile] = {}

@@ -150,7 +150,6 @@ class NodeModelRegistry:
     """
 
     def __init__(self) -> None:
-        self._build_node_mappings()
         self.ModelUnion = self._build_model_union()
 
     def get_node_types(self) -> list[str]:
@@ -174,36 +173,36 @@ class NodeModelRegistry:
         self,
         node_type: str,
         which: t.Literal['read', 'write', 'constructor'] = 'read',
-    ) -> type[OrmModel]:
+    ) -> type[OrmModel] | None:
         """Get the Pydantic model class for a given node type.
 
         :param node_type: The AiiDA node type string.
         :type node_type: str
         :return: The corresponding Pydantic model class.
-        :rtype: type[OrmModel]
+        :rtype: type[OrmModel] | None
         """
-        if (Model := self._models.get(node_type)) is None:
+        if (model_dict := self._models.get(node_type)) is None:
             raise MissingEntryPointError(f'Unknown node type: {node_type}')
-        if which not in Model:
+        if which not in model_dict:
             raise KeyError(f'Unknown model type: {which}')
-        return Model[which]
+        return model_dict[which]
 
-    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[OrmModel]]:
+    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[OrmModel] | None]:
         """Get the 'write' and 'constructor' Pydantic models for a given AiiDA node class.
 
         :param node_cls: The AiiDA node class.
         :type node_cls: Node
         :return: The ORM Node models for post and optional constructor creation.
-        :rtype: type[Node.OrmModel]
+        :rtype: type[Node.OrmModel] | None
         """
-        models: dict[str, type[OrmModel]] = {'write': node_cls.WriteModel}
-        if node_cls.ConstructorModel is not None:
-            models['constructor'] = node_cls.ConstructorModel
-        return models
+        return {
+            'write': node_cls.WriteModel,
+            'constructor': node_cls.ConstructorModel,
+        }
 
     def _build_node_mappings(self) -> None:
         """Build mapping of node type to node creation model."""
-        self._models: dict[str, dict[str, type[OrmModel]]] = {}
+        self._models: dict[str, dict[str, type[OrmModel] | None]] = {}
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
@@ -218,21 +217,6 @@ class NodeModelRegistry:
                 **self._get_node_post_models(node_cls),
             }
 
-    def _get_post_models(self) -> tuple[type[OrmModel], ...]:
-        """Get a union type of all node 'write' models.
-
-        :return: A union type of all node 'write' models.
-        :rtype: tuple[type[OrmModel], ...]
-        """
-        models: list[type[OrmModel]] = []
-
-        for model_dict in self._models.values():
-            models.append(model_dict['write'])
-            if 'constructor' in model_dict:
-                models.append(model_dict['constructor'])
-
-        return tuple(models)
-
     def _build_model_union(self):
         """Build a union type of all node models.
 
@@ -240,6 +224,7 @@ class NodeModelRegistry:
         - outer: `node_type`
         - inner: `write_mode` ('attributes' or 'constructor')
         """
+        self._build_node_mappings()
 
         tagged_models: list[object] = []
 
@@ -247,7 +232,7 @@ class NodeModelRegistry:
             write_model = model_dict['write']
             tagged_models.append(t.Annotated[write_model, pdt.Tag(f'{node_type}|attributes')])
 
-            if 'constructor' in model_dict:
+            if model_dict['constructor'] is not None:
                 constructor_model = model_dict['constructor']
                 tagged_models.append(
                     t.Annotated[

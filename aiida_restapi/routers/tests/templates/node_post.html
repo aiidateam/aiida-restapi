@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>Test POST /nodes</title>
     <style>
-        {{ css | safe }}
+      {{ css | safe }}
     </style>
   </head>
 
@@ -38,18 +38,47 @@
       <h3>Params (JSON)</h3>
       <div id="params" class="params">
         <div>
+          <label>Node type</label>
           <select id="nodeTypeSelect">
             {{ options | safe }}
           </select>
         </div>
         <div>
-          <label>
-            <input type="checkbox" id="includeAttributesCheckbox" checked />
-            Include attributes
-          </label>
+          <div class="row">
+            <label>Write mode</label>
+            <button type="button" class="btn-primary" id="attributesModeBtn">
+              Attributes
+            </button>
+            <button type="button" class="btn-secondary" id="constructorModeBtn">
+              Constructor
+            </button>
+          </div>
+          <input type="hidden" id="writeMode" value="attributes" />
         </div>
         <div>
-          <textarea id="attributes">
+          <label>Label</label>
+          <input type="text" id="label" placeholder="Optional node label" />
+        </div>
+        <div>
+          <label>Description</label>
+          <input
+            type="text"
+            id="description"
+            placeholder="Optional node description"
+          />
+        </div>
+        <div>
+          <label>Extras (JSON)</label>
+          <textarea id="extras">
+{
+}
+          </textarea>
+        </div>
+        <div>
+          <label id="argumentsLabel"
+            >Attributes / constructor arguments (JSON)</label
+          >
+          <textarea id="arguments">
 {
   "value": 42
 }
@@ -69,6 +98,7 @@
           >Start with one file row; add/remove as needed.</span
         >
       </div>
+    </div>
 
     <div class="row">
       <button id="sendBtn" class="btn-primary">Send</button>
@@ -89,9 +119,33 @@
       const successLinks = document.getElementById("successLinks");
       const authStatus = document.getElementById("authStatus");
       const logoutBtn = document.getElementById("logoutBtn");
+      const attributesModeBtn = document.getElementById("attributesModeBtn");
+      const constructorModeBtn = document.getElementById("constructorModeBtn");
+      const writeModeInput = document.getElementById("writeMode");
+      const argumentsLabel = document.getElementById("argumentsLabel");
 
       const API_PREFIX = {{ api_prefix | tojson }};
       const TOKEN_STORAGE_KEY = "aiida_restapi_access_token";
+
+      function getWriteMode() {
+        return writeModeInput.value;
+      }
+
+      function updateWriteModeUi() {
+        const writeMode = getWriteMode();
+        const isAttributes = writeMode === "attributes";
+
+        attributesModeBtn.className = isAttributes ? "btn-primary" : "btn-secondary";
+        constructorModeBtn.className = isAttributes ? "btn-secondary" : "btn-primary";
+        argumentsLabel.textContent = isAttributes
+          ? "Attributes (JSON)"
+          : "Constructor arguments (JSON)";
+      }
+
+      function setWriteMode(writeMode) {
+        writeModeInput.value = writeMode;
+        updateWriteModeUi();
+      }
 
       function getAccessToken() {
         return window.localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -154,10 +208,18 @@
         }
       }
 
+      function isJsonObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
       async function readResponse(resp) {
         const contentType = resp.headers.get("content-type") || "";
         const text = await resp.text();
         return { contentType, text };
+      }
+
+      function isJsonContentType(contentType) {
+        return contentType.includes("application/json") || /\+json\b/i.test(contentType);
       }
 
       function normalizeRelPath(p) {
@@ -259,6 +321,14 @@
         fileRows.appendChild(createFileRow());
       });
 
+      attributesModeBtn.addEventListener("click", () => {
+        setWriteMode("attributes");
+      });
+
+      constructorModeBtn.addEventListener("click", () => {
+        setWriteMode("constructor");
+      });
+
       document.getElementById("clearBtn").addEventListener("click", () => {
         out.textContent = "";
         setClientError("");
@@ -288,7 +358,7 @@
           const { contentType, text } = await readResponse(resp);
 
           let bodyJson = null;
-          if (contentType.includes("application/json")) {
+          if (isJsonContentType(contentType)) {
             try {
               bodyJson = JSON.parse(text);
             } catch {
@@ -323,28 +393,69 @@
         setClientError("");
         clearSuccessLinks();
 
-        const paramsDiv = document.getElementById("params");
         const nodeTypeSelect = document.getElementById("nodeTypeSelect");
-        const includeAttributesCheckbox = document.getElementById("includeAttributesCheckbox");
-        const attributesTextarea = document.getElementById("attributes");
+        const labelInput = document.getElementById("label");
+        const descriptionInput = document.getElementById("description");
+        const extrasTextarea = document.getElementById("extras");
+        const argumentsTextarea = document.getElementById("arguments");
 
         const nodeType = nodeTypeSelect.value;
-        const includeAttributes = includeAttributesCheckbox.checked;
+        const writeMode = getWriteMode();
         let params = {
-          "schema": nodeType
+          node_type: nodeType,
+          write_mode: writeMode,
         };
-        if (includeAttributes) {
-          const attrsText = attributesTextarea.value;
-          const parsedAttrs = safeJsonParse(attrsText);
-          if (!parsedAttrs.ok) {
-            setClientError("Invalid JSON in attributes: " + parsedAttrs.err);
+
+        const label = labelInput.value.trim();
+        const description = descriptionInput.value.trim();
+        if (label) {
+          params.label = label;
+        }
+        if (description) {
+          params.description = description;
+        }
+
+        const extrasText = extrasTextarea.value.trim();
+        if (extrasText) {
+          const parsedExtras = safeJsonParse(extrasText);
+          if (!parsedExtras.ok) {
+            setClientError("Invalid JSON in extras: " + parsedExtras.err);
             return;
           }
-          params.attributes = parsedAttrs.value;
+          if (!isJsonObject(parsedExtras.value)) {
+            setClientError("Extras JSON must be an object.");
+            return;
+          }
+          params.extras = parsedExtras.value;
+        }
+
+        const argumentsText = argumentsTextarea.value.trim();
+        if (argumentsText) {
+          const parsedArguments = safeJsonParse(argumentsText);
+          if (!parsedArguments.ok) {
+            setClientError("Invalid JSON in arguments: " + parsedArguments.err);
+            return;
+          }
+          if (!isJsonObject(parsedArguments.value)) {
+            setClientError("Arguments JSON must be an object.");
+            return;
+          }
+
+          if (writeMode === "attributes") {
+            params.attributes = parsedArguments.value;
+          } else {
+            Object.assign(params, parsedArguments.value);
+          }
         }
 
         const rows = gatherRows();
         const hasFiles = rows.length > 0;
+
+        if (hasFiles && writeMode !== "attributes") {
+          setClientError("File upload test page currently only supports attributes mode.");
+          return;
+        }
+
         let ENDPOINT = API_PREFIX + "/nodes";
         ENDPOINT += hasFiles ? "/file-upload" : "";
 
@@ -413,7 +524,7 @@
           let bodyText = text;
           let bodyJson = null;
 
-          if (contentType.includes("application/json")) {
+          if (isJsonContentType(contentType)) {
             try {
               bodyJson = JSON.parse(text);
               bodyText = JSON.stringify(bodyJson, null, 2);
@@ -464,6 +575,7 @@
 
       // start with one row
       ensureAtLeastOneRow();
+      updateWriteModeUi();
       updateAuthUi();
     </script>
   </body>
