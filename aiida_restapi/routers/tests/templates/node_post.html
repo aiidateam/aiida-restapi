@@ -403,7 +403,6 @@
         const writeMode = getWriteMode();
         let params = {
           node_type: nodeType,
-          write_mode: writeMode,
         };
 
         const label = labelInput.value.trim();
@@ -444,7 +443,7 @@
           if (writeMode === "attributes") {
             params.attributes = parsedArguments.value;
           } else {
-            Object.assign(params, parsedArguments.value);
+            params.args = parsedArguments.value;
           }
         }
 

@@ -11,6 +11,8 @@ from aiida.orm import Node
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
 
+from aiida_restapi.common.exceptions import UnsupportedConstructorModel
+
 
 class NodeStatistics(pdt.BaseModel):
     """Pydantic model representing node statistics."""
@@ -145,8 +147,7 @@ class NodeModelRegistry:
 
     This class maintains mappings of node types and their corresponding Pydantic models.
 
-    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type|write_mode`
-        composite field.
+    :ivar ModelUnion: An AiiDA ORM model union discriminated by `node_type` and payload shape (`attributes` vs. `args`).
     """
 
     def __init__(self) -> None:
@@ -187,18 +188,32 @@ class NodeModelRegistry:
             raise KeyError(f'Unknown model type: {which}')
         return model_dict[which]
 
-    def _get_node_post_models(self, node_cls: Node) -> dict[str, type[OrmModel] | None]:
-        """Get the 'write' and 'constructor' Pydantic models for a given AiiDA node class.
+    def get_post_model_from_payload(self, payload: dict[str, t.Any]) -> type[OrmModel]:
+        """Get the node creation model (`write` or `constructor`) from payload shape.
 
-        :param node_cls: The AiiDA node class.
-        :type node_cls: Node
-        :return: The ORM Node models for post and optional constructor creation.
-        :rtype: type[Node.OrmModel] | None
+        The payload is discriminated using:
+        1. `node_type`
+        2. presence of `attributes` (write) or `args` (constructor)
         """
-        return {
-            'write': node_cls.WriteModel,
-            'constructor': node_cls.ConstructorModel,
-        }
+        node_type = payload.get('node_type')
+        if not isinstance(node_type, str):
+            raise ValueError("The 'node_type' field is missing in the payload.")
+
+        has_attributes = 'attributes' in payload
+        has_args = 'args' in payload
+
+        if has_attributes and has_args:
+            raise ValueError("Payload cannot contain both 'attributes' and 'args'.")
+
+        # Default to write model so that model-level validation produces field-level errors
+        # when neither `attributes` nor `args` are provided.
+        which = 'constructor' if has_args else 'write'
+        Model = self.get_model(node_type, which)
+        if Model is None:
+            if which == 'constructor':
+                raise UnsupportedConstructorModel(node_type)
+            raise ValueError(f"'{node_type}' does not support {which} schema")
+        return Model
 
     def _build_node_mappings(self) -> None:
         """Build mapping of node type to node creation model."""
@@ -206,7 +221,7 @@ class NodeModelRegistry:
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
-                node_cls = t.cast(Node, entry_point.load())
+                node_cls = t.cast(type[Node], entry_point.load())
             except Exception as exception:
                 # Skip entry points that cannot be loaded
                 print(f'Warning: could not load entry point {entry_point.name}: {exception}')
@@ -214,15 +229,16 @@ class NodeModelRegistry:
 
             self._models[node_cls.class_node_type] = {
                 'read': node_cls.ReadModel,
-                **self._get_node_post_models(node_cls),
+                'write': node_cls.WriteModel,
+                'constructor': node_cls.get_constructor_model(),
             }
 
     def _build_model_union(self):
         """Build a union type of all node models.
 
-        The union uses a nested discriminator:
-        - outer: `node_type`
-        - inner: `write_mode` ('attributes' or 'constructor')
+        The union discriminator is inferred from:
+        - `node_type`
+        - payload shape (`attributes` for write, `args` for constructor)
         """
         self._build_node_mappings()
 
@@ -241,10 +257,15 @@ class NodeModelRegistry:
                     ]
                 )
 
-        def discriminator(value):
-            if isinstance(value, dict):
-                return f'{value.get("node_type")}|{value.get("write_mode")}'
-            return f'{value.node_type}|{value.write_mode}'
+        def discriminator(value: dict[str, t.Any]):
+            node_type = value.get('node_type')
+            has_attributes = 'attributes' in value
+            has_args = 'args' in value
+            if has_attributes and has_args:
+                return 'ambiguous'
+            if has_args:
+                return f'{node_type}|constructor'
+            return f'{node_type}|attributes'
 
         return t.Annotated[
             t.Union.__getitem__(tuple(tagged_models)),
