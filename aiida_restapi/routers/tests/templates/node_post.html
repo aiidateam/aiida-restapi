@@ -80,7 +80,6 @@
           >
           <textarea id="arguments">
 {
-  "value": 42
 }
           </textarea>
         </div>
@@ -110,13 +109,13 @@
 
     <h3>Result</h3>
     <pre id="out"></pre>
-    <div id="successLinks"></div>
+    <div id="successLink"></div>
 
     <script>
       const out = document.getElementById("out");
       const clientError = document.getElementById("clientError");
       const fileRows = document.getElementById("fileRows");
-      const successLinks = document.getElementById("successLinks");
+      const successLink = document.getElementById("successLink");
       const authStatus = document.getElementById("authStatus");
       const logoutBtn = document.getElementById("logoutBtn");
       const attributesModeBtn = document.getElementById("attributesModeBtn");
@@ -173,31 +172,15 @@
         clientError.textContent = msg ? " " + msg : "";
       }
 
-      function clearSuccessLinks() {
-        successLinks.innerHTML = "";
+      function clearSuccessLink() {
+        successLink.innerHTML = "";
       }
 
-      function showRepoMetadataLink(nodeId) {
-        // Build absolute-ish link so it works behind prefixes too.
-        // (Uses current origin; path is absolute)
-        const href = `/nodes/${nodeId}/repo/metadata`;
-
-        const box = document.createElement("div");
-        box.className = "success";
-
-        const title = document.createElement("div");
-        title.innerHTML = `<b>Success:</b> created node <code>${nodeId}</code>`;
-
-        const a = document.createElement("a");
-        a.href = href;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.textContent = `/nodes/${nodeId}/repo/metadata`;
-
-        box.appendChild(title);
-        box.appendChild(a);
-
-        successLinks.appendChild(box);
+      function showNodeLink(nodeId) {
+        const href = `${API_PREFIX}/nodes/${nodeId}`;
+        const successMessage = document.createElement("div");
+        successMessage.innerHTML = `<b>Success:</b> created node <a href="${href}" target="_blank" rel="noopener">${nodeId}</a>`;
+        successLink.appendChild(successMessage);
       }
 
       function safeJsonParse(text) {
@@ -236,6 +219,36 @@
         return false;
       }
 
+      function setRepositoryMetadataHash(metadata, target, hash) {
+        const parts = normalizeRelPath(target).split("/").filter(Boolean);
+        if (!parts.length) {
+          throw new Error("Empty target path");
+        }
+
+        let current = metadata;
+        for (let idx = 0; idx < parts.length; idx++) {
+          const part = parts[idx];
+          const isLeaf = idx === parts.length - 1;
+
+          if (!Object.prototype.hasOwnProperty.call(current.o, part)) {
+            current.o[part] = isLeaf ? { k: hash } : { o: {} };
+          } else if (isLeaf) {
+            current.o[part] = { k: hash };
+          } else {
+            const existing = current.o[part];
+            if (!isJsonObject(existing) || !isJsonObject(existing.o)) {
+              throw new Error(
+                `Path conflict at '${parts.slice(0, idx + 1).join("/")}'`
+              );
+            }
+          }
+
+          if (!isLeaf) {
+            current = current.o[part];
+          }
+        }
+      }
+
       function createFileRow() {
         const row = document.createElement("div");
         row.className = "file-row";
@@ -255,9 +268,21 @@
         pathLabel.textContent = "Target path (optional, relative)";
         const pathInput = document.createElement("input");
         pathInput.type = "text";
+        pathInput.className = "path-input";
         pathInput.placeholder = "e.g. sub/a.txt";
         colPath.appendChild(pathLabel);
         colPath.appendChild(pathInput);
+
+        const colHash = document.createElement("div");
+        colHash.className = "col grow";
+        const hashLabel = document.createElement("label");
+        hashLabel.textContent = "Hash";
+        const hashInput = document.createElement("input");
+        hashInput.type = "text";
+        hashInput.className = "hash-input";
+        hashInput.placeholder = "e.g. sha256 hash";
+        colHash.appendChild(hashLabel);
+        colHash.appendChild(hashInput);
 
         const colBtns = document.createElement("div");
         colBtns.className = "col";
@@ -285,9 +310,11 @@
         };
 
         pathInput.oninput = () => setClientError("");
+        hashInput.oninput = () => setClientError("");
 
         row.appendChild(colFile);
         row.appendChild(colPath);
+        row.appendChild(colHash);
         row.appendChild(colBtns);
 
         return row;
@@ -300,19 +327,21 @@
       }
 
       function gatherRows() {
-        // Returns list of { file: File, relPath?: string }
+        // Returns list of { file: File, relPath?: string, hash?: string }
         const items = [];
         for (const row of fileRows.children) {
           const fileInput = row.querySelector('input[type="file"]');
-          const pathInput = row.querySelector('input[type="text"]');
+          const pathInput = row.querySelector(".path-input");
+          const hashInput = row.querySelector(".hash-input");
           const file =
             fileInput && fileInput.files && fileInput.files.length
               ? fileInput.files[0]
               : null;
           const relPath = normalizeRelPath(pathInput ? pathInput.value : "");
+          const hash = (hashInput ? hashInput.value : "").trim();
           if (!file) continue;
 
-          items.push({ file, relPath });
+          items.push({ file, relPath, hash });
         }
         return items;
       }
@@ -332,12 +361,12 @@
       document.getElementById("clearBtn").addEventListener("click", () => {
         out.textContent = "";
         setClientError("");
-        clearSuccessLinks();
+        clearSuccessLink();
       });
 
       document.getElementById("authBtn").addEventListener("click", async () => {
         setClientError("");
-        clearSuccessLinks();
+        clearSuccessLink();
 
         const email = document.getElementById("authEmail").value.trim();
         const password = document.getElementById("authPassword").value;
@@ -386,12 +415,12 @@
       logoutBtn.addEventListener("click", () => {
         clearAccessToken();
         setClientError("");
-        clearSuccessLinks();
+        clearSuccessLink();
       });
 
       document.getElementById("sendBtn").addEventListener("click", async () => {
         setClientError("");
-        clearSuccessLinks();
+        clearSuccessLink();
 
         const nodeTypeSelect = document.getElementById("nodeTypeSelect");
         const labelInput = document.getElementById("label");
@@ -478,11 +507,12 @@
           } else {
             // multipart representation
             const fd = new FormData();
-            fd.append("params", JSON.stringify(params));
 
             // validate paths + build upload parts
             const targets = new Set();
-            for (const { file, relPath } of rows) {
+            const anyHashProvided = rows.some(({ hash }) => Boolean(hash));
+            const repositoryMetadata = anyHashProvided ? { o: {} } : null;
+            for (const { file, relPath, hash } of rows) {
               const target = relPath ? relPath : file.name;
 
               if (looksUnsafeRelPath(target)) {
@@ -494,6 +524,15 @@
                 return;
               }
               targets.add(target);
+
+              if (repositoryMetadata) {
+                try {
+                  setRepositoryMetadataHash(repositoryMetadata, target, hash || "");
+                } catch (err) {
+                  setClientError("Invalid repository metadata path: " + err);
+                  return;
+                }
+              }
 
               if (relPath) {
                 // Create a new File that carries the relPath as the multipart filename.
@@ -507,6 +546,11 @@
                 fd.append("files", file, file.name);
               }
             }
+
+            if (repositoryMetadata) {
+              params.repository_metadata = repositoryMetadata;
+            }
+            fd.append("params", JSON.stringify(params));
 
             resp = await fetch(ENDPOINT, {
               method: "POST",
@@ -549,7 +593,7 @@
             "\n\n" +
             bodyText;
 
-          // Add quick link to repo metadata on success if we can extract node id.
+          // Add quick link to node on success if we can extract node id.
           if (resp.ok && bodyJson) {
             const nodeId =
               bodyJson.id ??
@@ -564,7 +608,7 @@
               nodeId !== null &&
               String(nodeId).length
             ) {
-              showRepoMetadataLink(String(nodeId));
+              showNodeLink(String(nodeId));
             }
           }
         } catch (err) {

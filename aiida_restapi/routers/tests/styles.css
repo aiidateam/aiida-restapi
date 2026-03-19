@@ -22,8 +22,9 @@ input[type="text"] {
 }
 .file-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
   margin: 8px 0;
   padding: 10px;
   border: 1px solid #ddd;
@@ -33,13 +34,22 @@ input[type="text"] {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 .file-row label {
   font-size: 0.9em;
   color: #444;
 }
 .file-row .grow {
-  flex: 1;
+  flex: 1 1 240px;
+}
+.file-row input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.file-row input[type="file"] {
+  max-width: 220px;
 }
 pre {
   white-space: pre-wrap;

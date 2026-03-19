@@ -5,13 +5,11 @@ from __future__ import annotations
 import typing as t
 
 import pydantic as pdt
-from aiida.common.exceptions import MissingEntryPointError
+from aiida.common.exceptions import MissingEntryPointError, UnsupportedConstructorModel
 from aiida.common.pydantic import OrmModel
 from aiida.orm import Node
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
-
-from aiida_restapi.common.exceptions import UnsupportedConstructorModel
 
 
 class NodeStatistics(pdt.BaseModel):
@@ -82,6 +80,10 @@ class RepoFileMetadata(pdt.BaseModel):
     size: int = pdt.Field(
         description='The size of the file in bytes.',
         examples=[1024],
+    )
+    file_hash: str = pdt.Field(
+        description='The hash of the file in the repository.',
+        alias='hash',
     )
     download: str = pdt.Field(
         description='The URL to download the file.',
@@ -230,7 +232,7 @@ class NodeModelRegistry:
             self._models[node_cls.class_node_type] = {
                 'read': node_cls.ReadModel,
                 'write': node_cls.WriteModel,
-                'constructor': node_cls.get_constructor_model(),
+                'constructor': node_cls.ConstructorModel if node_cls.has_constructor_model else None,
             }
 
     def _build_model_union(self):

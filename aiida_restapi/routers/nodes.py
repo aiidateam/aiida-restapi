@@ -9,6 +9,7 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.common import exceptions as aiida_exceptions
 from fastapi import APIRouter, Body, Depends, Form, Query, Request, Response, UploadFile
 from fastapi import exceptions as fastapi_exceptions
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -61,7 +62,7 @@ async def unsupported_model_error_handler(
         if isinstance(body, dict):
             try:
                 model_registry.get_post_model_from_payload(body)
-            except restapi_exceptions.UnsupportedConstructorModel as unsupported:
+            except aiida_exceptions.UnsupportedConstructorModel as unsupported:
                 return jsonapi_error(request, unsupported, 422)
             except Exception:
                 pass
