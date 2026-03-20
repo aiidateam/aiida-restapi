@@ -62,7 +62,7 @@ async def unsupported_model_error_handler(
         if isinstance(body, dict):
             try:
                 model_registry.get_post_model_from_payload(body)
-            except aiida_exceptions.UnsupportedConstructorModel as unsupported:
+            except aiida_exceptions.UnsupportedConstructorModelError as unsupported:
                 return jsonapi_error(request, unsupported, 422)
             except Exception:
                 pass

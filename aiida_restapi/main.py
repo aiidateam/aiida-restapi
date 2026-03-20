@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
             aiida_exceptions.InputValidationError: 422,
             aiida_exceptions.ContentNotExistent: 422,
             restapi_exceptions.SchemaNotSupported: 422,
-            aiida_exceptions.UnsupportedConstructorModel: 422,
+            aiida_exceptions.UnsupportedConstructorModelError: 422,
             restapi_exceptions.QueryBuilderException: 422,
             aiida_exceptions.LicensingException: 451,
             restapi_exceptions.JsonApiException: 500,

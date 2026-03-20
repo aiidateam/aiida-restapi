@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing as t
 
 import pydantic as pdt
-from aiida.common.exceptions import MissingEntryPointError, UnsupportedConstructorModel
+from aiida.common.exceptions import MissingEntryPointError, UnsupportedConstructorModelError
 from aiida.common.pydantic import OrmModel
 from aiida.orm import Node
 from aiida.plugins import get_entry_points
@@ -213,7 +213,7 @@ class NodeModelRegistry:
         Model = self.get_model(node_type, which)
         if Model is None:
             if which == 'constructor':
-                raise UnsupportedConstructorModel(node_type)
+                raise UnsupportedConstructorModelError(node_type)
             raise ValueError(f"'{node_type}' does not support {which} schema")
         return Model
 
