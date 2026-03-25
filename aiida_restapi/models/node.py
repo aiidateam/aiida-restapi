@@ -6,8 +6,7 @@ import typing as t
 
 import pydantic as pdt
 from aiida.common.exceptions import MissingEntryPointError, UnsupportedConstructorModelError
-from aiida.common.pydantic import OrmModel
-from aiida.orm import Node
+from aiida.orm import Node, OrmModel
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
 
