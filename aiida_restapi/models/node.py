@@ -231,7 +231,7 @@ class NodeModelRegistry:
             self._models[node_cls.class_node_type] = {
                 'read': node_cls.ReadModel,
                 'write': node_cls.WriteModel,
-                'constructor': node_cls.ConstructorModel if node_cls.has_constructor_model else None,
+                'constructor': node_cls.ConstructorModel if node_cls.supports_constructor_model else None,
             }
 
     def _build_model_union(self):
