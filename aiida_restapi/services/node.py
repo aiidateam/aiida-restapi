@@ -222,7 +222,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :rtype: dict[str, t.Any]
         """
         node_cls = self._load_entry_point_from_node_type(model.node_type)
-        files_dict = {key: lambda: upload.file for key, upload in (files or {}).items()}
+        files_dict = {key: lambda upload=upload: upload.file for key, upload in (files or {}).items()}
         node = t.cast(NodeType, node_cls.from_model(model, files=files_dict))
         node.store()
         return node.serialize(minimal=True)
