@@ -22,6 +22,7 @@ async def test_nodes_post(request: Request) -> HTMLResponse:
         f'<option value="{node_type}">{node_type}</option>'
         for node_type in sorted(model_registry.get_node_types())
         if not node_type.startswith('process')
+        and node_type not in {'data.core.code.Code.', 'data.core.code.abstract.AbstractCode.'}
     )
     js = here / 'templates' / 'node_post.js'
     return templates.TemplateResponse(
