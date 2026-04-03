@@ -8,9 +8,11 @@ const attributesModeBtn = document.getElementById("attributesModeBtn");
 const constructorModeBtn = document.getElementById("constructorModeBtn");
 const writeModeInput = document.getElementById("writeMode");
 const argumentsLabel = document.getElementById("argumentsLabel");
+const nodeTypeSelect = document.getElementById("nodeTypeSelect");
 
 const API_PREFIX = document.body.dataset.apiPrefix;
 const TOKEN_STORAGE_KEY = "aiida_restapi_access_token";
+const constructorSupportCache = new Map();
 
 function getWriteMode() {
   return writeModeInput.value;
@@ -30,6 +32,54 @@ function updateWriteModeUi() {
 function setWriteMode(writeMode) {
   writeModeInput.value = writeMode;
   updateWriteModeUi();
+}
+
+async function supportsConstructor(nodeType) {
+  if (constructorSupportCache.has(nodeType)) {
+    return constructorSupportCache.get(nodeType);
+  }
+
+  const token = getAccessToken();
+  const endpoint =
+    API_PREFIX +
+    "/nodes/schema?type=" +
+    encodeURIComponent(nodeType) +
+    "&which=constructor";
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+      },
+    });
+
+    const supported = resp.ok;
+    if (resp.status === 422 || resp.status === 404) {
+      constructorSupportCache.set(nodeType, false);
+      return false;
+    }
+    if (supported) {
+      constructorSupportCache.set(nodeType, true);
+      return true;
+    }
+
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+async function updateConstructorModeAvailability() {
+  const nodeType = nodeTypeSelect.value;
+  const supported = await supportsConstructor(nodeType);
+
+  constructorModeBtn.hidden = !supported;
+
+  if (!supported && getWriteMode() === "constructor") {
+    setWriteMode("attributes");
+  }
 }
 
 function getAccessToken() {
@@ -243,6 +293,10 @@ constructorModeBtn.addEventListener("click", () => {
   setWriteMode("constructor");
 });
 
+nodeTypeSelect.addEventListener("change", () => {
+  void updateConstructorModeAvailability();
+});
+
 document.getElementById("clearBtn").addEventListener("click", () => {
   out.textContent = "";
   setClientError("");
@@ -306,7 +360,6 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
   setClientError("");
   clearSuccessLink();
 
-  const nodeTypeSelect = document.getElementById("nodeTypeSelect");
   const labelInput = document.getElementById("label");
   const descriptionInput = document.getElementById("description");
   const extrasTextarea = document.getElementById("extras");
@@ -497,3 +550,4 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 ensureAtLeastOneRow();
 updateWriteModeUi();
 updateAuthUi();
+void updateConstructorModeAvailability();
