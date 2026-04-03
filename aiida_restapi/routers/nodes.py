@@ -21,15 +21,7 @@ from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common import query
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
-from aiida_restapi.jsonapi.models import errors
-from aiida_restapi.jsonapi.models.aiida import (
-    ComputerResourceDocument,
-    GroupCollectionDocument,
-    LinkCollectionDocument,
-    NodeCollectionDocument,
-    NodeResourceDocument,
-    UserResourceDocument,
-)
+from aiida_restapi.jsonapi.models import aiida, errors
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.jsonapi.responses import JsonApiResponse
 from aiida_restapi.jsonapi.utils import jsonapi_error
@@ -69,7 +61,7 @@ async def unsupported_model_error_handler(
                 model_registry.get_post_model_from_payload(body, which)
             except aiida_exceptions.UnsupportedSchemaError as unsupported:
                 return jsonapi_error(request, unsupported, 422)
-            except Exception:
+            except ValueError:
                 pass
 
     return await request_validation_exception_handler(request, exception)
@@ -151,7 +143,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 @read_router.get(
     '',
     response_class=JsonApiResponse,
-    response_model=NodeCollectionDocument,
+    response_model=aiida.NodeCollectionDocument,
     response_model_exclude_none=True,
     responses={
         422: {
@@ -201,7 +193,7 @@ async def get_node_types() -> list:
 @read_router.get(
     '/{uuid}',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -232,7 +224,7 @@ async def get_node(
 @read_router.get(
     '/{uuid}/user',
     response_class=JsonApiResponse,
-    response_model=UserResourceDocument,
+    response_model=aiida.UserResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -255,7 +247,7 @@ async def get_node_user(request: Request, uuid: str) -> dict[str, t.Any]:
 @read_router.get(
     '/{uuid}/computer',
     response_class=JsonApiResponse,
-    response_model=ComputerResourceDocument,
+    response_model=aiida.ComputerResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -278,7 +270,7 @@ async def get_node_computer(request: Request, uuid: str) -> dict[str, t.Any]:
 @read_router.get(
     '/{uuid}/groups',
     response_class=JsonApiResponse,
-    response_model=GroupCollectionDocument,
+    response_model=aiida.GroupCollectionDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -382,7 +374,7 @@ async def get_node_extras(
 @read_router.get(
     '/{uuid}/links',
     response_class=JsonApiResponse,
-    response_model=LinkCollectionDocument,
+    response_model=aiida.LinkCollectionDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -543,7 +535,7 @@ async def download_node(
 @write_router.post(
     '',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         403: {'model': errors.StoringNotAllowedError},
@@ -572,7 +564,7 @@ async def create_node(
 @write_router.post(
     '/constructor',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         403: {'model': errors.StoringNotAllowedError},
@@ -601,7 +593,7 @@ async def create_node_constructor(
 @write_router.post(
     '/file-upload',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         400: {'model': errors.JsonDecodingError, 'description': 'JSON Decoding Error'},

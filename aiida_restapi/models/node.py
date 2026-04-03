@@ -199,9 +199,13 @@ class NodeModelRegistry:
     ) -> type[OrmModel]:
         """Get the node creation model (`write` or `constructor`) from payload shape.
 
-        The payload is discriminated using:
-        1. `node_type`
-        2. presence of `attributes` (write) or `args` (constructor)
+        :param payload: The JSON payload from which to infer the node type and model.
+        :type payload: dict[str, Any]
+        :param which: Optionally specify which model type to return. If not provided, it will be inferred from the
+            presence of `attributes` (for `write`) or `args` (for `constructor`) in the payload.
+        :type which: str
+        :return: The corresponding Pydantic model class for node creation.
+        :rtype: type[OrmModel]
         """
         node_type = payload.get('node_type')
         if not isinstance(node_type, str):
@@ -249,7 +253,13 @@ class NodeModelRegistry:
             }
 
     def _build_model_union(self, which: t.Literal['write', 'constructor']) -> t.Any:
-        """Build a union type of node models for the given payload kind."""
+        """Build a union type of node models for the given payload kind.
+
+        :param which: The kind of model to build the union for ('write' or 'constructor').
+        :type which: str
+        :return: A Pydantic model union type for the specified kind of node creation.
+        :rtype: Any
+        """
         models: list[type[OrmModel]] = []
 
         excluded_types = {'data.core.code.Code.', 'data.core.code.abstract.AbstractCode.'}
