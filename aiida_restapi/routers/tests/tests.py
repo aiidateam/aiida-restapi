@@ -19,13 +19,17 @@ css = here / 'styles.css'
 async def test_nodes_post(request: Request) -> HTMLResponse:
     """Serve page to test node POST requests."""
     node_types = '\n'.join(
-        f'<option value="{model_cls}">{model_cls}</option>' for model_cls in sorted(model_registry.get_node_types())
+        f'<option value="{node_type}">{node_type}</option>'
+        for node_type in sorted(model_registry.get_node_types())
+        if not node_type.startswith('process')
     )
+    js = here / 'templates' / 'node_post.js'
     return templates.TemplateResponse(
         'node_post.html',
         {
             'request': request,
             'css': css.read_text(),
+            'js': js.read_text(),
             'api_prefix': API_CONFIG['PREFIX'],
             'options': node_types,
         },
@@ -35,11 +39,13 @@ async def test_nodes_post(request: Request) -> HTMLResponse:
 @read_router.get('/querybuilder', response_class=HTMLResponse)
 async def test_querybuilder(request: Request) -> HTMLResponse:
     """Serve page to test query builder endpoint."""
+    js = here / 'templates' / 'querybuilder.js'
     return templates.TemplateResponse(
         'querybuilder.html',
         {
             'request': request,
             'css': css.read_text(),
+            'js': js.read_text(),
             'api_prefix': API_CONFIG['PREFIX'],
         },
     )
