@@ -252,9 +252,10 @@ class NodeModelRegistry:
         """Build a union type of node models for the given payload kind."""
         models: list[type[OrmModel]] = []
 
+        excluded_types = {'data.core.code.Code.', 'data.core.code.abstract.AbstractCode.'}
         for node_type, model_dict in self._models.items():
-            if node_type.startswith('process'):
-                # Process nodes are not supported for direct creation
+            if node_type.startswith('process') or node_type in excluded_types:
+                # These do not support direct creation
                 continue
             model = model_dict[which]
             if model is not None:
