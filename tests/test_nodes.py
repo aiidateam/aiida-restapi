@@ -360,7 +360,7 @@ def test_create_dict(client: TestClient):
 def test_create_dict_constructor_args(client: TestClient):
     """Test creating a new dict using constructor args payload discrimination."""
     response = client.post(
-        '/nodes',
+        '/nodes/constructor',
         json={
             'node_type': 'data.core.dict.Dict.',
             'label': 'test_dict_constructor',
@@ -394,7 +394,7 @@ def test_create_node_reject_both_attributes_and_args(client: TestClient):
 def test_create_node_constructor_not_supported(client: TestClient):
     """Test constructor payload for unsupported type returns concise validation error."""
     response = client.post(
-        '/nodes',
+        '/nodes/constructor',
         json={
             'node_type': 'data.core.int.Int.',
             'args': {'value': 42},

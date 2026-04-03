@@ -148,16 +148,19 @@ class NodeModelRegistry:
 
     This class maintains mappings of node types and their corresponding Pydantic models.
 
-    :ivar ModelUnion: An AiiDA ORM model union discriminated by `node_type` and payload shape (`attributes` vs. `args`).
+    :ivar WriteModelUnion: An AiiDA ORM model union for attributes-based node creation.
+    :ivar ConstructorModelUnion: An AiiDA ORM model union for constructor-based node creation.
     """
 
     def __init__(self) -> None:
-        self.ModelUnion = self._build_model_union()
+        self._build_node_mappings()
+        self.WriteModelUnion = self._build_model_union('write')
+        self.ConstructorModelUnion = self._build_model_union('constructor')
 
     def get_node_types(self) -> list[str]:
-        """Get the list of registered node class names.
+        """Get the list of registered node types.
 
-        :return: List of node class names.
+        :return: List of node type strings.
         """
         return list(self._models.keys())
 
@@ -189,7 +192,11 @@ class NodeModelRegistry:
             raise KeyError(f'Unknown model type: {which}')
         return model_dict[which]
 
-    def get_post_model_from_payload(self, payload: dict[str, t.Any]) -> type[OrmModel]:
+    def get_post_model_from_payload(
+        self,
+        payload: dict[str, t.Any],
+        which: t.Literal['write', 'constructor'] | None = None,
+    ) -> type[OrmModel]:
         """Get the node creation model (`write` or `constructor`) from payload shape.
 
         The payload is discriminated using:
@@ -206,13 +213,17 @@ class NodeModelRegistry:
         if has_attributes and has_args:
             raise ValueError("Payload cannot contain both 'attributes' and 'args'.")
 
-        # Default to write model so that model-level validation produces field-level errors
-        # when neither `attributes` nor `args` are provided.
-        which = 'constructor' if has_args else 'write'
+        if which is None:
+            which = 'constructor' if has_args else 'write'
+        elif which == 'constructor' and has_attributes:
+            raise ValueError("Payload cannot contain 'attributes' on the constructor endpoint.")
+        elif which == 'write' and has_args:
+            raise ValueError("Payload cannot contain 'args' on the attributes endpoint.")
+
         Model = self.get_model(node_type, which)  # type: ignore[arg-type]
         if Model is None:
             if which == 'constructor':
-                raise UnsupportedSchemaError(f"'{node_type}' does not support constructor-based creation.")
+                raise UnsupportedSchemaError(f"'{node_type}' does not support constructor payloads (`args`).")
             raise ValueError(f"'{node_type}' does not support {which} schema")
         return Model
 
@@ -221,6 +232,9 @@ class NodeModelRegistry:
         self._models: dict[str, dict[str, type[OrmModel] | None]] = {}
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
+            if entry_point.name == 'data':
+                # The root `Data` node type is incompatible with model-based creation
+                continue
             try:
                 node_cls = t.cast(type[Node], entry_point.load())
             except Exception as exception:
@@ -234,41 +248,19 @@ class NodeModelRegistry:
                 'constructor': node_cls.ConstructorModel if node_cls.supports_constructor_model else None,
             }
 
-    def _build_model_union(self):  # type: ignore[no-untyped-def]
-        """Build a union type of all node models.
-
-        The union discriminator is inferred from:
-        - `node_type`
-        - payload shape (`attributes` for write, `args` for constructor)
-        """
-        self._build_node_mappings()
-
-        tagged_models: list = []
+    def _build_model_union(self, which: t.Literal['write', 'constructor']) -> t.Any:
+        """Build a union type of node models for the given payload kind."""
+        models: list[type[OrmModel]] = []
 
         for node_type, model_dict in self._models.items():
-            write_model = model_dict['write']
-            tagged_models.append(t.Annotated[write_model, pdt.Tag(f'{node_type}|attributes')])
-
-            if model_dict['constructor'] is not None:
-                constructor_model = model_dict['constructor']
-                tagged_models.append(
-                    t.Annotated[
-                        constructor_model,
-                        pdt.Tag(f'{node_type}|constructor'),
-                    ]
-                )
-
-        def discriminator(value: dict[str, t.Any]) -> str:
-            node_type = value.get('node_type')
-            has_attributes = 'attributes' in value
-            has_args = 'args' in value
-            if has_attributes and has_args:
-                return 'ambiguous'
-            if has_args:
-                return f'{node_type}|constructor'
-            return f'{node_type}|attributes'
+            if node_type.startswith('process'):
+                # Process nodes are not supported for direct creation
+                continue
+            model = model_dict[which]
+            if model is not None:
+                models.append(model)
 
         return t.Annotated[
-            t.Union[tuple(tagged_models)],
-            pdt.Discriminator(discriminator),
+            t.Union[tuple(models)],
+            pdt.Field(discriminator='node_type'),
         ]
