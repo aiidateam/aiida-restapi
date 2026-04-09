@@ -18,7 +18,6 @@ from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from aiida_restapi import config
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
@@ -246,7 +245,25 @@ def authenticate(app):
 
     async def logged_in_user(token=None):  # pylint: disable=unused-argument
         """Fake active user."""
-        return UserInDB(**config.fake_users_db['johndoe@example.com'])
+        try:
+            user = orm.User.collection.get(email='johndoe@example.com')
+        except NotExistent:
+            user = orm.User(
+                email='johndoe@example.com',
+                first_name='John',
+                last_name='Doe',
+                institution='EPFL',
+            ).store()
+
+        return UserInDB(
+            pk=user.pk,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            institution=user.institution,
+            hashed_password='',
+            disabled=False,
+        )
 
     app.dependency_overrides[get_current_user] = logged_in_user
     yield
