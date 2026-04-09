@@ -28,6 +28,8 @@ from aiida_restapi.jsonapi.utils import jsonapi_error
 from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeService
 
+from .auth import UserInDB, get_current_active_user
+
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
 
@@ -549,7 +551,7 @@ async def download_node(
 async def create_node(
     request: Request,
     model: t.Annotated[NodeAttributesModelUnion, Body(discriminator='node_type')],
-    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from an attributes-based payload."""
     result = service.add_one(model)
@@ -578,7 +580,7 @@ async def create_node(
 async def create_node_constructor(
     request: Request,
     model: t.Annotated[NodeConstructorModelUnion, Body(discriminator='node_type')],
-    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from a constructor-based payload."""
     result = service.add_one(model)
@@ -615,7 +617,7 @@ async def create_node_with_files(
         ),
     ],
     files: list[UploadFile],
-    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
     payload = t.cast(dict, json.loads(params))
