@@ -484,7 +484,7 @@ async def get_node_repo_file_contents(
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
         409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
-        422: {'model': errors.InvalidInputError, 'description': 'Validation Error'},
+        422: {'model': errors.RequestValidationError | errors.InvalidInputError, 'description': 'Validation Error'},
         451: {'model': errors.InvalidLicenseError, 'description': 'Invalid License'},
     },
 )
@@ -492,9 +492,9 @@ async def get_node_repo_file_contents(
 async def download_node(
     uuid: str,
     format: t.Annotated[
-        str,
+        str | None,
         Query(description='Format to download the node in'),
-    ],
+    ] = None,
     options: t.Annotated[
         str | None,
         Query(description='Additional options for archive downloads, provided as a JSON string'),
@@ -506,6 +506,14 @@ async def download_node(
     If downloading as an archive, additional options can be provided as a JSON object via the
     `options` query parameter.
     """
+
+    if format is None:
+        raise ValidationException(
+            'Please specify the download format. '
+            'The available download formats can be '
+            'queried using the /nodes/download_formats endpoint.',
+        )
+
     node = orm.load_node(uuid)
 
     if format == 'archive':
