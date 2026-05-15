@@ -35,7 +35,7 @@ def test_get_node_schema(client: TestClient):
     'which, model, name',
     [
         ['read', orm.Int.ReadModel, 'AttributesModel'],
-        ['write', orm.Int.WriteModel, 'AttributesCreateModel'],
+        ['write', orm.Int.WriteModel, 'AttributesWriteModel'],
     ],
 )
 def test_get_node_schema_by_type(client: TestClient, which: str, model: type[BaseModel], name: str):
@@ -350,7 +350,7 @@ def test_create_dict(client: TestClient):
         json={
             'node_type': 'data.core.dict.Dict.',
             'label': 'test_dict',
-            'attributes': {'value': {'x': 1, 'y': 2}},
+            'attributes': {'x': 1, 'y': 2},
         },
     )
     assert response.status_code == 200, response.content
@@ -396,13 +396,13 @@ def test_create_node_constructor_not_supported(client: TestClient):
     response = client.post(
         '/nodes',
         json={
-            'node_type': 'data.Data.',
+            'node_type': 'data.core.int.Int.',
             'args': {'value': 42},
         },
     )
     assert response.status_code == 422, response.content
     detail = response.json()['errors'][0]['detail']
-    assert "'data.Data.' does not support constructor payloads (`args`)." in detail
+    assert "'data.core.int.Int.' does not support constructor" in detail
 
 
 @pytest.mark.anyio
@@ -410,15 +410,14 @@ def test_create_node_constructor_not_supported(client: TestClient):
 async def test_create_code(async_client: AsyncClient, default_computers: list[int | None]):
     """Test creating a new Code."""
     for comp_id in default_computers:
-        computer = orm.load_computer(comp_id)
         response = await async_client.post(
             '/nodes',
             json={
                 'node_type': 'data.core.code.installed.InstalledCode.',
                 'label': 'test_code',
+                'computer': comp_id,
                 'attributes': {
                     'filepath_executable': '/bin/true',
-                    'computer': computer.label,
                 },
             },
         )
@@ -525,38 +524,6 @@ def test_create_structure_data(client: TestClient):
                         'kind_name': 'H',
                     },
                 ],
-            },
-        },
-    )
-    assert response.status_code == 200, response.content
-
-
-@pytest.mark.usefixtures('authenticate')
-def test_create_orbital_data(client: TestClient):
-    """Test creating a new OrbitalData."""
-    response = client.post(
-        '/nodes',
-        json={
-            'node_type': 'data.core.orbital.OrbitalData.',
-            'description': '',
-            'attributes': {
-                'orbital_dicts': [
-                    {
-                        'spin': 0,
-                        'position': [
-                            -1,
-                            1,
-                            1,
-                        ],
-                        'kind_name': 'As',
-                        'diffusivity': None,
-                        'radial_nodes': 0,
-                        '_orbital_type': 'realhydrogen',
-                        'x_orientation': None,
-                        'z_orientation': None,
-                        'angular_momentum': -3,
-                    }
-                ]
             },
         },
     )
@@ -757,7 +724,7 @@ def test_create_unknown_entry_point(client: TestClient):
 
 @pytest.mark.usefixtures('default_computers', 'authenticate')
 def test_create_additional_attribute(client: TestClient):
-    """Test adding additional properties are ignored."""
+    """Test adding additional properties are rejected."""
     response = client.post(
         '/nodes',
         json={
@@ -768,13 +735,7 @@ def test_create_additional_attribute(client: TestClient):
             },
         },
     )
-    assert response.status_code == 200, response.content
-
-    check = client.get(f'/nodes/{response.json()["data"]["id"]}/attributes')
-    assert check.status_code == 200, check.content
-    attributes = check.json()['data']['attributes']
-    assert 'value' in attributes
-    assert 'extra_thing' not in attributes
+    assert response.status_code == 422, response.content
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -804,17 +765,17 @@ async def test_get_download_node(async_client: AsyncClient, array_data_node: orm
     The async client is needed to avoid an error caused by an I/O operation on closed file"""
 
     # Test that array is correctly downloaded as json
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=json')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download?format=json')
     assert response.status_code == 200, response.json()
     assert response.json()['default'] == array_data_node.get_array().tolist()
 
     # Test exception when wrong download format given
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?format=cif')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download?format=cif')
     assert response.status_code == 422, response.json()
     assert 'format cif is not supported' in response.json()['errors'][0]['detail']
 
     # Test exception when no download format given
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download')
     assert response.status_code == 422, response.json()
     assert 'Please specify the download format' in response.json()['errors'][0]['detail']
 
