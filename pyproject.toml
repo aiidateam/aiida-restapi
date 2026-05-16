@@ -3,16 +3,16 @@ build-backend = 'flit_core.buildapi'
 requires = ['flit_core>=3.4,<4']
 
 [project]
-authors = [{name = 'The AiiDA Team', email = 'developers@aiida.net'}]
+authors = [{ name = 'The AiiDA Team', email = 'developers@aiida.net' }]
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Framework :: AiiDA',
   'Intended Audience :: Science/Research',
   'License :: OSI Approved :: MIT License',
   'Programming Language :: Python',
-  'Programming Language :: Python :: 3.9',
   'Programming Language :: Python :: 3.10',
   'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
   'Topic :: Scientific/Engineering',
 ]
 dependencies = [
@@ -20,7 +20,6 @@ dependencies = [
   'fastapi~=0.115.5',
   'uvicorn[standard]~=0.32.1',
   'pydantic~=2.0',
-  'eval_type_backport',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
   'python-dateutil~=2.0',
@@ -32,7 +31,7 @@ keywords = ['aiida', 'workflows']
 license = {file = 'LICENSE.txt'}
 name = 'aiida-restapi'
 readme = 'README.md'
-requires-python = '>=3.9'
+requires-python = '>=3.10'
 
 [project.optional-dependencies]
 auth = ['python-jose', 'python-multipart', 'argon2-cffi', 'bcrypt']
@@ -142,18 +141,18 @@ select = [
 legacy_tox_ini = """
 [tox]
 envlist =
-    py38
+    py310
     py311
+    py312
 
 [testenv]
 usedevelop = true
 
-[testenv:py{38,39,310,311}]
+[testenv:py{310,311,312}]
 description =
-    py38: Installs test dependencies and runs tests using python 3.8
-    py39: Installs test dependencies and runs tests using python 3.9
     py310: Installs test dependencies and runs tests using python 3.10
     py311: Installs test dependencies and runs tests using python 3.11
+    py312: Installs test dependencies and runs tests using python 3.12
 extras =
     auth
     testing
