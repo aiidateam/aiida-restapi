@@ -204,7 +204,7 @@ def test_get_node_types(client: TestClient):
     assert response.status_code == 200
     result = response.json()
     entry_points = get_entry_points('aiida.data') + get_entry_points('aiida.node')
-    assert len(result) == len(entry_points)
+    assert len(result) == len(entry_points) - 1  # `data` entrypoint is excluded
     first = result[0]
     assert NodeType.model_validate(first)
 
