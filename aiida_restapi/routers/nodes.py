@@ -9,132 +9,126 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import EntryPointError, LicensingException, NotExistent
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from aiida.common import exceptions as aiida_exceptions
+from fastapi import APIRouter, Body, Depends, Form, Query, Request, Response, UploadFile
+from fastapi import exceptions as fastapi_exceptions
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
+from aiida_restapi.common import exceptions as restapi_exceptions
+from aiida_restapi.common import query
 from aiida_restapi.config import API_CONFIG
-from aiida_restapi.models.node import NodeModelRegistry
-from aiida_restapi.repository.node import NodeRepository
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import aiida, errors
+from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
+from aiida_restapi.jsonapi.responses import JsonApiResponse
+from aiida_restapi.jsonapi.utils import jsonapi_error
+from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.services.node import NodeService
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/nodes')
+write_router = APIRouter(prefix='/nodes')
 
-repository = NodeRepository[orm.Node, orm.Node.Model](orm.Node)
+service = NodeService[orm.Node, orm.Node.ReadModel](orm.Node)
+
 model_registry = NodeModelRegistry()
+
 
 if t.TYPE_CHECKING:
     # Dummy type for static analysis
-    NodeModelUnion: TypeAlias = pdt.BaseModel
+    NodeAttributesModelUnion: TypeAlias = pdt.BaseModel
+    NodeConstructorModelUnion: TypeAlias = pdt.BaseModel
 else:
-    # The real discriminated union built at runtime
-    NodeModelUnion = model_registry.ModelUnion
+    # The real discriminated unions built at runtime
+    NodeAttributesModelUnion = model_registry.WriteModelUnion
+    NodeConstructorModelUnion = model_registry.ConstructorModelUnion
 
 
-@read_router.get('/nodes/schema')
+async def unsupported_model_error_handler(
+    request: Request,
+    exception: fastapi_exceptions.RequestValidationError,
+) -> Response:
+    """Return concise validation errors for selected request-validation cases."""
+    if request.method == 'POST' and (
+        request.url.path.endswith('/nodes') or request.url.path.endswith('/nodes/constructor')
+    ):
+        body = getattr(exception, 'body', None)
+        if isinstance(body, dict):
+            try:
+                which = 'constructor' if request.url.path.endswith('/nodes/constructor') else None
+                model_registry.get_post_model_from_payload(body, which)  # type: ignore[arg-type]
+            except aiida_exceptions.UnsupportedSchemaError as unsupported:
+                return jsonapi_error(request, unsupported, 422)
+            except ValueError:
+                pass
+
+    return await request_validation_exception_handler(request, exception)
+
+
+@read_router.get(
+    '/schema',
+    response_model=dict[str, t.Any],
+    responses={
+        422: {
+            'model': t.Union[errors.InvalidNodeTypeError, errors.SchemaNotSupported],
+            'description': 'Invalid Node Type | Schema Not Supported',
+        },
+    },
+)
 async def get_nodes_schema(
-    node_type: str | None = Query(
-        None,
-        description='The AiiDA node type string.',
-        alias='type',
-    ),
-    which: t.Literal['get', 'post'] = Query(
-        'get',
-        description='The type of schema to retrieve: "get" for the response model, "post" for the creation model.',
-    ),
-) -> dict:
-    """Get JSON schema for the base AiiDA node 'get' model.
-
-    :param node_type: The AiiDA node type string.
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: The JSON schema for the base AiiDA node 'get' model.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post',
-        422 if the node type is not recognized.
-    """
+    node_type: t.Annotated[
+        str | None,
+        Query(
+            description='The AiiDA node type string.',
+            alias='type',
+        ),
+    ] = None,
+    which: t.Annotated[
+        t.Literal['read', 'write', 'constructor'],
+        Query(description='Type of schema to retrieve'),
+    ] = 'read',
+) -> dict[str, t.Any]:
+    """Get JSON schema for the base AiiDA node 'read' model."""
     if not node_type:
-        return orm.Node.Model.model_json_schema()
-    try:
-        model = model_registry.get_model(node_type, which)
-        return model.model_json_schema()
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
+        return orm.Node.ReadModel.model_json_schema()
+    Model = model_registry.get_model(node_type, which)
+    if not Model:
+        raise restapi_exceptions.SchemaNotSupported(f"'{node_type}' does not support {which} schema")
+    return Model.model_json_schema()
 
 
-@read_router.get('/nodes/projectable_properties')
+@read_router.get(
+    '/projections',
+    response_model=list[str],
+    responses={
+        422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
+    },
+)
 @with_dbenv()
-async def get_node_projectable_properties(
-    node_type: str | None = Query(
-        None,
-        description='The AiiDA node type string.',
-        alias='type',
-    ),
+async def get_node_projections(
+    node_type: t.Annotated[
+        str | None,
+        Query(description='The AiiDA node type string.', alias='type'),
+    ] = None,
 ) -> list[str]:
-    """Get projectable properties for AiiDA nodes.
-
-    :param node_type: The AiiDA node type string.
-    :return: The list of projectable properties for AiiDA nodes.
-    :raises HTTPException: 422 if the node type is not recognized.
-    """
-    try:
-        return repository.get_projectable_properties(node_type)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
+    """Get queryable projections for AiiDA nodes."""
+    return service.get_projections(node_type)
 
 
-class NodeStatistics(pdt.BaseModel):
-    """Pydantic model representing node statistics."""
-
-    total: int = pdt.Field(
-        description='Total number of nodes.',
-        examples=[47],
-    )
-    types: dict[str, int] = pdt.Field(
-        description='Number of nodes by type.',
-        examples=[
-            {
-                'data.core.int.Int.': 42,
-                'data.core.singlefile.SinglefileData.': 5,
-            }
-        ],
-    )
-    ctime_by_day: dict[str, int] = pdt.Field(
-        description='Number of nodes created per day (YYYY-MM-DD).',
-        examples=[
-            {
-                '2012-01-01': 10,
-                '2012-01-02': 15,
-            }
-        ],
-    )
-
-
-@read_router.get('/nodes/statistics', response_model=NodeStatistics)
+@read_router.get(
+    '/statistics',
+    response_model=NodeStatistics,
+    responses={
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
 @with_dbenv()
 async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
-    """Get node statistics.
-
-    :param user: Optional user PK to filter statistics by user.
-    :return: A dictionary containing total node count, counts by node type, and creation time statistics.
-
-    >>> {
-    >>>   "total": 47,
-    >>>   "types": {
-    >>>       "data.core.int.Int.": 42,
-    >>>       "data.core.singlefile.SinglefileData.": 5,
-    >>>       ...
-    >>>   },
-    >>>   "ctime_by_day": {
-    >>>       "2012-01-01": 10,
-    >>>       "2012-01-02": 15,
-    >>>       ...
-    >>>   },
-    >>> }
-    """
+    """Get node statistics."""
 
     from aiida.manage import get_manager
 
@@ -142,282 +136,335 @@ async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
     return backend.query().get_creation_statistics(user_pk=user)
 
 
-@read_router.get('/nodes/download_formats')
+@read_router.get('/download_formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
-    """Get download formats for AiiDA nodes.
-
-    :return: A dictionary with available download formats as keys and their descriptions as values.
-    :raises HTTPException: 404 if the download formats are not available,
-        500 for other failures during retrieval.
-    """
-    try:
-        return repository.get_all_download_formats()
-    except EntryPointError:
-        raise HTTPException(status_code=404, detail='The download formats are not available.')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+    """Get download formats for AiiDA nodes."""
+    return service.get_download_formats()
 
 
 @read_router.get(
-    '/nodes',
-    response_model=PaginatedResults[orm.Node.Model],
+    '',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeCollectionDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
 )
 @with_dbenv()
 async def get_nodes(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
-) -> PaginatedResults[orm.Node.Model]:
-    """Get AiiDA nodes with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of node models.
-    """
-    return repository.get_entities(queries)
-
-
-class NodeType(pdt.BaseModel):
-    """Pydantic model representing a node type."""
-
-    label: str = pdt.Field(description='The class name of the node type.')
-    node_type: str = pdt.Field(description='The AiiDA node type string.')
-    nodes: str = pdt.Field(description='The URL to access nodes of this type.')
-    projections: str = pdt.Field(description='The URL to access projectable properties of this node type.')
-    node_schema: str = pdt.Field(description='The URL to access the schema of this node type.')
+    request: Request,
+    query_params: t.Annotated[
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
+    results = service.get_many(query_params)
+    return JsonApi.collection(
+        request,
+        results,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+        query_params=query_params,
+    )
 
 
-@read_router.get('/nodes/types', response_model=list[NodeType])
+@read_router.get(
+    '/types',
+    response_model=list[NodeType],
+)
 async def get_node_types() -> list:
-    """Get all node types in machine-actionable format.
-
-    :return: A list of dictionaries, each containing information about a node type, e.g.:
-
-    >>> [
-    >>>   {
-    >>>     "label": "Int",
-    >>>     "node_type": "data.core.int.Int.",
-    >>>     "nodes": "/nodes?filters={\"node_type\":{\"data.core.int.Int.\"}}",
-    >>>     "projections": "/nodes/projectable_properties?type=data.core.int.Int.",
-    >>>     "node_schema": "/nodes/schema?type=data.core.int.Int.",
-    >>>   },
-    >>>   ...
-    >>> ]
-    """
+    """Get all node types in machine-actionable format."""
     api_prefix = API_CONFIG['PREFIX']
     return [
         {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
             'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
-            'projections': f'{api_prefix}/nodes/projectable_properties?type={node_type}',
+            'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
-        for node_type in sorted(
-            model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
-        )
+        for node_type in sorted(model_registry.get_node_types(), key=model_registry.get_node_class_name)
     ]
 
 
 @read_router.get(
-    '/nodes/{node_id}',
-    response_model=orm.Node.Model,
+    '/{uuid}',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
 )
 @with_dbenv()
-async def get_node(node_id: int) -> orm.Node.Model:
-    """Get AiiDA node by id.
-
-    :param node_id: The id of the node to retrieve.
-    :return: The AiiDA node model, e.g. `orm.Node.Model`,
-    :raises HTTPException: 422 if the node with the given id does not exist,
-        500 for other failures during retrieval.
-    """
-    try:
-        return repository.get_entity_by_id(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=422, detail=f'Could not find any Node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+async def get_node(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA node by uuid."""
+    result = service.get_one(uuid)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+        include=query_params.include,
+    )
 
 
 @read_router.get(
-    '/nodes/{node_id}/attributes',
-    response_model=dict[str, t.Any],
+    '/{uuid}/user',
+    response_class=JsonApiResponse,
+    response_model=aiida.UserResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
 )
 @with_dbenv()
-async def get_node_attributes(node_id: int) -> dict[str, t.Any]:
-    """Get the attributes of a node.
-
-    :param node_id: The id of the node to retrieve the attributes for.
-    :return: A dictionary with the node attributes.
-    :raises HTTPException: 404 if the node with the given id does not exist,
-        500 for other failures during retrieval.
-    """
-    try:
-        return repository.get_node_attributes(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+async def get_node_user(request: Request, uuid: str) -> dict[str, t.Any]:
+    """Get the user associated with a node."""
+    user = service.get_related_one(uuid, orm.User)
+    return JsonApi.resource(
+        request,
+        user,
+        resource_identity=orm.User.identity_field,
+        resource_type='users',
+    )
 
 
 @read_router.get(
-    '/nodes/{node_id}/extras',
-    response_model=dict[str, t.Any],
+    '/{uuid}/computer',
+    response_class=JsonApiResponse,
+    response_model=aiida.ComputerResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
 )
 @with_dbenv()
-async def get_node_extras(node_id: int) -> dict[str, t.Any]:
-    """Get the extras of a node.
-
-    :param node_id: The id of the node to retrieve the extras for.
-    :return: A dictionary with the node extras.
-    :raises HTTPException: 404 if the node with the given id does not exist,
-        500 for other failures during retrieval.
-    """
-    try:
-        return repository.get_entity_extras(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
-
-
-@read_router.get('/nodes/{node_id}/download')
-@with_dbenv()
-async def download_node(
-    node_id: int,
-    download_format: str | None = Query(None, description='Format to download the node in'),
-) -> StreamingResponse:
-    """Download AiiDA node by id in a given download format provided as a query parameter.
-
-    :param node_id: The id of the node to retrieve.
-    :param download_format: The format to download the node in.
-    :return: StreamingResponse with the exported node content.
-    :raises HTTPException: 403 if licensing restrictions prevent export,
-        404 if the node with the given id does not exist,
-        422 if the download format is not specified, or if the download format is not supported.
-    """
-    try:
-        node = orm.load_node(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a node with id {node_id}')
-
-    if download_format is None:
-        raise HTTPException(
-            status_code=422,
-            detail='Please specify the download format. '
-            'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.',
-        )
-
-    elif download_format in node.get_export_formats():
-        # byteobj, dict with {filename: filecontent}
-
-        try:
-            exported_bytes, _ = node._exportcontent(download_format)
-        except LicensingException as exc:
-            raise HTTPException(status_code=403, detail=str(exc))
-
-        def stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(exported_bytes) as handler:
-                yield from handler
-
-        return StreamingResponse(stream(), media_type=f'application/{download_format}')
-
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail='The format {} is not supported. '
-            'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.'.format(download_format),
-        )
-
-
-class RepoFileMetadata(pdt.BaseModel):
-    """Pydantic model representing the metadata of a file in the AiiDA repository."""
-
-    type: t.Literal['FILE'] = pdt.Field(
-        description='The type of the repository object.',
+async def get_node_computer(request: Request, uuid: str) -> dict[str, t.Any]:
+    """Get the computer associated with a node."""
+    computer = service.get_related_one(uuid, orm.Computer)
+    return JsonApi.resource(
+        request,
+        computer,
+        resource_identity=orm.Computer.identity_field,
+        resource_type='computers',
     )
-    binary: bool = pdt.Field(
-        False,
-        description='Whether the file is binary.',
-    )
-    size: int = pdt.Field(
-        description='The size of the file in bytes.',
-    )
-    download: str = pdt.Field(
-        description='The URL to download the file.',
-    )
-
-
-class RepoDirMetadata(pdt.BaseModel):
-    """Pydantic model representing the metadata of a directory in the AiiDA repository."""
-
-    type: t.Literal['DIRECTORY'] = pdt.Field(
-        description='The type of the repository object.',
-    )
-    objects: dict[str, t.Union[RepoFileMetadata, 'RepoDirMetadata']] = pdt.Field(
-        description='A dictionary with the metadata of the objects in the directory.',
-    )
-
-
-MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
 @read_router.get(
-    '/nodes/{node_id}/repo/metadata',
-    response_model=dict[str, MetadataType],
+    '/{uuid}/groups',
+    response_class=JsonApiResponse,
+    response_model=aiida.GroupCollectionDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
 )
 @with_dbenv()
-async def get_node_repo_file_metadata(node_id: int) -> dict[str, dict]:
-    """Get the repository file metadata of a node.
+async def get_node_groups(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get the groups of a node."""
+    groups = service.get_related_many(uuid, orm.Group, query_params)
+    return JsonApi.collection(
+        request,
+        groups,
+        resource_identity=orm.Group.identity_field,
+        resource_type='groups',
+        query_params=query_params,
+    )
 
-    :param node_id: The id of the node to retrieve the repository metadata for.
-    :return: A dictionary with the repository file metadata.
-    :raises HTTPException: 404 if the node with the given id does not exist,
-        500 for other failures during retrieval.
-    """
-    try:
-        return repository.get_node_repository_metadata(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+
+@read_router.get(
+    '/{uuid}/attributes',
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
+)
+@with_dbenv()
+async def get_node_attributes(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get the attributes of a node."""
+    attributes = service.get_field(uuid, 'attributes')
+    return JsonApi.child_resource(
+        request,
+        attributes,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='attributes',
+        include=query_params.include,
+    )
 
 
-@read_router.get('/nodes/{node_id}/repo/contents')
+@read_router.get(
+    '/{uuid}/extras',
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
+)
+@with_dbenv()
+async def get_node_extras(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get the extras of a node."""
+    extras = service.get_field(uuid, 'extras')
+    return JsonApi.child_resource(
+        request,
+        extras,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='extras',
+        include=query_params.include,
+    )
+
+
+@read_router.get(
+    '/{uuid}/links',
+    response_class=JsonApiResponse,
+    response_model=aiida.LinkCollectionDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
+@with_dbenv()
+async def get_node_links(
+    request: Request,
+    uuid: str,
+    direction: t.Annotated[
+        t.Literal['incoming', 'outgoing'],
+        Query(description='Specify whether to retrieve incoming or outgoing links.'),
+    ],
+    query_params: t.Annotated[
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get the incoming/outgoing links of a node."""
+    links = service.get_links(uuid, direction, query_params)
+    return JsonApi.collection(
+        request,
+        links,
+        resource_identity='id',
+        resource_type='links',
+        query_params=query_params,
+    )
+
+
+@read_router.get(
+    '/{uuid}/repo/metadata',
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
+@with_dbenv()
+async def get_node_repo_file_metadata(
+    request: Request,
+    uuid: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get the repository file metadata of a node."""
+    metadata = service.get_repository_metadata(uuid)
+    return JsonApi.child_resource(
+        request,
+        metadata,
+        pid=uuid,
+        parent_type='nodes',
+        child_type='repo-metadata',
+        include=query_params.include,
+    )
+
+
+@read_router.get(
+    '/{uuid}/repo/contents',
+    response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
 @with_dbenv()
 async def get_node_repo_file_contents(
-    node_id: int,
-    filename: str | None = Query(None, description='Filename of repository content to retrieve'),
+    uuid: str,
+    filename: t.Annotated[
+        str | None,
+        Query(description='Filename of repository content to retrieve'),
+    ] = None,
 ) -> StreamingResponse:
-    """Get the repository contents of a node.
-
-    :param node_id: The id of the node to retrieve the repository contents for.
-    :param filename: The filename of the repository content to retrieve. If None, retrieves all contents.
-    :return: StreamingResponse with the requested file content.
-    :raises HTTPException: 404 if the node with the given id does not exist,
-        404 if the requested file does not exist in the node's repository.
-    """
+    """Get the repository contents of a node."""
     from urllib.parse import quote
 
-    try:
-        node = orm.load_node(node_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find any node with id {node_id}')
-
+    node = orm.load_node(uuid)
     repo = node.base.repository
 
     if filename:
-        try:
-            file_content = repo.get_object_content(filename, mode='rb')
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=404,
-                detail=f'Could not find file {filename} in the repository of node with id {node_id}',
-            )
+        file_content = repo.get_object_content(filename, mode='rb')
 
         def file_stream() -> t.Generator[bytes, None, None]:
             with io.BytesIO(file_content) as handler:
@@ -429,99 +476,176 @@ async def get_node_repo_file_contents(
 
         return StreamingResponse(file_stream(), media_type='application/octet-stream', headers=headers)
 
-    else:
-        zip_bytes = repo.get_zipped_objects()
+    zip_bytes = repo.get_zipped_objects()
 
-        def zip_stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(zip_bytes) as handler:
+    def zip_stream() -> t.Generator[bytes, None, None]:
+        with io.BytesIO(zip_bytes) as handler:
+            yield from handler
+
+    download_name = f'node_{uuid}_repo.zip'
+    quoted = quote(download_name)
+    headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
+
+    return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+
+
+@read_router.get(
+    '/{uuid}/download',
+    response_class=StreamingResponse,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.InvalidInputError, 'description': 'Validation Error'},
+        451: {'model': errors.InvalidLicenseError, 'description': 'Invalid License'},
+    },
+)
+@with_dbenv()
+async def download_node(
+    uuid: str,
+    format: t.Annotated[
+        str | None,
+        Query(description='Format to download the node in'),
+    ] = None,
+) -> StreamingResponse:
+    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
+    node = orm.load_node(uuid)
+
+    if format is None:
+        raise ValidationException(
+            'Please specify the download format. '
+            'The available download formats can be '
+            'queried using the /nodes/download_formats/ endpoint.',
+        )
+
+    if format in node.get_export_formats():
+        # byteobj, dict with {filename: filecontent}
+        exported_bytes, _ = node._exportcontent(format)
+
+        def stream() -> t.Generator[bytes, None, None]:
+            with io.BytesIO(exported_bytes) as handler:
                 yield from handler
 
-        download_name = f'node_{node_id}_repo.zip'
-        quoted = quote(download_name)
-        headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
+        return StreamingResponse(stream(), media_type=f'application/{format}')
 
-        return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+    raise ValidationException(
+        'The format {} is not supported. '
+        'The available download formats can be '
+        'queried using the /nodes/download_formats/ endpoint.'.format(format),
+    )
 
 
 @write_router.post(
-    '/nodes',
-    response_model=orm.Node.Model,
+    '',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
+    },
 )
 @with_dbenv()
 async def create_node(
-    model: NodeModelUnion,
+    request: Request,
+    model: t.Annotated[NodeAttributesModelUnion, Body(discriminator='node_type')],
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
-    """Create new AiiDA node.
-
-    :param model: The AiiDA ORM model of the node to create.
-    :param current_user: The current authenticated user.
-    :return: The serialized created AiiDA node.
-    :raises HTTPException: 422 if the node type is not recognized,
-        500 for other failures during node creation.
-    """
-    try:
-        return repository.create_entity(model)
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+) -> dict[str, t.Any]:
+    """Create a new AiiDA node from an attributes-based payload."""
+    result = service.add_one(model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )
 
 
 @write_router.post(
-    '/nodes/file-upload',
-    response_model=orm.Node.Model,
+    '/constructor',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
+    },
+)
+@with_dbenv()
+async def create_node_constructor(
+    request: Request,
+    model: t.Annotated[NodeConstructorModelUnion, Body(discriminator='node_type')],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> dict[str, t.Any]:
+    """Create a new AiiDA node from a constructor-based payload."""
+    result = service.add_one(model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )
+
+
+@write_router.post(
+    '/file-upload',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        400: {'model': errors.JsonDecodingError, 'description': 'JSON Decoding Error'},
+        403: {'model': errors.StoringNotAllowedError, 'description': 'Storing Not Allowed'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
+    },
 )
 @with_dbenv()
 async def create_node_with_files(
-    params: t.Annotated[str, Form()],
+    request: Request,
+    params: t.Annotated[
+        str,
+        Form(
+            description='JSON string correpsonding to the same payload as the POST /nodes endpoint for the '
+            'given `node_type`'
+        ),
+    ],
     files: list[UploadFile],
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
-    """Create new AiiDA node with files.
+) -> dict[str, t.Any]:
+    """Create new AiiDA node with files."""
+    payload = t.cast(dict, json.loads(params))
 
-    :param params: The JSON string representing the AiiDA ORM model of the node to create.
-    :param files: The list of uploaded files.
-    :param current_user: The current authenticated user.
-    :return: The serialized created AiiDA node.
-    :raises HTTPException: 400 if the JSON is invalid,
-        422 if the node type is not recognized,
-        422 if validation of the node model fails,
-        422 if any uploaded file has an invalid path or if there are duplicate target paths,
-        500 for other failures during node creation.
-    """
-    try:
-        parameters = t.cast(dict, json.loads(params))
-    except json.JSONDecodeError as exc:
-        raise HTTPException(400, f"Invalid JSON in 'params': {exc}") from exc
+    if 'args' in payload:
+        raise ValidationException("File upload endpoint does not support constructor 'args'.")
 
-    if not (node_type := parameters.get('node_type')):
-        raise HTTPException(422, "Missing 'node_type' in params")
+    node_type = payload.get('node_type')
+    if not isinstance(node_type, str):
+        raise ValidationException("The 'node_type' field is missing in the payload.")
 
-    try:
-        model_cls = model_registry.get_model(node_type, which='post')
-        model = model_cls(**parameters)
-    except KeyError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    except pdt.ValidationError as exc:
-        raise HTTPException(422, f'Validation failed: {exc}') from exc
+    Model = t.cast(type[orm.Node.WriteModel], model_registry.get_model(node_type, 'write'))
 
     files_dict: dict[str, UploadFile] = {}
-
     for upload in files:
         if (target := upload.filename) in files_dict:
-            raise HTTPException(422, f"Duplicate target path '{target}' in upload")
+            raise ValidationException(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
 
-    try:
-        return repository.create_entity(model, files=files_dict)
-    except json.JSONDecodeError as exception:
-        raise HTTPException(status_code=400, detail=f'Invalid JSON in params: {exception}') from exception
-    except KeyError as exception:
-        raise HTTPException(status_code=422, detail=str(exception)) from exception
-    except Exception as exception:
-        raise HTTPException(status_code=500, detail=str(exception)) from exception
+    if 'attributes' not in payload:
+        payload['attributes'] = {}
+
+    model = Model(**payload)
+
+    result = service.add_one(model, files=files_dict)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )

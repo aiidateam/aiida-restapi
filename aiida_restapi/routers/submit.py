@@ -7,13 +7,17 @@ import typing as t
 import pydantic as pdt
 from aiida import engine, orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import NotExistent
+from aiida.common import exceptions
 from aiida.plugins.entry_point import load_entry_point_from_string
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Request
+
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import aiida, errors
+from aiida_restapi.jsonapi.responses import JsonApiResponse
 
 from .auth import UserInDB, get_current_active_user
 
-write_router = APIRouter()
+write_router = APIRouter(prefix='/submit')
 
 
 def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
@@ -22,8 +26,9 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
     A node UUID is indicated by the key ending with the suffix ``.uuid``.
 
     :param inputs: The inputs dictionary.
+    :type inputs: dict[str, t.Any]
     :returns: The deserialized inputs dictionary.
-    :raises HTTPException: 404 if the inputs contain a UUID that does not correspond to an existing node.
+    :rtype: dict[str, t.Any]
     """
     uuid_suffix = '.uuid'
     results = {}
@@ -32,10 +37,7 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
         if isinstance(value, dict):
             results[key] = process_inputs(value)
         elif key.endswith(uuid_suffix):
-            try:
-                results[key[: -len(uuid_suffix)]] = orm.load_node(uuid=value)
-            except NotExistent as exc:
-                raise HTTPException(status_code=404, detail=f'Node with UUID `{value}` does not exist.') from exc
+            results[key[: -len(uuid_suffix)]] = orm.load_node(uuid=value)
         else:
             results[key] = value
 
@@ -43,45 +45,62 @@ def process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
 
 
 class ProcessSubmitModel(pdt.BaseModel):
-    label: str = pdt.Field(default='', description='The label of the process')
-    entry_point: str = pdt.Field(description='The entry point of the process')
-    inputs: dict[str, t.Any] = pdt.Field(description='The inputs of the process')
+    label: str = pdt.Field(
+        '',
+        description='The label of the process',
+        examples=['My process', 'Test calculation'],
+    )
+    entry_point: str = pdt.Field(
+        description='The entry point of the process',
+        examples=['core.arithmetic.add'],
+    )
+    inputs: dict[str, t.Any] = pdt.Field(
+        description='The inputs of the process',
+        examples=[{'x': 1, 'y': 2}],
+    )
 
     @pdt.field_validator('inputs')
     @classmethod
-    def validate_inputs(cls, inputs: dict[str, t.Any]) -> dict[str, t.Any]:
+    def process_inputs(cls, inputs: dict[str, t.Any]) -> dict[str, t.Any]:
         """Process the inputs dictionary.
 
         :param inputs: The inputs to validate.
+        :type inputs: dict[str, t.Any]
         :returns: The validated inputs.
+        :rtype: dict[str, t.Any]
         """
         return process_inputs(inputs)
 
 
 @write_router.post(
-    '/submit',
-    response_model=orm.Node.Model,
+    '',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError},
+        422: {'model': t.Union[errors.InvalidInputError, errors.InvalidOperationError]},
+    },
 )
 @with_dbenv()
 async def submit_process(
+    request: Request,
     process: ProcessSubmitModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
-    """Submit new AiiDA process.
-
-    :param process: The Pydantic model of the process to create.
-    :param current_user: The current authenticated user.
-    :return: The created process node model.
-    :raises HTTPException: 404 if the entry point is not recognized,
-        500 for other failures during process submission.
-    """
+) -> dict[str, t.Any]:
+    """Submit new AiiDA process."""
     try:
         entry_point_process = load_entry_point_from_string(process.entry_point)
+    except Exception as exception:
+        raise exceptions.EntryPointError(str(exception)) from exception
+    try:
         process_node = engine.submit(entry_point_process, **process.inputs)
-        return t.cast(orm.Node.Model, process_node.to_model())
-    except ValueError as err:
-        raise HTTPException(status_code=404, detail=f"Entry point '{process.entry_point}' not recognized.") from err
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err)) from err
+    except Exception as exception:
+        raise exceptions.InputValidationError(str(exception)) from exception
+    serialized = process_node.serialize(minimal=True)
+    return JsonApi.resource(
+        request,
+        serialized,
+        resource_identity='uuid',
+        resource_type='nodes',
+    )

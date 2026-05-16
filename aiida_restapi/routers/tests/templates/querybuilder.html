@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Test POST /querybuilder</title>
+    <style>
+      {{ css | safe }}
+    </style>
+  </head>
+  <body data-api-prefix="{{ api_prefix }}">
+    <h1>Test POST /querybuilder</h1>
+
+    <div class="row">
+      <h3>Auth (fake user)</h3>
+      <div class="params">
+        <div>
+          <label>Email</label>
+          <input type="text" id="authEmail" value="johndoe@example.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="authPassword" value="secret" />
+        </div>
+        <div class="row">
+          <button type="button" class="btn-secondary" id="authBtn">
+            Authenticate
+          </button>
+          <button type="button" class="btn-secondary" id="logoutBtn">
+            Clear token
+          </button>
+          <span id="authStatus" class="hint small muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <h3>Query (JSON)</h3>
+      <textarea id="query">
+{
+  "path": [
+    {
+      "entity_type": "data.core.int.Int.",
+      "orm_base": "node",
+      "tag": "integer"
+    }
+  ],
+  "filters": {
+    "integer": {
+      "attributes.value": { "<": 100 } }
+  },
+  "project": {
+    "integer": ["pk", "uuid", "attributes.value"]
+  },
+  "order_by": {
+    "integer": {
+      "pk": "desc"
+    }
+  },
+  "limit": 5
+}
+      </textarea>
+    </div>
+    <div class="row">
+      <label for="flatCheckbox">
+        <input type="checkbox" id="flatCheckbox" />
+        Flat results
+      </label>
+      <label for="fullCheckbox">
+        <input type="checkbox" id="fullCheckbox" />
+        Full results
+      </label>
+    </div>
+    <div class="row">
+      <button id="sendBtn" class="btn-primary">Send</button>
+      <button id="clearBtn" class="btn-secondary" type="button">
+        Clear output
+      </button>
+      <span id="clientError" class="error"></span>
+    </div>
+    <h3>Result</h3>
+    <pre id="out"></pre>
+
+    <script>
+      {{ js | safe }}
+    </script>
+  </body>
+</html>

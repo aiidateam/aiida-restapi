@@ -18,7 +18,6 @@ from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from aiida_restapi import config
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
@@ -137,7 +136,7 @@ def example_processes():
         calc.base.attributes.set('process_label', process_label)
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
 
         calc = WorkChainNode()
         calc.set_process_state(state)
@@ -151,7 +150,7 @@ def example_processes():
             calc.pause()
 
         calc.store()
-        calcs.append(calc.pk)
+        calcs.append(calc.uuid)
     return calcs
 
 
@@ -186,13 +185,37 @@ def default_test_add_process():
 
 
 @pytest.fixture(scope='function')
+def mock_arithmetic_add():
+    """Populate database with an arithmetic.add CalcJobNode"""
+    from aiida.common.links import LinkType
+
+    x = orm.Int(1)
+    y = orm.Int(2)
+
+    calc = orm.CalcJobNode(process_type='aiida.calculations:arithmetic.add')
+
+    calc.base.links.add_incoming(x, LinkType.INPUT_CALC, link_label='x')
+    calc.base.links.add_incoming(y, LinkType.INPUT_CALC, link_label='y')
+
+    result = orm.Int(3)
+    result.base.links.add_incoming(calc, LinkType.CREATE, link_label='sum')
+
+    x.store()
+    y.store()
+    calc.store()
+    result.store()
+
+    return calc.uuid
+
+
+@pytest.fixture(scope='function')
 def default_groups():
     """Populate database with some groups."""
     test_user_1 = orm.User(email='verdi@opera.net', first_name='Giuseppe', last_name='Verdi').store()
     test_user_2 = orm.User(email='stravinsky@symphony.org', first_name='Igor', last_name='Stravinsky').store()
     group_1 = orm.Group(label='test_label_1', user=test_user_1).store()
     group_2 = orm.Group(label='test_label_2', user=test_user_2).store()
-    return [group_1.pk, group_2.pk]
+    return [group_1.uuid, group_2.uuid]
 
 
 @pytest.fixture(scope='function')
@@ -203,7 +226,7 @@ def default_nodes():
     node_3 = orm.Str('test_string').store()
     node_4 = orm.Bool(False).store()
 
-    return [node_1.pk, node_2.pk, node_3.pk, node_4.pk]
+    return [node_1.uuid, node_2.uuid, node_3.uuid, node_4.uuid]
 
 
 @pytest.fixture(scope='function')
@@ -222,7 +245,25 @@ def authenticate(app):
 
     async def logged_in_user(token=None):  # pylint: disable=unused-argument
         """Fake active user."""
-        return UserInDB(**config.fake_users_db['johndoe@example.com'])
+        try:
+            user = orm.User.collection.get(email='johndoe@example.com')
+        except NotExistent:
+            user = orm.User(
+                email='johndoe@example.com',
+                first_name='John',
+                last_name='Doe',
+                institution='EPFL',
+            ).store()
+
+        return UserInDB(
+            pk=user.pk,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            institution=user.institution,
+            hashed_password='',
+            disabled=False,
+        )
 
     app.dependency_overrides[get_current_user] = logged_in_user
     yield

@@ -220,9 +220,9 @@ def main():
 
     click.echo('Output nodes:')
     for key, value in results.items():
-        click.echo(f"* {key}: UUID<{value['uuid']}>")
+        click.echo(f'* {key}: UUID<{value["uuid"]}>')
 
-    click.echo(f"Computed sum: {results['sum']['attributes']['value']}")
+    click.echo(f'Computed sum: {results["sum"]["attributes"]["value"]}')
 
 
 if __name__ == '__main__':

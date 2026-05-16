@@ -12,11 +12,11 @@ Serve e.g. using [`uvicorn`](https://www.uvicorn.org/).
 
 ## Features
 
- * `/users` (GET/POST) and `/users/<id>` (GET) endpoints
- * Authentication via [JSON web tokens](https://jwt.io/introduction) (see `test_auth.py` for the flow; also works via interactive docs)
- * `User` `pydantic` model for validation
- * Automatic documentation at `http://127.0.0.1:8000/docs`
- * Full specification at `http://127.0.0.1:8000/openapi.json`
+- `/users` (GET/POST) and `/users/<id>` (GET) endpoints
+- Authentication via [JSON web tokens](https://jwt.io/introduction) (see `test_auth.py` for the flow; also works via interactive docs)
+- `User` `pydantic` model for validation
+- Automatic documentation at `http://127.0.0.1:8000/docs`
+- Full specification at `http://127.0.0.1:8000/openapi.json`
 
 ## Installation
 
@@ -34,6 +34,42 @@ uvicorn aiida_restapi:app
 uvicorn aiida_restapi:app --reload
 ```
 
+### Authentication setup
+
+Password authentication now validates against:
+
+1. An existing AiiDA user in the configured profile storage.
+2. A credential mapping supplied through one of these environment variables:
+
+```shell
+# option 1: inline JSON
+export AIIDA_RESTAPI_AUTH_CREDENTIALS_JSON='{"user@example.com": {"hashed_password": "$argon2id$...", "disabled": false}}'
+
+# option 2: JSON file path
+export AIIDA_RESTAPI_AUTH_CREDENTIALS_FILE=/path/to/auth-credentials.json
+```
+
+Only one source should be set at a time. The mapping is keyed by user email and accepts either:
+
+```json
+{
+  "user@example.com": "$argon2id$..."
+}
+```
+
+or:
+
+```json
+{
+  "user@example.com": {
+    "hashed_password": "$argon2id$...",
+    "disabled": false
+  }
+}
+```
+
+The `/auth/token` endpoint expects the email as username.
+
 ## Examples
 
 See the [examples](https://github.com/aiidateam/aiida-restapi/tree/master/examples) directory.
@@ -48,13 +84,16 @@ cd aiida-restapi
 ### Setting up pre-commit
 
 We use pre-commit to take care for the formatting, type checking and linting.
+
 ```shell
 pip install -e .[pre-commit]  # install extra dependencies
 pre-commit run # running pre-commit on changes
 pre-commit run --all-files # running pre-commit on every file
 pre-commit run pylint --all-files # run only the linter on every file
 ```
+
 One can also set up pre-commit to be run on every commit
+
 ```shell
 pre-commit install
 # pre-commit uninstall # to disable it again
@@ -63,13 +102,16 @@ pre-commit install
 ### Running tests
 
 With tox the tests can be run
+
 ```shell
 pip install tox
 tox -e py311 # run all tests for Python 3.11
 tox -av # see all supported environments
 ```
+
 tox will creat a custom environment to run the tests in. If you want to run the
 tests inside your current environment
+
 ```shell
 pip install -e .[testing]  # install extra dependencies
 pytest -v

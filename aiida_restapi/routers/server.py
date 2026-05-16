@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-import pydantic as pdt
 from aiida import __version__ as aiida_version
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -12,22 +11,13 @@ from fastapi.routing import APIRoute
 from starlette.routing import Route
 
 from aiida_restapi.config import API_CONFIG
+from aiida_restapi.models.server import ServerEndpoint, ServerInfo
 
-read_router = APIRouter()
-
-
-class ServerInfo(pdt.BaseModel):
-    """API version information."""
-
-    api_major_version: str = pdt.Field(description='Major version of the API')
-    api_minor_version: str = pdt.Field(description='Minor version of the API')
-    api_revision_version: str = pdt.Field(description='Revision version of the API')
-    api_prefix: str = pdt.Field(description='Prefix for all API endpoints')
-    aiida_version: str = pdt.Field(description='Version of the AiiDA installation')
+read_router = APIRouter(prefix='/server')
 
 
 @read_router.get(
-    '/server/info',
+    '/info',
     response_model=ServerInfo,
 )
 async def get_server_info() -> dict[str, str]:
@@ -42,25 +32,12 @@ async def get_server_info() -> dict[str, str]:
     }
 
 
-class ServerEndpoint(pdt.BaseModel):
-    """API endpoint."""
-
-    path: str = pdt.Field(description='Path of the endpoint')
-    group: str | None = pdt.Field(description='Group of the endpoint')
-    methods: set[str] = pdt.Field(description='HTTP methods supported by the endpoint')
-    description: str = pdt.Field('-', description='Description of the endpoint')
-
-
 @read_router.get(
-    '/server/endpoints',
+    '/endpoints',
     response_model=dict[str, list[ServerEndpoint]],
 )
 async def get_server_endpoints(request: Request) -> dict[str, list[dict]]:
-    """Get a JSON-serializable dictionary of all registered API routes.
-
-    :param request: The FastAPI request object.
-    :return: A JSON-serializable dictionary of all registered API routes.
-    """
+    """Get a JSON-serializable dictionary of all registered API routes."""
     endpoints: list[dict] = []
 
     for route in request.app.routes:
@@ -83,16 +60,12 @@ async def get_server_endpoints(request: Request) -> dict[str, list[dict]]:
 
 
 @read_router.get(
-    '/server/endpoints/table',
+    '/endpoints/table',
     name='endpoints',
     response_class=HTMLResponse,
 )
 async def get_server_endpoints_table(request: Request) -> HTMLResponse:
-    """Get an HTML table of all registered API routes.
-
-    :param request: The FastAPI request object.
-    :return: An HTML table of all registered API routes.
-    """
+    """Get an HTML table of all registered API routes."""
     routes = request.app.routes
     base_url = str(request.base_url).rstrip('/')
 
@@ -116,7 +89,7 @@ async def get_server_endpoints_table(request: Request) -> HTMLResponse:
                     if param.required
                 )
             )
-            or (route.methods and 'POST' in route.methods)
+            or 'POST' in (route.methods or {})
             or 'auth' in path
         )
 
@@ -197,7 +170,9 @@ def _get_route_parts(route: Route) -> tuple[str | None, set[str], str]:
     """Return the parts of a route: path, group, methods, description.
 
     :param route: A FastAPI/Starlette Route object.
+    :type route: Route
     :return: A tuple containing the group, methods, and description of the route.
+    :rtype: tuple[str | None, set[str], str]
     """
     prefix = re.escape(API_CONFIG['PREFIX'])
     match = re.match(rf'^{prefix}/([^/]+)/?.*', route.path)

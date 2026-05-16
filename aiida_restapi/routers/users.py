@@ -6,104 +6,135 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import NotExistent
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query, Request
 
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
-from aiida_restapi.repository.entity import EntityRepository
+from aiida_restapi.common import query
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import errors
+from aiida_restapi.jsonapi.models.aiida import UserCollectionDocument, UserResourceDocument
+from aiida_restapi.jsonapi.responses import JsonApiResponse
+from aiida_restapi.services.entity import EntityService
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/users')
+write_router = APIRouter(prefix='/users')
 
-repository = EntityRepository[orm.User, orm.User.Model](orm.User)
-
-
-@read_router.get('/users/schema')
-async def get_users_schema(
-    which: t.Literal['get', 'post'] = Query(
-        'get',
-        description='Type of schema to retrieve: "get" or "post"',
-    ),
-) -> dict:
-    """Get JSON schema for AiiDA users.
-
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
-    """
-    try:
-        return repository.get_entity_schema(which=which)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
-
-
-@read_router.get('/users/projectable_properties', response_model=list[str])
-async def get_user_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA user.
-
-    :return: The list of projectable properties for AiiDA user.
-    """
-    return repository.get_projectable_properties()
+service = EntityService[orm.User, orm.User.ReadModel](orm.User)
 
 
 @read_router.get(
-    '/users',
-    response_model=PaginatedResults[orm.User.Model],
+    '/schema',
+    response_model=dict[str, t.Any],
+    responses={
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
+async def get_users_schema(
+    which: t.Annotated[
+        t.Literal['read', 'write'],
+        Query(description='Type of schema to retrieve: "read" or "write"'),
+    ] = 'read',
+) -> dict[str, t.Any]:
+    """Get JSON schema for AiiDA users."""
+    return service.get_schema(which=which)
+
+
+@read_router.get(
+    '/projections',
+    response_model=list[str],
+)
+async def get_user_projections() -> list[str]:
+    """Get queryable projections for AiiDA users."""
+    return service.get_projections()
+
+
+@read_router.get(
+    '',
+    response_class=JsonApiResponse,
+    response_model=UserCollectionDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
 )
 @with_dbenv()
 async def get_users(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
-) -> PaginatedResults[orm.User.Model]:
-    """Get AiiDA users with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of user models.
-    """
-    return repository.get_entities(queries)
+    request: Request,
+    query_params: t.Annotated[
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA users with optional filtering, sorting, and/or pagination."""
+    results = service.get_many(query_params)
+    return JsonApi.collection(
+        request,
+        results,
+        resource_identity=orm.User.identity_field,
+        resource_type='users',
+        query_params=query_params,
+    )
 
 
 @read_router.get(
-    '/users/{user_id}',
-    response_model=orm.User.Model,
+    '/{pk}',
+    response_class=JsonApiResponse,
+    response_model=UserResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
 )
 @with_dbenv()
-async def get_user(user_id: int) -> orm.User.Model:
-    """Get AiiDA user by id.
-
-    :param user_id: The id of the user to retrieve.
-    :return: The AiiDA user model.
-    :raises HTTPException: 404 if the user with the given id does not exist,
-    """
-    try:
-        return repository.get_entity_by_id(user_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a User with id {user_id}')
+async def get_user(
+    request: Request,
+    pk: int,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA user by pk."""
+    result = service.get_one(pk)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.User.identity_field,
+        resource_type='users',
+        include=query_params.include,
+    )
 
 
 @write_router.post(
-    '/users',
-    response_model=orm.User.Model,
+    '',
+    response_model=UserResourceDocument,
+    response_class=JsonApiResponse,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError, 'description': 'Storing Not Allowed'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError],
+            'description': 'Validation Error | Invalid Input',
+        },
+    },
 )
 @with_dbenv()
 async def create_user(
-    user_model: orm.User.CreateModel,
+    request: Request,
+    user_model: orm.User.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.User.Model:
-    """Create new AiiDA user.
-
-    :param user_model: The Pydantic model of the user to create.
-    :param current_user: The current authenticated user.
-    :return: The created AiiDA User model.
-    :raises HTTPException: 500 for any failures during user creation.
-    """
-    try:
-        return repository.create_entity(user_model)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+) -> dict[str, t.Any]:
+    """Create new AiiDA user."""
+    result = service.add_one(user_model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.User.identity_field,
+        resource_type='users',
+    )

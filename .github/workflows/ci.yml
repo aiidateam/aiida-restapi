@@ -12,10 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - uses: pre-commit/action@v3.0.1
 
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.10', '3.11', '3.12']
 
     services:
       postgres:
@@ -44,9 +44,10 @@ jobs:
         ports:
           - 5432:5432
       rabbitmq:
-        image: rabbitmq:latest
+        image: rabbitmq:3.8.14-management
         ports:
           - 5672:5672
+          - 15672:15672
 
     steps:
       - uses: actions/checkout@v2
@@ -69,7 +70,7 @@ jobs:
         run: pytest --cov aiida_restapi --cov-report=xml
 
       - name: Upload to Codecov
-        if: matrix.python-version == 3.8
+        if: matrix.python-version == 3.10
         uses: codecov/codecov-action@v4
         with:
           name: pytests

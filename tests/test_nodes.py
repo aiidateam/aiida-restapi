@@ -15,29 +15,6 @@ if t.TYPE_CHECKING:
     from pydantic import BaseModel
 
 
-def test_get_node_projectable_properties(client: TestClient):
-    """Test get projectable properties for nodes."""
-    response = client.get('/nodes/projectable_properties')
-    assert response.status_code == 200
-    assert response.json() == sorted(orm.Node.fields.keys())
-
-
-def test_get_node_projectable_properties_by_type(client: TestClient):
-    """Test get projectable properties for nodes by valid type."""
-    response = client.get('/nodes/projectable_properties?type=data.core.int.Int.')
-    assert response.status_code == 200
-    result = response.json()
-    assert result == sorted(orm.Int.fields.keys())
-    assert 'attributes.source' in result
-    assert 'attributes.value' in result
-
-
-def test_get_node_projectable_properties_by_invalid_type(client: TestClient):
-    """Test get projectable properties for nodes with invalid type."""
-    response = client.get('/nodes/projectable_properties?type=this_is_not_a_valid_type')
-    assert response.status_code == 422
-
-
 def test_get_node_schema(client: TestClient):
     """Test get schema for nodes."""
     response = client.get('/nodes/schema')
@@ -57,8 +34,8 @@ def test_get_node_schema(client: TestClient):
 @pytest.mark.parametrize(
     'which, model, name',
     [
-        ['get', orm.Int.Model, 'AttributesModel'],
-        ['post', orm.Int.CreateModel, 'AttributesCreateModel'],
+        ['read', orm.Int.ReadModel, 'AttributesModel'],
+        ['write', orm.Int.WriteModel, 'AttributesWriteModel'],
     ],
 )
 def test_get_node_schema_by_type(client: TestClient, which: str, model: type[BaseModel], name: str):
@@ -86,87 +63,43 @@ def test_get_node_schema_by_invalid_type(client: TestClient):
     assert response.status_code == 422
 
 
-@pytest.mark.usefixtures('default_nodes')
-def test_get_nodes(client: TestClient):
-    """Test listing existing nodes."""
-    response = client.get('/nodes')
+def test_get_node_projections(client: TestClient):
+    """Test get projections for nodes."""
+    response = client.get('/nodes/projections')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 4
-    result = next(iter(response.json()['results']), None)
-    assert result is not None
-    assert set(result.keys()) == {'pk', 'uuid', 'node_type', 'label', 'description', 'ctime', 'mtime', 'user'}
+    assert response.json() == sorted(orm.Node.fields.keys())
 
 
-@pytest.mark.usefixtures('default_nodes')
-def test_get_nodes_by_type(client: TestClient):
-    """Test listing existing nodes by type."""
-    filters = {'node_type': {'in': ['data.core.int.Int.', 'data.core.float.Float.']}}
-    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+def test_get_node_projections_by_type(client: TestClient):
+    """Test get projections for nodes by valid type."""
+    response = client.get('/nodes/projections?type=data.core.int.Int.')
     assert response.status_code == 200
-    results = response.json()['results']
-    assert len(results) == 2
-    assert any(result['node_type'] == 'data.core.int.Int.' for result in results)
-    assert any(result['node_type'] == 'data.core.float.Float.' for result in results)
+    result = response.json()
+    assert result == sorted(orm.Int.fields.keys())
+    assert 'attributes.source' in result
+    assert 'attributes.value' in result
 
 
-@pytest.mark.usefixtures('default_nodes')
-def test_get_nodes_with_filters(client: TestClient):
-    """Test listing existing nodes with filters."""
-    filters = {'attributes.value': 1.1}
-    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+def test_get_node_projections_by_invalid_type(client: TestClient):
+    """Test get projections for nodes with invalid type."""
+    response = client.get('/nodes/projections?type=this_is_not_a_valid_type')
+    assert response.status_code == 422
+
+
+def test_get_nodes_statistics(client: TestClient):
+    """Test get statistics for nodes."""
+    from aiida_restapi.models.node import NodeStatistics
+
+    response = client.get('/nodes/statistics')
     assert response.status_code == 200
-    results = response.json()['results']
-    assert len(results) == 1
-    assert results[0]['node_type'] == 'data.core.float.Float.'
-
-    # Attributes are excluded, so we need to check separately by id
-    response = client.get(f'/nodes/{results[0]["pk"]}/attributes')
-    assert response.status_code == 200
-    assert response.json()['value'] == 1.1
-
-
-@pytest.mark.usefixtures('default_nodes')
-def test_get_nodes_in_order(client: TestClient):
-    """Test listing existing nodes in order."""
-    order_by = {'ctime': 'desc'}
-    response = client.get(f'/nodes?order_by={json.dumps(order_by)}')
-    assert response.status_code == 200
-    results = response.json()['results']
-    assert len(results) == 4
-    ctimes = [result['ctime'] for result in results]
-    assert ctimes == sorted(ctimes, reverse=True)
-
-
-@pytest.mark.usefixtures('default_nodes')
-def test_get_nodes_pagination(client: TestClient):
-    """Test listing existing nodes with pagination."""
-    response = client.get('/nodes?page_size=2&page=1')
-    assert response.status_code == 200
-    results = response.json()['results']
-    assert len(results) == 2
-    assert all(result['pk'] in (1, 2) for result in results)
-
-    response = client.get('/nodes?page_size=2&page=2')
-    assert response.status_code == 200
-    results = response.json()['results']
-    assert len(results) == 2
-    assert all(result['pk'] in (3, 4) for result in results)
-
-
-def test_get_node(client: TestClient, default_nodes: list[int | None]):
-    """Test retrieving a single nodes."""
-    for nodes_id in default_nodes:
-        response = client.get(f'/nodes/{nodes_id}')
-        assert response.status_code == 200, response.content
-        assert response.json()['pk'] == nodes_id
+    result = response.json()
+    assert NodeStatistics.model_validate(result)
 
 
 def test_get_download_formats(client: TestClient):
     """Test get download formats for nodes."""
     response = client.get('/nodes/download_formats')
-
     assert response.status_code == 200
-
     reference = {
         'data.core.array.ArrayData.|': ['json'],
         'data.core.array.bands.BandsData.|': [
@@ -189,29 +122,224 @@ def test_get_download_formats(client: TestClient):
         'data.core.structure.StructureData.|': ['chemdoodle', 'cif', 'xsf', 'xyz'],
         'data.core.upf.UpfData.|': ['json', 'upf'],
     }
-    response_json = response.json()
-
+    result = response.json()
     for key, value in reference.items():
-        if key not in response_json:
-            raise AssertionError(f'The key {key!r} is not found in the response: {response_json}')
-        if not set(value) <= set(response_json[key]):
-            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {response_json}')
+        if key not in result:
+            raise AssertionError(f'The key {key!r} is not found in the response: {result}')
+        if not set(value) <= set(result[key]):
+            raise AssertionError(f'The value {value} in key {key!r} is not contained in the response: {result}')
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes(client: TestClient):
+    """Test listing existing nodes."""
+    response = client.get('/nodes')
+    assert response.status_code == 200
+    assert len(response.json()['data']) == 4
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes_by_type(client: TestClient):
+    """Test listing existing nodes by type."""
+    filters = {'node_type': {'in': ['data.core.int.Int.', 'data.core.float.Float.']}}
+    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert len(data) == 2
+    assert data[0]['attributes']['node_type'] == 'data.core.float.Float.'
+    assert data[1]['attributes']['node_type'] == 'data.core.int.Int.'
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes_with_filters(client: TestClient):
+    """Test listing existing nodes with filters."""
+    filters = {'attributes.value': 1.1}
+    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert len(data) == 1
+    assert data[0]['attributes']['node_type'] == 'data.core.float.Float.'
+
+    # Attributes are excluded, so we need to check separately by id
+    check = client.get(f'/nodes/{data[0]["id"]}/attributes')
+    assert check.status_code == 200
+    assert check.json()['data']['attributes']['value'] == 1.1
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes_in_order(client: TestClient):
+    """Test listing existing nodes in order."""
+    order_by = {'ctime': 'desc'}
+    response = client.get(f'/nodes?order_by={json.dumps(order_by)}')
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert len(data) == 4
+    ctimes = [result['attributes']['ctime'] for result in data]
+    assert ctimes == sorted(ctimes, reverse=True)
+
+
+@pytest.mark.usefixtures('default_nodes')
+def test_get_nodes_pagination(client: TestClient):
+    """Test listing existing nodes with pagination."""
+    response = client.get('/nodes?page_size=2&page=1')
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert len(data) == 2
+    assert all(result['attributes']['pk'] in (1, 2) for result in data)
+
+    check = client.get('/nodes?page_size=2&page=2')
+    assert check.status_code == 200
+    data = check.json()['data']
+    assert len(data) == 2
+    assert all(result['attributes']['pk'] in (3, 4) for result in data)
+
+
+def test_get_node_types(client: TestClient):
+    """Test retrieving the available node types."""
+    from aiida.plugins import get_entry_points
+
+    from aiida_restapi.models.node import NodeType
+
+    response = client.get('/nodes/types')
+    assert response.status_code == 200
+    result = response.json()
+    entry_points = get_entry_points('aiida.data') + get_entry_points('aiida.node')
+    assert len(result) == len(entry_points) - 1  # `data` entrypoint is excluded
+    first = result[0]
+    assert NodeType.model_validate(first)
+
+
+def test_get_node(client: TestClient, default_nodes: list[str | None]):
+    """Test retrieving a single nodes."""
+    node_id = default_nodes[0]
+    response = client.get(f'/nodes/{node_id}')
+    assert response.status_code == 200, response.content
+    node = response.json()['data']
+    attributes = node['attributes']
+    assert 'uuid' not in attributes  # top-level id
+    assert 'user' not in attributes  # relationship
+    assert set(attributes.keys()) == {
+        'pk',
+        'node_type',
+        'label',
+        'description',
+        'ctime',
+        'mtime',
+    }
+    assert set(node['relationships'].keys()) == {
+        'collection',
+        'user',
+        'groups',
+        'attributes',
+        'extras',
+        'incoming',
+        'outgoing',
+        'repository_metadata',
+    }
+
+
+def test_get_node_user(client: TestClient):
+    """Test retrieving the user of a single node."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/user')
+    assert response.status_code == 200
+    assert response.json()['data']['attributes']['email'] == node.user.email
+
+
+def test_get_node_computer(client: TestClient, default_computers: list[int | None]):
+    """Test retrieving the computer of a single node."""
+    computer = orm.load_computer(default_computers[0])
+    node = orm.Int(value=5, computer=computer).store()
+    response = client.get(f'/nodes/{node.uuid}/computer')
+    assert response.status_code == 200
+    assert response.json()['data']['attributes']['uuid'] == node.computer.uuid
+
+
+def test_get_node_no_computer(client: TestClient):
+    """Test retrieving the computer of a node with null computer raises an exception."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/computer')
+    assert response.status_code == 404
+    assert response.json()['errors'][0]['detail'] == f'Computer related to Node<{node.uuid}> not found.'
+
+
+def test_get_node_groups(client: TestClient, default_groups: list[str]):
+    """Test retrieving groups of a single node."""
+    node = orm.Int(value=10).store()
+    for group_id in default_groups:
+        group = orm.load_group(group_id)
+        group.add_nodes([node])
+    response = client.get(f'/nodes/{node.uuid}/groups')
+    assert response.status_code == 200
+    data = response.json()['data']
+    returned_group_ids = {item['id'] for item in data}
+    assert returned_group_ids == set(default_groups)
+
+
+def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]):
+    """Test retrieving attributes of a single node."""
+    for node_id in default_nodes:
+        response = client.get(f'/nodes/{node_id}/attributes')
+        assert response.status_code == 200
+        data = response.json()['data']
+        node = orm.load_node(node_id)
+        for key, value in node.base.attributes.items():
+            assert key in data['attributes']
+            assert data['attributes'][key] == value
+
+
+def test_get_node_extras(client: TestClient, default_nodes: list[str | None]):
+    """Test retrieving extras of a single node."""
+    for node_id in default_nodes:
+        response = client.get(f'/nodes/{node_id}/extras')
+        assert response.status_code == 200
+        data = response.json()['data']
+        node = orm.load_node(node_id)
+        for key, value in node.base.extras.items():
+            assert key in data['attributes']
+            assert data['attributes'][key] == value
+
+
+def test_get_node_links(client: TestClient, mock_arithmetic_add: str):
+    """Test retrieving links of a single node."""
+
+    calc = orm.load_node(mock_arithmetic_add)
+
+    response = client.get(f'/nodes/{calc.uuid}/links?direction=incoming')
+    assert response.status_code == 200
+    assert len(response.json()['data']) == 2  # x and y
+
+    response = client.get(f'/nodes/{calc.uuid}/links?direction=outgoing')
+    assert response.status_code == 200
+    assert len(response.json()['data']) == 1  # sum
 
 
 def test_get_node_repository_metadata(client: TestClient, array_data_node: orm.ArrayData):
     """Test retrieving repository metadata for a node."""
-    response = client.get(f'/nodes/{array_data_node.pk}/repo/metadata')
+    response = client.get(f'/nodes/{array_data_node.uuid}/repo/metadata')
     assert response.status_code == 200
-    result = response.json()
+    metadata = response.json()['data']['attributes']
     default = orm.ArrayData.default_array_name + '.npy'
-    assert default in result
-    assert all(t in result[default] for t in ('type', 'binary', 'size', 'download'))
-    assert result[default]['type'] == 'FILE'
-    assert result[default]['binary'] is True
-    assert 'zipped' in result
-    assert all(t in result['zipped'] for t in ('type', 'binary', 'size', 'download'))
-    assert result['zipped']['type'] == 'FILE'
-    assert result['zipped']['binary'] is True
+    assert default in metadata
+    assert all(t in metadata[default] for t in ('type', 'binary', 'size', 'download'))
+    assert metadata[default]['type'] == 'FILE'
+    assert metadata[default]['binary'] is True
+    assert 'zipped' in metadata
+    assert all(t in metadata['zipped'] for t in ('type', 'binary', 'size', 'download'))
+    assert metadata['zipped']['type'] == 'FILE'
+    assert metadata['zipped']['binary'] is True
+
+
+def test_get_node_file_contents(client: TestClient, array_data_node: orm.ArrayData):
+    """Test retrieving file contents for a node."""
+    import numpy as np
+
+    default = orm.ArrayData.default_array_name
+    response = client.get(f'/nodes/{array_data_node.uuid}/repo/contents?filename={default}.npy')
+    assert response.status_code == 200
+    assert isinstance(response.content, bytes)
+    array = np.load(io.BytesIO(response.content))
+    assert np.array_equal(array, array_data_node.get_array(default))
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -222,10 +350,59 @@ def test_create_dict(client: TestClient):
         json={
             'node_type': 'data.core.dict.Dict.',
             'label': 'test_dict',
-            'attributes': {'value': {'x': 1, 'y': 2}},
+            'attributes': {'x': 1, 'y': 2},
         },
     )
     assert response.status_code == 200, response.content
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_dict_constructor_args(client: TestClient):
+    """Test creating a new dict using constructor args payload discrimination."""
+    response = client.post(
+        '/nodes/constructor',
+        json={
+            'node_type': 'data.core.dict.Dict.',
+            'label': 'test_dict_constructor',
+            'args': {'value': {'x': 1, 'y': 2}},
+        },
+    )
+    assert response.status_code == 200, response.content
+
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/attributes')
+    assert check.status_code == 200, check.content
+    attributes = check.json()['data']['attributes']
+    assert attributes['x'] == 1
+    assert attributes['y'] == 2
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_node_reject_both_attributes_and_args(client: TestClient):
+    """Test creating a node with both attributes and args is rejected."""
+    response = client.post(
+        '/nodes',
+        json={
+            'node_type': 'data.core.dict.Dict.',
+            'attributes': {'value': {'x': 1}},
+            'args': {'value': {'y': 2}},
+        },
+    )
+    assert response.status_code == 422, response.content
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_node_constructor_not_supported(client: TestClient):
+    """Test constructor payload for unsupported type returns concise validation error."""
+    response = client.post(
+        '/nodes/constructor',
+        json={
+            'node_type': 'data.core.int.Int.',
+            'args': {'value': 42},
+        },
+    )
+    assert response.status_code == 422, response.content
+    detail = response.json()['errors'][0]['detail']
+    assert "'data.core.int.Int.' does not support constructor" in detail
 
 
 @pytest.mark.anyio
@@ -233,15 +410,14 @@ def test_create_dict(client: TestClient):
 async def test_create_code(async_client: AsyncClient, default_computers: list[int | None]):
     """Test creating a new Code."""
     for comp_id in default_computers:
-        computer = orm.load_computer(comp_id)
         response = await async_client.post(
             '/nodes',
             json={
                 'node_type': 'data.core.code.installed.InstalledCode.',
                 'label': 'test_code',
+                'computer': comp_id,
                 'attributes': {
                     'filepath_executable': '/bin/true',
-                    'computer': computer.label,
                 },
             },
         )
@@ -355,38 +531,6 @@ def test_create_structure_data(client: TestClient):
 
 
 @pytest.mark.usefixtures('authenticate')
-def test_create_orbital_data(client: TestClient):
-    """Test creating a new OrbitalData."""
-    response = client.post(
-        '/nodes',
-        json={
-            'node_type': 'data.core.orbital.OrbitalData.',
-            'description': '',
-            'attributes': {
-                'orbital_dicts': [
-                    {
-                        'spin': 0,
-                        'position': [
-                            -1,
-                            1,
-                            1,
-                        ],
-                        'kind_name': 'As',
-                        'diffusivity': None,
-                        'radial_nodes': 0,
-                        '_orbital_type': 'realhydrogen',
-                        'x_orientation': None,
-                        'z_orientation': None,
-                        'angular_momentum': -3,
-                    }
-                ]
-            },
-        },
-    )
-    assert response.status_code == 200, response.content
-
-
-@pytest.mark.usefixtures('authenticate')
 def test_create_single_file(client: TestClient):
     """Testing file upload"""
     files = [
@@ -410,13 +554,13 @@ def test_create_single_file(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'test_file.txt' in result
-    assert result['test_file.txt']['type'] == 'FILE'
-    assert result['test_file.txt']['size'] == len(b'Some test strings')
-    assert result['test_file.txt']['binary'] is False
+    metadata = check.json()['data']['attributes']
+    assert 'test_file.txt' in metadata
+    assert metadata['test_file.txt']['type'] == 'FILE'
+    assert metadata['test_file.txt']['size'] == len(b'Some test strings')
+    assert metadata['test_file.txt']['binary'] is False
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -444,13 +588,13 @@ def test_create_single_file_binary(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'binary_file.bin' in result
-    assert result['binary_file.bin']['type'] == 'FILE'
-    assert result['binary_file.bin']['size'] == len(binary_content)
-    assert result['binary_file.bin']['binary'] is True
+    metadata = check.json()['data']['attributes']
+    assert 'binary_file.bin' in metadata
+    assert metadata['binary_file.bin']['type'] == 'FILE'
+    assert metadata['binary_file.bin']['size'] == len(binary_content)
+    assert metadata['binary_file.bin']['binary'] is True
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -485,13 +629,13 @@ def test_create_folder_data(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'folder' in result
-    assert result['folder']['type'] == 'DIRECTORY'
-    assert 'objects' in result['folder']
-    objects = result['folder']['objects']
+    metadata = check.json()['data']['attributes']
+    assert 'folder' in metadata
+    assert metadata['folder']['type'] == 'DIRECTORY'
+    assert 'objects' in metadata['folder']
+    objects = metadata['folder']['objects']
     assert len(objects) == 2
     for file in files:
         filename = file[1][0].split('/', 1)[1]
@@ -535,13 +679,13 @@ def test_create_node_with_files_has_zipped_metadata(client: TestClient):
     response = client.post('/nodes/file-upload', files=files, data=data)
     assert response.status_code == 200, response.json()
 
-    check = client.get(f'/nodes/{response.json()["pk"]}/repo/metadata')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/repo/metadata')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'zipped' in result
-    assert result['zipped']['type'] == 'FILE'
-    assert result['zipped']['binary'] is True
-    assert result['zipped']['size'] == sum(len(file[1][1].getvalue()) for file in files)
+    metadata = check.json()['data']['attributes']
+    assert 'zipped' in metadata
+    assert metadata['zipped']['type'] == 'FILE'
+    assert metadata['zipped']['binary'] is True
+    assert metadata['zipped']['size'] == sum(len(file[1][1].getvalue()) for file in files)
 
 
 @pytest.mark.parametrize(
@@ -580,7 +724,7 @@ def test_create_unknown_entry_point(client: TestClient):
 
 @pytest.mark.usefixtures('default_computers', 'authenticate')
 def test_create_additional_attribute(client: TestClient):
-    """Test adding additional properties are ignored."""
+    """Test adding additional properties are rejected."""
     response = client.post(
         '/nodes',
         json={
@@ -591,13 +735,7 @@ def test_create_additional_attribute(client: TestClient):
             },
         },
     )
-    assert response.status_code == 200, response.content
-
-    check = client.get(f'/nodes/{response.json()["pk"]}/attributes')
-    assert check.status_code == 200, check.content
-    result = check.json()
-    assert 'value' in result
-    assert 'extra_thing' not in result
+    assert response.status_code == 422, response.content
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -614,11 +752,11 @@ def test_create_bool_with_extra(client: TestClient):
     assert response.status_code == 200, response.content
 
     # We exclude extras from the node response, so we check by retrieving them separately
-    check = client.get(f'/nodes/{response.json()["pk"]}/extras')
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/extras')
     assert check.status_code == 200, check.content
-    result = check.json()
-    assert result['extra_one'] == 'value_1'
-    assert result['extra_two'] == 'value_2'
+    extras = check.json()['data']['attributes']
+    assert extras['extra_one'] == 'value_1'
+    assert extras['extra_two'] == 'value_2'
 
 
 @pytest.mark.anyio
@@ -627,19 +765,19 @@ async def test_get_download_node(async_client: AsyncClient, array_data_node: orm
     The async client is needed to avoid an error caused by an I/O operation on closed file"""
 
     # Test that array is correctly downloaded as json
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=json')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download?format=json')
     assert response.status_code == 200, response.json()
-    assert response.json().get('default', None) == array_data_node.get_array().tolist()
+    assert response.json()['default'] == array_data_node.get_array().tolist()
 
     # Test exception when wrong download format given
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download?download_format=cif')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download?format=cif')
     assert response.status_code == 422, response.json()
-    assert 'format cif is not supported' in response.json()['detail']
+    assert 'format cif is not supported' in response.json()['errors'][0]['detail']
 
     # Test exception when no download format given
-    response = await async_client.get(f'/nodes/{array_data_node.pk}/download')
+    response = await async_client.get(f'/nodes/{array_data_node.uuid}/download')
     assert response.status_code == 422, response.json()
-    assert 'Please specify the download format' in response.json()['detail']
+    assert 'Please specify the download format' in response.json()['errors'][0]['detail']
 
 
 @pytest.mark.usefixtures('default_nodes')

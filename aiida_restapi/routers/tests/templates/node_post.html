@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Test POST /nodes</title>
+    <style>
+      {{ css | safe }}
+    </style>
+  </head>
+
+  <body data-api-prefix="{{ api_prefix }}">
+    <h1>Test POST /nodes</h1>
+
+    <div class="row">
+      <h3>Auth (fake user)</h3>
+      <div class="params">
+        <div>
+          <label>Email</label>
+          <input type="text" id="authEmail" value="johndoe@example.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="authPassword" value="secret" />
+        </div>
+        <div class="row">
+          <button type="button" class="btn-secondary" id="authBtn">
+            Authenticate
+          </button>
+          <button type="button" class="btn-secondary" id="logoutBtn">
+            Clear token
+          </button>
+          <span id="authStatus" class="hint small muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <h3>Params (JSON)</h3>
+      <div id="params" class="params">
+        <div>
+          <label>Node type</label>
+          <select id="nodeTypeSelect">
+            {{ options | safe }}
+          </select>
+        </div>
+        <div>
+          <div class="row">
+            <label>Write mode</label>
+            <button type="button" class="btn-primary" id="attributesModeBtn">
+              Attributes
+            </button>
+            <button type="button" class="btn-secondary" id="constructorModeBtn">
+              Constructor
+            </button>
+          </div>
+          <input type="hidden" id="writeMode" value="attributes" />
+        </div>
+        <div>
+          <label>Label</label>
+          <input type="text" id="label" placeholder="Optional node label" />
+        </div>
+        <div>
+          <label>Description</label>
+          <input
+            type="text"
+            id="description"
+            placeholder="Optional node description"
+          />
+        </div>
+        <div>
+          <label>Extras (JSON)</label>
+          <textarea id="extras">
+{
+}
+          </textarea>
+        </div>
+        <div>
+          <label id="argumentsLabel"
+            >Attributes / constructor arguments (JSON)</label
+          >
+          <textarea id="arguments">
+{
+}
+          </textarea>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <h3>Attachments (optional)</h3>
+      <div id="fileRows"></div>
+
+      <div class="row">
+        <button type="button" class="btn-secondary" id="addFileBtn">
+          + Add file
+        </button>
+        <span class="hint small muted"
+          >Start with one file row; add/remove as needed.</span
+        >
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="sendBtn" class="btn-primary">Send</button>
+      <button id="clearBtn" class="btn-secondary" type="button">
+        Clear output
+      </button>
+      <span id="clientError" class="error"></span>
+    </div>
+
+    <h3>Result</h3>
+    <div id="successLink"></div>
+    <pre id="out"></pre>
+
+    <script>
+      {{ js | safe }}
+    </script>
+  </body>
+</html>

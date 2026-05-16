@@ -50,7 +50,7 @@ def test_add_process_invalid_entry_point(client: TestClient, default_test_add_pr
             },
         },
     )
-    assert response.status_code == 404
+    assert response.status_code == 422
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -73,7 +73,8 @@ def test_add_process_invalid_node_id(client: TestClient, default_test_add_proces
         },
     )
     assert response.status_code == 404
-    assert response.json() == {'detail': 'Node with UUID `891a9efa-f90e-11eb-9a03-0242ac130003` does not exist.'}
+    error = response.json()['errors'][0]
+    assert 'no Node found with UUID<891a9efa-f90e-11eb-9a03-0242ac130003>' in error['detail']
 
 
 @pytest.mark.anyio

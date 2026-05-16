@@ -6,122 +6,171 @@ import typing as t
 
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.exceptions import NotExistent
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query, Request
 
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams, query_params
-from aiida_restapi.repository.entity import EntityRepository
+from aiida_restapi.common import query
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import errors
+from aiida_restapi.jsonapi.models.aiida import ComputerCollectionDocument, ComputerResourceDocument
+from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
+from aiida_restapi.jsonapi.responses import JsonApiResponse
+from aiida_restapi.services.entity import EntityService
 
 from .auth import UserInDB, get_current_active_user
 
-read_router = APIRouter()
-write_router = APIRouter()
+read_router = APIRouter(prefix='/computers')
+write_router = APIRouter(prefix='/computers')
 
-repository = EntityRepository[orm.Computer, orm.Computer.Model](orm.Computer)
-
-
-@read_router.get('/computers/schema')
-async def get_computers_schema(
-    which: t.Literal['get', 'post'] = Query(
-        'get',
-        description='Type of schema to retrieve: "get" or "post"',
-    ),
-) -> dict:
-    """Get JSON schema for AiiDA computers.
-
-    :param which: The type of schema to retrieve: 'get' or 'post'.
-    :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
-    :raises HTTPException: 422 if the 'which' parameter is not 'get' or 'post'.
-    """
-    try:
-        return repository.get_entity_schema(which=which)
-    except ValueError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
-
-
-@read_router.get('/computers/projectable_properties', response_model=list[str])
-async def get_computer_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA computers.
-
-    :return: The list of projectable properties for AiiDA computers.
-    """
-    return repository.get_projectable_properties()
+service = EntityService[orm.Computer, orm.Computer.ReadModel](orm.Computer)
 
 
 @read_router.get(
-    '/computers',
-    response_model=PaginatedResults[orm.Computer.Model],
+    '/schema',
+    response_model=dict[str, t.Any],
+    responses={
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
+)
+async def get_computers_schema(
+    which: t.Annotated[
+        t.Literal['read', 'write'],
+        Query(description='Type of schema to retrieve: "read" or "write"'),
+    ] = 'read',
+) -> dict[str, t.Any]:
+    """Get JSON schema for AiiDA computers."""
+    return service.get_schema(which=which)
+
+
+@read_router.get(
+    '/projections',
+    response_model=list[str],
+)
+async def get_computer_projections() -> list[str]:
+    """Get queryable projections for AiiDA computers."""
+    return service.get_projections()
+
+
+@read_router.get(
+    '',
+    response_model=ComputerCollectionDocument,
+    response_class=JsonApiResponse,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
 )
 @with_dbenv()
 async def get_computers(
-    queries: t.Annotated[QueryParams, Depends(query_params)],
-) -> PaginatedResults[orm.Computer.Model]:
-    """Get AiiDA computers with optional filtering, sorting, and/or pagination.
-
-    :param queries: The query parameters, including filters, order_by, page_size, and page.
-    :return: The paginated results, including total count, current page, page size, and list of computer models.
-    """
-    return repository.get_entities(queries)
+    request: Request,
+    query_params: t.Annotated[
+        query.CollectionQueryParams,
+        Depends(query.collection_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA computers with optional filtering, sorting, and/or pagination."""
+    results = service.get_many(query_params)
+    return JsonApi.collection(
+        request,
+        results,
+        resource_identity=orm.Computer.identity_field,
+        resource_type='computers',
+        query_params=query_params,
+    )
 
 
 @read_router.get(
-    '/computers/{computer_id}',
-    response_model=orm.Computer.Model,
+    '/{pk}',
+    response_class=JsonApiResponse,
+    response_model=ComputerResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
+    },
 )
 @with_dbenv()
-async def get_computer(computer_id: int) -> orm.Computer.Model:
-    """Get AiiDA computer by id.
+async def get_computer(
+    request: Request,
+    pk: int,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get AiiDA computer by pk."""
+    result = service.get_one(pk)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Computer.identity_field,
+        resource_type='computers',
+        include=query_params.include,
+    )
 
-    :param computer_id: The id of the AiiDA computer.
-    :return: The computer model.
-    :raises HTTPException: 404 if the computer with the given id does not exist.
-    """
-    try:
-        return repository.get_entity_by_id(computer_id)
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
 
-
-@read_router.get('/computers/{computer_id}/metadata', response_model=dict[str, t.Any])
+@read_router.get(
+    '/{pk}/metadata',
+    response_class=JsonApiResponse,
+    response_model=JsonApiResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
+        409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError],
+            'description': 'Validation Error | Query Builder Error',
+        },
+    },
+)
 @with_dbenv()
-async def get_computer_metadata(computer_id: int) -> dict[str, t.Any]:
-    """Get metadata of an AiiDA computer by id.
-
-    :param computer_id: The id of the AiiDA computer.
-    :return: The metadata dictionary of the computer.
-    :raises HTTPException: 404 if the computer with the given id does not exist.
-    """
-    try:
-        computer = repository.get_entity_by_id(computer_id)
-        return computer.metadata
-    except NotExistent:
-        raise HTTPException(status_code=404, detail=f'Could not find a Computer with id {computer_id}')
+async def get_computer_metadata(
+    request: Request,
+    pk: str,
+    query_params: t.Annotated[
+        query.ResourceQueryParams,
+        Depends(query.resource_query_params),
+    ],
+) -> dict[str, t.Any]:
+    """Get metadata of an AiiDA computer by pk."""
+    metadata = service.get_field(pk, 'metadata')
+    return JsonApi.child_resource(
+        request,
+        metadata,
+        pid=str(pk),
+        parent_type='computers',
+        child_type='metadata',
+        include=query_params.include,
+    )
 
 
 @write_router.post(
-    '/computers',
-    response_model=orm.Computer.Model,
+    '',
+    response_class=JsonApiResponse,
+    response_model=ComputerResourceDocument,
     response_model_exclude_none=True,
-    response_model_exclude_unset=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError, 'description': 'Storing Not Allowed'},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError],
+            'description': 'Validation Error | Invalid Input Error',
+        },
+    },
 )
 @with_dbenv()
 async def create_computer(
-    computer_model: orm.Computer.CreateModel,
+    request: Request,
+    computer_model: orm.Computer.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Computer.Model:
-    """Create new AiiDA computer.
-
-    :param computer_model: The AiiDA ORM model of the computer to create.
-    :param current_user: The current authenticated user.
-    :return: The created AiiDA Computer model.
-    :raises HTTPException: 500 for any failures during computer creation.
-    """
-    try:
-        return repository.create_entity(computer_model)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
+) -> dict[str, t.Any]:
+    """Create new AiiDA computer."""
+    result = service.add_one(computer_model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Computer.identity_field,
+        resource_type='computers',
+    )

@@ -7,9 +7,18 @@ from aiida import orm
 from fastapi.testclient import TestClient
 
 
-def test_get_computer_projectable_properties(client: TestClient):
-    """Test get projectable properties for computer."""
-    response = client.get('/computers/projectable_properties')
+def test_get_computer_schema(client: TestClient):
+    """Test retrieving the computer schema."""
+    response = client.get('/computers/schema')
+    assert response.status_code == 200
+    result = response.json()
+    assert 'properties' in result
+    assert sorted(result['properties'].keys()) == sorted(orm.Computer.fields.keys())
+
+
+def test_get_computer_projections(client: TestClient):
+    """Test get projections for computer."""
+    response = client.get('/computers/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Computer.fields.keys())
 
@@ -19,7 +28,7 @@ def test_get_computers(client: TestClient):
     """Test listing existing computer."""
     response = client.get('/computers/')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2
+    assert len(response.json()['data']) == 2
 
 
 def test_get_computer(client: TestClient, default_computers: list[int | None]):
@@ -27,6 +36,25 @@ def test_get_computer(client: TestClient, default_computers: list[int | None]):
     for comp_id in default_computers:
         response = client.get(f'/computers/{comp_id}')
         assert response.status_code == 200
+
+
+def test_get_computer_metadata(client: TestClient):
+    metadata = {
+        'workdir': '/tmp/aiida',
+        'minimum_scheduler_poll_interval': 15,
+        'default_mpiprocs_per_machine': 2,
+    }
+    computer = orm.Computer(
+        label='meta_comp',
+        hostname='localhost',
+        transport_type='core.local',
+        scheduler_type='core.direct',
+        metadata=metadata,
+    ).store()
+
+    response = client.get(f'/computers/{computer.pk}/metadata')
+    assert response.status_code == 200
+    assert response.json()['data']['attributes'] == metadata
 
 
 @pytest.mark.usefixtures('authenticate')
@@ -42,6 +70,8 @@ def test_create_computer(client: TestClient):
         },
     )
     assert response.status_code == 200, response.content
-    response = client.get('/computers')
-    computers = [comp['label'] for comp in response.json()['results']]
-    assert 'test_comp' in computers
+    attributes = response.json()['data']['attributes']
+    assert attributes['label'] == 'test_comp'
+    assert attributes['hostname'] == 'fake_host'
+    assert attributes['transport_type'] == 'core.local'
+    assert attributes['scheduler_type'] == 'core.pbspro'
