@@ -209,7 +209,7 @@ class NodeModelRegistry:
         # Default to write model so that model-level validation produces field-level errors
         # when neither `attributes` nor `args` are provided.
         which = 'constructor' if has_args else 'write'
-        Model = self.get_model(node_type, which)
+        Model = self.get_model(node_type, which)  # type: ignore[arg-type]
         if Model is None:
             if which == 'constructor':
                 raise UnsupportedSchemaError(f"'{node_type}' does not support constructor-based creation.")
@@ -234,7 +234,7 @@ class NodeModelRegistry:
                 'constructor': node_cls.ConstructorModel if node_cls.supports_constructor_model else None,
             }
 
-    def _build_model_union(self):
+    def _build_model_union(self):  # type: ignore[no-untyped-def]
         """Build a union type of all node models.
 
         The union discriminator is inferred from:
@@ -243,7 +243,7 @@ class NodeModelRegistry:
         """
         self._build_node_mappings()
 
-        tagged_models: list[object] = []
+        tagged_models: list = []
 
         for node_type, model_dict in self._models.items():
             write_model = model_dict['write']
@@ -258,7 +258,7 @@ class NodeModelRegistry:
                     ]
                 )
 
-        def discriminator(value: dict[str, t.Any]):
+        def discriminator(value: dict[str, t.Any]) -> str:
             node_type = value.get('node_type')
             has_attributes = 'attributes' in value
             has_args = 'args' in value
@@ -269,6 +269,6 @@ class NodeModelRegistry:
             return f'{node_type}|attributes'
 
         return t.Annotated[
-            t.Union.__getitem__(tuple(tagged_models)),
+            t.Union[tuple(tagged_models)],
             pdt.Discriminator(discriminator),
         ]
