@@ -5,8 +5,8 @@ from __future__ import annotations
 import typing as t
 
 import pydantic as pdt
-from aiida.common.exceptions import MissingEntryPointError
-from aiida.orm import Node
+from aiida.common.exceptions import MissingEntryPointError, UnsupportedSchemaError
+from aiida.orm import Node, OrmModel
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
 
@@ -80,6 +80,10 @@ class RepoFileMetadata(pdt.BaseModel):
         description='The size of the file in bytes.',
         examples=[1024],
     )
+    file_hash: str = pdt.Field(
+        description='The hash of the file in the repository.',
+        alias='hash',
+    )
     download: str = pdt.Field(
         description='The URL to download the file.',
         examples=['../nodes/{uuid}/repo/contents?filename=path/to/file.txt'],
@@ -144,15 +148,11 @@ class NodeModelRegistry:
 
     This class maintains mappings of node types and their corresponding Pydantic models.
 
-    :ivar ModelUnion: A union type of all AiiDA node Pydantic models, discriminated by the `node_type` field.
+    :ivar ModelUnion: An AiiDA ORM model union discriminated by `node_type` and payload shape (`attributes` vs. `args`).
     """
 
     def __init__(self) -> None:
-        self._build_node_mappings()
-        self.ModelUnion = t.Annotated[
-            t.Union[self._get_post_models()],
-            pdt.Field(discriminator='node_type'),
-        ]
+        self.ModelUnion = self._build_model_union()
 
     def get_node_types(self) -> list[str]:
         """Get the list of registered node class names.
@@ -171,61 +171,104 @@ class NodeModelRegistry:
         """
         return node_type.rsplit('.', 2)[-2]
 
-    def get_model(self, node_type: str, which: t.Literal['get', 'post'] = 'get') -> type[Node.Model]:
+    def get_model(
+        self,
+        node_type: str,
+        which: t.Literal['read', 'write', 'constructor'] = 'read',
+    ) -> type[OrmModel] | None:
         """Get the Pydantic model class for a given node type.
 
         :param node_type: The AiiDA node type string.
         :type node_type: str
         :return: The corresponding Pydantic model class.
-        :rtype: type[Node.Model]
+        :rtype: type[OrmModel] | None
         """
-        if (Model := self._models.get(node_type)) is None:
+        if (model_dict := self._models.get(node_type)) is None:
             raise MissingEntryPointError(f'Unknown node type: {node_type}')
-        if which not in Model:
+        if which not in model_dict:
             raise KeyError(f'Unknown model type: {which}')
-        return Model[which]
+        return model_dict[which]
 
-    def _get_node_post_model(self, node_cls: Node) -> type[Node.Model]:
-        """Return a patched Model for the given node class with a literal `node_type` field.
+    def get_post_model_from_payload(self, payload: dict[str, t.Any]) -> type[OrmModel]:
+        """Get the node creation model (`write` or `constructor`) from payload shape.
 
-        :param node_cls: The AiiDA node class.
-        :type node_cls: Node
-        :return: The patched ORM Node model.
-        :rtype: type[Node.Model]
+        The payload is discriminated using:
+        1. `node_type`
+        2. presence of `attributes` (write) or `args` (constructor)
         """
-        Model = node_cls.CreateModel
-        node_type = node_cls.class_node_type
-        # Here we patch in the `node_type` union descriminator field.
-        # We annotate it with `SkipJsonSchema` to keep it off the public openAPI schema.
-        Model.model_fields['node_type'] = pdt.fields.FieldInfo(
-            annotation=pdt.json_schema.SkipJsonSchema[t.Literal[node_type]],  # type: ignore[misc,valid-type]
-            default=node_type,
-        )
-        Model.model_rebuild(force=True)
-        return t.cast(type[Node.Model], Model)
+        node_type = payload.get('node_type')
+        if not isinstance(node_type, str):
+            raise ValueError("The 'node_type' field is missing in the payload.")
+
+        has_attributes = 'attributes' in payload
+        has_args = 'args' in payload
+
+        if has_attributes and has_args:
+            raise ValueError("Payload cannot contain both 'attributes' and 'args'.")
+
+        # Default to write model so that model-level validation produces field-level errors
+        # when neither `attributes` nor `args` are provided.
+        which = 'constructor' if has_args else 'write'
+        Model = self.get_model(node_type, which)
+        if Model is None:
+            if which == 'constructor':
+                raise UnsupportedSchemaError(f"'{node_type}' does not support constructor-based creation.")
+            raise ValueError(f"'{node_type}' does not support {which} schema")
+        return Model
 
     def _build_node_mappings(self) -> None:
         """Build mapping of node type to node creation model."""
-        self._models: dict[str, dict[str, type[Node.Model]]] = {}
+        self._models: dict[str, dict[str, type[OrmModel] | None]] = {}
         entry_point: EntryPoint
         for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
-                node_cls = t.cast(Node, entry_point.load())
+                node_cls = t.cast(type[Node], entry_point.load())
             except Exception as exception:
                 # Skip entry points that cannot be loaded
                 print(f'Warning: could not load entry point {entry_point.name}: {exception}')
                 continue
 
             self._models[node_cls.class_node_type] = {
-                'get': node_cls.Model,
-                'post': self._get_node_post_model(node_cls),
+                'read': node_cls.ReadModel,
+                'write': node_cls.WriteModel,
+                'constructor': node_cls.ConstructorModel if node_cls.supports_constructor_model else None,
             }
 
-    def _get_post_models(self) -> tuple[type[Node.Model], ...]:
-        """Get a union type of all node 'post' models.
+    def _build_model_union(self):
+        """Build a union type of all node models.
 
-        :return: A union type of all node 'post' models.
-        :rtype: tuple[type[Node.Model], ...]
+        The union discriminator is inferred from:
+        - `node_type`
+        - payload shape (`attributes` for write, `args` for constructor)
         """
-        post_models = [model_dict['post'] for model_dict in self._models.values()]
-        return tuple(post_models)
+        self._build_node_mappings()
+
+        tagged_models: list[object] = []
+
+        for node_type, model_dict in self._models.items():
+            write_model = model_dict['write']
+            tagged_models.append(t.Annotated[write_model, pdt.Tag(f'{node_type}|attributes')])
+
+            if model_dict['constructor'] is not None:
+                constructor_model = model_dict['constructor']
+                tagged_models.append(
+                    t.Annotated[
+                        constructor_model,
+                        pdt.Tag(f'{node_type}|constructor'),
+                    ]
+                )
+
+        def discriminator(value: dict[str, t.Any]):
+            node_type = value.get('node_type')
+            has_attributes = 'attributes' in value
+            has_args = 'args' in value
+            if has_attributes and has_args:
+                return 'ambiguous'
+            if has_args:
+                return f'{node_type}|constructor'
+            return f'{node_type}|attributes'
+
+        return t.Annotated[
+            t.Union.__getitem__(tuple(tagged_models)),
+            pdt.Discriminator(discriminator),
+        ]

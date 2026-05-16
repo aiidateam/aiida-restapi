@@ -37,24 +37,24 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
             self._project = self._get_projections()
         return self._project
 
-    def get_schema(self, which: t.Literal['get', 'post'] | None = None) -> dict[str, t.Any]:
+    def get_schema(self, which: t.Literal['read', 'write'] | None = None) -> dict[str, t.Any]:
         """Get JSON schema for the AiiDA entity.
 
-        :param which: The type of schema to retrieve: 'get' or 'post'.
+        :param which: The type of schema to retrieve: 'read' or 'write'.
         :type which: str | None
-        :return: A dictionary with 'get' and 'post' keys containing the respective JSON schemas.
+        :return: A dictionary with 'read' and 'write' keys containing the respective JSON schemas.
         :rtype: dict[str, t.Any]
-        :raises ValueError: If the 'which' parameter is not 'get' or 'post'.
+        :raises ValueError: If the 'which' parameter is not 'read' or 'write'.
         """
         if not which:
             return {
-                'get': self.entity_class.Model.model_json_schema(),
-                'post': self.entity_class.CreateModel.model_json_schema(),
+                'read': self.entity_class.ReadModel.model_json_schema(),
+                'write': self.entity_class.WriteModel.model_json_schema(),
             }
-        elif which == 'post':
-            return self.entity_class.CreateModel.model_json_schema()
+        elif which == 'write':
+            return self.entity_class.WriteModel.model_json_schema()
         else:
-            return self.entity_class.Model.model_json_schema()
+            return self.entity_class.ReadModel.model_json_schema()
 
     def get_projections(self) -> list[str]:
         """Get queryable projections for the AiiDA entity.
@@ -245,4 +245,11 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :rtype: list[str]
         """
         orm_class = orm_class or self.entity_class
-        return [key for key, field in orm_class.Model.model_fields.items() if not get_metadata(field, 'may_be_large')]
+        return [
+            key
+            for key, field in orm_class.ReadModel.model_fields.items()
+            if not get_metadata(
+                field,
+                'may_be_large',
+            )
+        ]

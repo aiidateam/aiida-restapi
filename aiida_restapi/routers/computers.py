@@ -21,7 +21,7 @@ from .auth import UserInDB, get_current_active_user
 read_router = APIRouter(prefix='/computers')
 write_router = APIRouter(prefix='/computers')
 
-service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
+service = EntityService[orm.Computer, orm.Computer.ReadModel](orm.Computer)
 
 
 @read_router.get(
@@ -33,9 +33,9 @@ service = EntityService[orm.Computer, orm.Computer.Model](orm.Computer)
 )
 async def get_computers_schema(
     which: t.Annotated[
-        t.Literal['get', 'post'],
-        Query(description='Type of schema to retrieve: "get" or "post"'),
-    ] = 'get',
+        t.Literal['read', 'write'],
+        Query(description='Type of schema to retrieve: "read" or "write"'),
+    ] = 'read',
 ) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA computers."""
     return service.get_schema(which=which)
@@ -163,7 +163,7 @@ async def get_computer_metadata(
 @with_dbenv()
 async def create_computer(
     request: Request,
-    computer_model: orm.Computer.CreateModel,
+    computer_model: orm.Computer.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA computer."""

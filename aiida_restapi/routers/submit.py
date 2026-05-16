@@ -72,7 +72,7 @@ class ProcessSubmitModel(pdt.BaseModel):
 
 @write_router.post(
     '',
-    response_model=orm.Node.Model,
+    response_model=orm.Node.ReadModel,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError},

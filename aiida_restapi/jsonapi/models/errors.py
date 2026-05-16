@@ -178,3 +178,18 @@ class DaemonErrorType(Error):
 
 class DaemonError(JsonApiErrorDocument[DaemonErrorType]):
     pass
+
+
+class SchemaNotSupportedType(Error):
+    status: t.Annotated[
+        str | None,
+        pdt.Field(examples=['422']),
+    ] = None
+    detail: t.Annotated[
+        str | None,
+        pdt.Field(examples=['Node type does not support the requested schema']),
+    ] = None
+
+
+class SchemaNotSupported(JsonApiErrorDocument[SchemaNotSupportedType]):
+    pass

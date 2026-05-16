@@ -26,7 +26,7 @@ from .auth import UserInDB, get_current_active_user
 read_router = APIRouter(prefix='/groups')
 write_router = APIRouter(prefix='/groups')
 
-service = EntityService[orm.Group, orm.Group.Model](orm.Group)
+service = EntityService[orm.Group, orm.Group.ReadModel](orm.Group)
 
 
 @read_router.get(
@@ -38,9 +38,9 @@ service = EntityService[orm.Group, orm.Group.Model](orm.Group)
 )
 async def get_groups_schema(
     which: t.Annotated[
-        t.Literal['get', 'post'],
-        Query(description='Type of schema to retrieve: "get" or "post"'),
-    ] = 'get',
+        t.Literal['read', 'write'],
+        Query(description='Type of schema to retrieve: "read" or "write"'),
+    ] = 'read',
 ) -> dict[str, t.Any]:
     """Get JSON schema for AiiDA groups."""
     return service.get_schema(which=which)
@@ -225,7 +225,7 @@ async def get_group_extras(
 @with_dbenv()
 async def create_group(
     request: Request,
-    group_model: orm.Group.CreateModel,
+    group_model: orm.Group.WriteModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA group."""
