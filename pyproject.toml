@@ -3,7 +3,7 @@ build-backend = 'flit_core.buildapi'
 requires = ['flit_core>=3.4,<4']
 
 [project]
-authors = [{ name = 'The AiiDA Team', email = 'developers@aiida.net' }]
+authors = [{name = 'The AiiDA Team', email = 'developers@aiida.net'}]
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Framework :: AiiDA',
@@ -117,6 +117,7 @@ quote-style = 'single'
 ignore = [
   'F403',  # Star imports unable to detect undefined names
   'F405',  # Import may be undefined or defined from star imports
+  'PLC0415',  # `import` should be at the top-level of a file
   'PLR0911',  # Too many return statements
   'PLR0912',  # Too many branches
   'PLR0913',  # Too many arguments in function definition

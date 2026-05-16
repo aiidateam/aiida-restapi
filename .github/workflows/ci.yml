@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
       - uses: pre-commit/action@v3.0.1
 
@@ -27,14 +27,14 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ['3.10', '3.11', '3.12']
 
     services:
       postgres:
         image: postgres:latest
         env:
           POSTGRES_DB: test_db
-          POSTGRES_PASSWORD: ""
+          POSTGRES_PASSWORD: ''
           POSTGRES_HOST_AUTH_METHOD: trust
         options: >-
           --health-cmd pg_isready
