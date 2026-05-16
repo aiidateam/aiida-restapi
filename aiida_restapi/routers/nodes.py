@@ -60,7 +60,7 @@ async def unsupported_model_error_handler(
         if isinstance(body, dict):
             try:
                 which = 'constructor' if request.url.path.endswith('/nodes/constructor') else None
-                model_registry.get_post_model_from_payload(body, which)
+                model_registry.get_post_model_from_payload(body, which)  # type: ignore[arg-type]
             except aiida_exceptions.UnsupportedSchemaError as unsupported:
                 return jsonapi_error(request, unsupported, 422)
             except ValueError:

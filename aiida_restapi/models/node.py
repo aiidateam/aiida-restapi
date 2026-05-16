@@ -224,7 +224,7 @@ class NodeModelRegistry:
         elif which == 'write' and has_args:
             raise ValueError("Payload cannot contain 'args' on the attributes endpoint.")
 
-        Model = self.get_model(node_type, which)  # type: ignore[arg-type]
+        Model = self.get_model(node_type, which)
         if Model is None:
             if which == 'constructor':
                 raise UnsupportedSchemaError(f"'{node_type}' does not support constructor payloads (`args`).")
