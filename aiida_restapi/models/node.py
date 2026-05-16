@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import typing as t
+from importlib.metadata import EntryPoint
 
 import pydantic as pdt
 from aiida.common.exceptions import MissingEntryPointError, UnsupportedSchemaError
 from aiida.orm import Node, OrmModel
 from aiida.plugins import get_entry_points
-from importlib_metadata import EntryPoint
 
 
 class NodeStatistics(pdt.BaseModel):
