@@ -34,8 +34,8 @@ def test_get_node_schema(client: TestClient):
 @pytest.mark.parametrize(
     'which, model, name',
     [
-        ['get', orm.Int.Model, 'AttributesModel'],
-        ['post', orm.Int.CreateModel, 'AttributesCreateModel'],
+        ['read', orm.Int.ReadModel, 'AttributesModel'],
+        ['write', orm.Int.WriteModel, 'AttributesCreateModel'],
     ],
 )
 def test_get_node_schema_by_type(client: TestClient, which: str, model: type[BaseModel], name: str):
@@ -354,6 +354,55 @@ def test_create_dict(client: TestClient):
         },
     )
     assert response.status_code == 200, response.content
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_dict_constructor_args(client: TestClient):
+    """Test creating a new dict using constructor args payload discrimination."""
+    response = client.post(
+        '/nodes',
+        json={
+            'node_type': 'data.core.dict.Dict.',
+            'label': 'test_dict_constructor',
+            'args': {'value': {'x': 1, 'y': 2}},
+        },
+    )
+    assert response.status_code == 200, response.content
+
+    check = client.get(f'/nodes/{response.json()["data"]["id"]}/attributes')
+    assert check.status_code == 200, check.content
+    attributes = check.json()['data']['attributes']
+    assert attributes['x'] == 1
+    assert attributes['y'] == 2
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_node_reject_both_attributes_and_args(client: TestClient):
+    """Test creating a node with both attributes and args is rejected."""
+    response = client.post(
+        '/nodes',
+        json={
+            'node_type': 'data.core.dict.Dict.',
+            'attributes': {'value': {'x': 1}},
+            'args': {'value': {'y': 2}},
+        },
+    )
+    assert response.status_code == 422, response.content
+
+
+@pytest.mark.usefixtures('authenticate')
+def test_create_node_constructor_not_supported(client: TestClient):
+    """Test constructor payload for unsupported type returns concise validation error."""
+    response = client.post(
+        '/nodes',
+        json={
+            'node_type': 'data.Data.',
+            'args': {'value': 42},
+        },
+    )
+    assert response.status_code == 422, response.content
+    detail = response.json()['errors'][0]['detail']
+    assert "'data.Data.' does not support constructor payloads (`args`)." in detail
 
 
 @pytest.mark.anyio

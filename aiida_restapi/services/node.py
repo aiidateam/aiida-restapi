@@ -117,8 +117,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                     binary = False
                     try:
                         with node.base.repository.open(obj_name, 'rb') as f:
-                            binary = b'\x00' in f.read(8192)
-                            f.seek(0)
+                            binary = b'\x00' in f.read(1024)
                     except (UnicodeDecodeError, TypeError):
                         binary = True
 
@@ -126,6 +125,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                         'type': 'FILE',
                         'binary': binary,
                         'size': size,
+                        'hash': node.base.repository.get_object(obj_name).serialize()['k'],
                         'download': f'{API_CONFIG["PREFIX"]}/nodes/{uuid}/repo/contents?filename={obj_name}',
                     }
                     total_size += size
@@ -222,10 +222,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :rtype: dict[str, t.Any]
         """
         node_cls = self._load_entry_point_from_node_type(model.node_type)
-        node = t.cast(NodeType, node_cls.from_model(model))
-        for path, upload in (files or {}).items():
-            upload.file.seek(0)
-            node.base.repository.put_object_from_filelike(upload.file, path)
+        files_dict = {key: lambda upload=upload: upload.file for key, upload in (files or {}).items()}
+        node = t.cast(NodeType, node_cls.from_model(model, files=files_dict))
         node.store()
         return node.serialize(minimal=True)
 
