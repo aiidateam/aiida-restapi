@@ -30,7 +30,7 @@ if t.TYPE_CHECKING:
 
 
 class NodeService(EntityService[NodeType, NodeModelType]):
-    """Utility class for AiiDA Node REST API operations."""
+    """Service for managing AiiDA nodes."""
 
     FULL_TYPE_CONCATENATOR = '|'
     LIKE_OPERATOR_CHARACTER = '%'
@@ -216,7 +216,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
             data=data,
         )
 
-    def add_one(
+    def add(
         self,
         model: NodeModelType,
         files: dict[str, UploadFile] | None = None,
@@ -235,6 +235,11 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         node = t.cast(NodeType, node_cls.from_model(model, files=files_dict))
         node.store()
         return node.serialize(minimal=True)
+
+    def _apply_update(self, entity: orm.Node, model: orm.Node.MutableNodeFields) -> None:
+        entity.label = model.label or entity.label
+        entity.description = model.description or entity.description
+        entity.base.extras.set_many(model.extras)
 
     def _validate_full_type(self, full_type: str) -> None:
         """Validate that the `full_type` is a valid full type unique node identifier.

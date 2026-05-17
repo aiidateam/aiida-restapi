@@ -7,7 +7,16 @@ const logoutBtn = document.getElementById("logoutBtn");
 const attributesModeBtn = document.getElementById("attributesModeBtn");
 const constructorModeBtn = document.getElementById("constructorModeBtn");
 const writeModeInput = document.getElementById("writeMode");
+const postModeBtn = document.getElementById("postModeBtn");
+const putModeBtn = document.getElementById("putModeBtn");
+const mutationModeInput = document.getElementById("mutationMode");
+const targetUuidRow = document.getElementById("targetUuidRow");
+const targetUuidInput = document.getElementById("targetUuid");
+const nodeTypeRow = document.getElementById("nodeTypeRow");
+const writeModeRow = document.getElementById("writeModeRow");
+const attachmentsRow = document.getElementById("attachmentsRow");
 const argumentsLabel = document.getElementById("argumentsLabel");
+const argumentsRow = document.getElementById("argumentsRow");
 const nodeTypeSelect = document.getElementById("nodeTypeSelect");
 
 const API_PREFIX = document.body.dataset.apiPrefix;
@@ -16,6 +25,10 @@ const constructorSupportCache = new Map();
 
 function getWriteMode() {
   return writeModeInput.value;
+}
+
+function getMutationMode() {
+  return mutationModeInput.value;
 }
 
 function updateWriteModeUi() {
@@ -32,6 +45,29 @@ function updateWriteModeUi() {
 function setWriteMode(writeMode) {
   writeModeInput.value = writeMode;
   updateWriteModeUi();
+}
+
+function updateMutationModeUi() {
+  const mutationMode = getMutationMode();
+  const isPost = mutationMode === "post";
+
+  postModeBtn.className = isPost ? "btn-primary" : "btn-secondary";
+  putModeBtn.className = isPost ? "btn-secondary" : "btn-primary";
+
+  nodeTypeRow.hidden = !isPost;
+  writeModeRow.hidden = !isPost;
+  attachmentsRow.hidden = !isPost;
+  argumentsRow.hidden = !isPost;
+  targetUuidRow.hidden = isPost;
+
+  if (!isPost) {
+    setWriteMode("attributes");
+  }
+}
+
+function setMutationMode(mutationMode) {
+  mutationModeInput.value = mutationMode;
+  updateMutationModeUi();
 }
 
 async function supportsConstructor(nodeType) {
@@ -112,10 +148,10 @@ function clearSuccessLink() {
   successLink.innerHTML = "";
 }
 
-function showNodeLink(nodeId) {
+function showNodeLink(nodeId, action) {
   const href = `${API_PREFIX}/nodes/${nodeId}`;
   const successMessage = document.createElement("div");
-  successMessage.innerHTML = `<b>Success:</b> created node <a href="${href}" target="_blank" rel="noopener">${nodeId}</a>`;
+  successMessage.innerHTML = `<b>Success:</b> ${action} node <a href="${href}" target="_blank" rel="noopener">${nodeId}</a>`;
   successLink.appendChild(successMessage);
 }
 
@@ -297,6 +333,19 @@ nodeTypeSelect.addEventListener("change", () => {
   void updateConstructorModeAvailability();
 });
 
+postModeBtn.addEventListener("click", () => {
+  setMutationMode("post");
+  void updateConstructorModeAvailability();
+});
+
+putModeBtn.addEventListener("click", () => {
+  setMutationMode("put");
+});
+
+targetUuidInput.addEventListener("input", () => {
+  setClientError("");
+});
+
 document.getElementById("clearBtn").addEventListener("click", () => {
   out.textContent = "";
   setClientError("");
@@ -366,10 +415,13 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
   const argumentsTextarea = document.getElementById("arguments");
 
   const nodeType = nodeTypeSelect.value;
+  const mutationMode = getMutationMode();
   const writeMode = getWriteMode();
-  let params = {
-    node_type: nodeType,
-  };
+  let params = {};
+
+  if (mutationMode === "post") {
+    params.node_type = nodeType;
+  }
 
   const label = labelInput.value.trim();
   const description = descriptionInput.value.trim();
@@ -396,6 +448,13 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 
   const argumentsText = argumentsTextarea.value.trim();
   if (argumentsText) {
+    if (mutationMode !== "post") {
+      setClientError(
+        "PUT mode does not accept attributes/constructor payload.",
+      );
+      return;
+    }
+
     const parsedArguments = safeJsonParse(argumentsText);
     if (!parsedArguments.ok) {
       setClientError("Invalid JSON in arguments: " + parsedArguments.err);
@@ -416,6 +475,11 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
   const rows = gatherRows();
   const hasFiles = rows.length > 0;
 
+  if (mutationMode === "put" && hasFiles) {
+    setClientError("PUT mode does not support file upload.");
+    return;
+  }
+
   if (hasFiles && writeMode !== "attributes") {
     setClientError(
       "File upload test page currently only supports attributes mode.",
@@ -423,8 +487,18 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
     return;
   }
 
+  let method = "POST";
   let ENDPOINT = API_PREFIX + "/nodes";
-  if (!hasFiles && writeMode === "constructor") {
+
+  if (mutationMode === "put") {
+    const targetUuid = targetUuidInput.value.trim();
+    if (!targetUuid) {
+      setClientError("PUT mode requires a target node UUID.");
+      return;
+    }
+    method = "PUT";
+    ENDPOINT = API_PREFIX + "/nodes/" + encodeURIComponent(targetUuid);
+  } else if (!hasFiles && writeMode === "constructor") {
     ENDPOINT = API_PREFIX + "/nodes/constructor";
   } else if (hasFiles) {
     ENDPOINT += "/file-upload";
@@ -438,7 +512,7 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 
     if (!hasFiles) {
       resp = await fetch(ENDPOINT, {
-        method: "POST",
+        method,
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -513,7 +587,8 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
     }
 
     out.textContent =
-      "POST " +
+      method +
+      " " +
       ENDPOINT +
       "\n" +
       "Representation: " +
@@ -539,7 +614,7 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
           (bodyJson.data.id ?? bodyJson.data.pk ?? bodyJson.data.uuid));
 
       if (nodeId !== undefined && nodeId !== null && String(nodeId).length) {
-        showNodeLink(String(nodeId));
+        showNodeLink(String(nodeId), method === "PUT" ? "updated" : "created");
       }
     }
   } catch (err) {
@@ -548,6 +623,7 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
 });
 
 ensureAtLeastOneRow();
+updateMutationModeUi();
 updateWriteModeUi();
 updateAuthUi();
 void updateConstructorModeAvailability();

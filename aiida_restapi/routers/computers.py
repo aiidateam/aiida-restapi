@@ -167,7 +167,7 @@ async def create_computer(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA computer."""
-    result = service.add_one(computer_model)
+    result = service.add(computer_model)
     return JsonApi.resource(
         request,
         result,
