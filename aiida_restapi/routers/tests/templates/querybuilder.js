@@ -34,6 +34,12 @@ async function readResponse(resp) {
   return { contentType, text };
 }
 
+function isJsonContentType(contentType) {
+  return (
+    contentType.includes("application/json") || /\+json\b/i.test(contentType)
+  );
+}
+
 function setClientError(msg) {
   clientError.textContent = msg ? " " + msg : "";
 }
@@ -132,7 +138,7 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
     const { contentType, text } = await readResponse(resp);
     let bodyText = text;
     let bodyJson = null;
-    if (contentType.includes("application/json")) {
+    if (isJsonContentType(contentType)) {
       try {
         bodyJson = JSON.parse(text);
         bodyText = JSON.stringify(bodyJson, null, 2);
