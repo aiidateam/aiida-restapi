@@ -403,7 +403,7 @@ async def get_node_links(
     return JsonApi.collection(
         request,
         links,
-        resource_identity='id',
+        resource_identity='link_id',
         resource_type='links',
         query_params=query_params,
     )
