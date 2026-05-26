@@ -45,7 +45,7 @@ class BaseHook:
         for key, value in result.items():
             if key in cls.FOREIGN_FIELDS:
                 foreign_fields[key] = value
-            elif key != resource_identity:
+            else:
                 attributes[key] = value
         return identifier, attributes, foreign_fields
 

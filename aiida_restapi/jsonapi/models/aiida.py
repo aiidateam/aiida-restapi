@@ -12,8 +12,6 @@ def attributes_of(orm_class: type[orm.Entity]) -> type[Attributes]:
 
     fields = {}
     for key, field in orm_class.ReadModel.model_fields.items():
-        if key == orm_class.identity_field:
-            continue
         if get_metadata(field, 'may_be_large') or get_metadata(field, 'write_only'):
             continue
         try:
