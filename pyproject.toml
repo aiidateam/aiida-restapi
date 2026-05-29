@@ -18,7 +18,7 @@ classifiers = [
 dependencies = [
   'aiida-core @ git+https://github.com/aiidateam/aiida-core.git',
   'fastapi~=0.115.5',
-  'uvicorn[standard]~=0.32.1',
+  'uvicorn[standard]>=0.32.1',
   'pydantic~=2.0',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
