@@ -63,14 +63,14 @@ async def query_builder(
         parsed = [_to_resource_result(result, minimal=not full) for result in results]
 
     result = {
-        'id': 'qb-result',
+        'query_id': 'qb-result',
         'results': parsed,
     }
 
     return JsonApi.resource(
         request,
         result,
-        resource_identity='id',
+        resource_identity='query_id',
         resource_type='qb-results',
         meta={
             'total': total,

@@ -20,7 +20,7 @@ def test_querybuilder_all(client: TestClient):
             ],
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     assert len(response.json()['data']['attributes']['results']) == 4
 
 
@@ -39,7 +39,7 @@ def test_querybuilder_full(client: TestClient):
             ],
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     result = response.json()['data']['attributes']['results'][0]
     assert 'attributes' in result
     assert 'value' in result['attributes']
@@ -68,7 +68,7 @@ def test_querybuilder_flat(client: TestClient):
             },
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     result = response.json()
     assert result['data']['attributes']['results'] == [1, 1.1]
 
@@ -111,6 +111,6 @@ def test_querybuilder_node_in_group(client: TestClient, default_nodes: list[str]
             },
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     result = response.json()['data']['attributes']['results']
     assert result == [group.label, node.pk, node.value]
