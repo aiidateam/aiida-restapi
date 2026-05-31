@@ -63,23 +63,20 @@ name = "aiida-restapi"
 source = { editable = "." }
 dependencies = [
     { name = "aiida-core" },
+    { name = "argon2-cffi" },
+    { name = "bcrypt" },
     { name = "fastapi" },
     { name = "graphene" },
     { name = "lark" },
     { name = "pydantic" },
     { name = "python-dateutil" },
+    { name = "python-jose" },
     { name = "python-multipart" },
     { name = "starlette-graphene3" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.optional-dependencies]
-auth = [
-    { name = "argon2-cffi" },
-    { name = "bcrypt" },
-    { name = "python-jose" },
-    { name = "python-multipart" },
-]
 docs = [
     { name = "myst-parser", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, extra = ["linkify"], marker = "python_full_version < '3.11'" },
     { name = "myst-parser", version = "5.1.0", source = { registry = "https://pypi.org/simple" }, extra = ["linkify"], marker = "python_full_version >= '3.11'" },
@@ -97,8 +94,6 @@ pre-commit = [
 ]
 testing = [
     { name = "anyio" },
-    { name = "argon2-cffi" },
-    { name = "bcrypt" },
     { name = "beautifulsoup4" },
     { name = "coverage" },
     { name = "httpx" },
@@ -107,8 +102,6 @@ testing = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-regressions" },
-    { name = "python-jose" },
-    { name = "python-multipart" },
     { name = "requests" },
     { name = "wheel" },
 ]
@@ -118,8 +111,8 @@ requires-dist = [
     { name = "aiida-core", git = "https://github.com/aiidateam/aiida-core.git" },
     { name = "aiida-restapi", extras = ["auth"], marker = "extra == 'testing'" },
     { name = "anyio", marker = "extra == 'testing'", specifier = "~=4.6.0" },
-    { name = "argon2-cffi", marker = "extra == 'auth'" },
-    { name = "bcrypt", marker = "extra == 'auth'" },
+    { name = "argon2-cffi" },
+    { name = "bcrypt" },
     { name = "beautifulsoup4", marker = "extra == 'testing'", specifier = "~=4.12" },
     { name = "coverage", marker = "extra == 'testing'" },
     { name = "fastapi", specifier = "~=0.115.5" },
@@ -132,13 +125,12 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'pre-commit'", specifier = "~=2.12" },
     { name = "pydantic", specifier = "~=2.0" },
     { name = "pygments-graphql", marker = "extra == 'docs'" },
-    { name = "pytest", marker = "extra == 'testing'", specifier = "~=6.2" },
+    { name = "pytest", marker = "extra == 'testing'", specifier = "~=7.0" },
     { name = "pytest-cov", marker = "extra == 'testing'" },
     { name = "pytest-regressions", marker = "extra == 'testing'" },
     { name = "python-dateutil", specifier = "~=2.0" },
-    { name = "python-jose", marker = "extra == 'auth'" },
+    { name = "python-jose" },
     { name = "python-multipart", specifier = "~=0.0.20" },
-    { name = "python-multipart", marker = "extra == 'auth'" },
     { name = "requests", marker = "extra == 'testing'" },
     { name = "sphinx", marker = "extra == 'docs'" },
     { name = "sphinx-book-theme", marker = "extra == 'docs'" },
@@ -148,7 +140,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.1" },
     { name = "wheel", marker = "extra == 'testing'", specifier = "~=0.31" },
 ]
-provides-extras = ["auth", "docs", "pre-commit", "testing"]
+provides-extras = ["docs", "pre-commit", "testing"]
 
 [[package]]
 name = "aio-pika"
@@ -312,12 +304,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/fc/d5/957886c316466349d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ed/ae/0da2f2214fc183338af1afe5a103a2052fd03464e8eafbd827abff58a4d0/asyncssh-2.22.0-py3-none-any.whl", hash = "sha256:d16465ccdf1ed20eba1131b14415b155e047f6f5be0d19f39c2e0b61331ee0e7", size = 374938, upload-time = "2025-12-21T23:38:28.976Z" },
 ]
-
-[[package]]
-name = "atomicwrites"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/87/c6/53da25344e3e3a9c01095a89f16dbcda021c609ddb42dd6d7c0528236fb2/atomicwrites-1.4.1.tar.gz", hash = "sha256:81b2c9071a49367a7f770170e5eec8cb66567cfbbc8c73d20ce5ca4a8d71cf11", size = 14227, upload-time = "2022-07-08T18:31:40.459Z" }
 
 [[package]]
 name = "attrs"
@@ -2201,15 +2187,6 @@ wheels = [
 ]
 
 [[package]]
-name = "py"
-version = "1.11.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/98/ff/fec109ceb715d2a6b4c4a85a61af3b40c723a961e8828319fbcb15b868dc/py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719", size = 207796, upload-time = "2021-11-04T17:17:01.377Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f6/f0/10642828a8dfb741e5f3fbaac830550a518a775c7fff6f04a007259b0548/py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378", size = 98708, upload-time = "2021-11-04T17:17:00.152Z" },
-]
-
-[[package]]
 name = "pyasn1"
 version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2462,21 +2439,19 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "6.2.5"
+version = "7.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "atomicwrites", marker = "sys_platform == 'win32'" },
-    { name = "attrs" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
-    { name = "py" },
-    { name = "toml" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/24/7d1f2d2537de114bdf1e6875115113ca80091520948d370c964b88070af2/pytest-6.2.5.tar.gz", hash = "sha256:131b36680866a76e6781d13f101efb86cf674ebb9762eb70d3082b6f29889e89", size = 1118720, upload-time = "2021-08-30T17:39:02.823Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/1f/9d8e98e4133ffb16c90f3b405c43e38d3abb715bb5d7a63a5a684f7e46a3/pytest-7.4.4.tar.gz", hash = "sha256:2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280", size = 1357116, upload-time = "2023-12-31T12:00:18.035Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/76/86f886e750b81a4357b6ed606b2bcf0ce6d6c27ad3c09ebf63ed674fc86e/pytest-6.2.5-py3-none-any.whl", hash = "sha256:7310f8d27bc79ced999e760ca304d69f6ba6c6649c0b60fb0e04a4a77cacc134", size = 280654, upload-time = "2021-08-30T17:39:00.918Z" },
+    { url = "https://files.pythonhosted.org/packages/51/ff/f6e8b8f39e08547faece4bd80f89d5a8de68a38b2d179cc1c4490ffa3286/pytest-7.4.4-py3-none-any.whl", hash = "sha256:b090cdf5ed60bf4c45261be03239c2c1c22df034fbffe691abe93cd80cea01d8", size = 325287, upload-time = "2023-12-31T12:00:13.963Z" },
 ]
 
 [[package]]
@@ -3159,15 +3134,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090, upload-time = "2022-10-06T17:21:48.54Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252, upload-time = "2022-10-06T17:21:44.262Z" },
-]
-
-[[package]]
-name = "toml"
-version = "0.10.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253, upload-time = "2020-11-01T01:40:22.204Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588, upload-time = "2020-11-01T01:40:20.672Z" },
 ]
 
 [[package]]

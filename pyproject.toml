@@ -25,6 +25,9 @@ dependencies = [
   'python-dateutil~=2.0',
   'lark~=0.11.0',
   'python-multipart~=0.0.20',
+  'python-jose',
+  'argon2-cffi',
+  'bcrypt',
 ]
 dynamic = ['description', 'version']
 keywords = ['aiida', 'workflows']
@@ -34,7 +37,6 @@ readme = 'README.md'
 requires-python = '>=3.10'
 
 [project.optional-dependencies]
-auth = ['python-jose', 'python-multipart', 'argon2-cffi', 'bcrypt']
 docs = [
   'sphinx',
   'myst-parser[linkify]>=0.13.7',
