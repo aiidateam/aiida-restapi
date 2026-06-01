@@ -191,20 +191,29 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         except Exception as exception:
             raise QueryBuilderException(str(exception)) from exception
 
-        return PaginatedResults(
-            total=total,
-            page=query_params.page,
-            page_size=query_params.page_size,
-            data=[
+        data: list[dict[str, t.Any]] = []
+        for other_uuid, link_label, link_type in results:
+            if direction == 'incoming':
+                source_uuid = other_uuid
+                target_uuid = uuid
+            else:
+                source_uuid = uuid
+                target_uuid = other_uuid
+            data.append(
                 {
-                    'id': f'{uuid}:{target_uuid}',
-                    'source': uuid,
+                    'id': f'{source_uuid}:{target_uuid}',
+                    'source': source_uuid,
                     'target': target_uuid,
                     'link_label': link_label,
                     'link_type': link_type,
                 }
-                for target_uuid, link_label, link_type in results
-            ],
+            )
+
+        return PaginatedResults(
+            total=total,
+            page=query_params.page,
+            page_size=query_params.page_size,
+            data=data,
         )
 
     def add_one(
