@@ -223,6 +223,46 @@ def test_get_node(client: TestClient, default_nodes: list[str | None]):
         assert response.json()['uuid'] == node_id
 
 
+def test_get_node_user(client: TestClient):
+    """Test retrieving the user of a single node."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/user')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['email'] == node.user.email
+
+
+def test_get_node_computer(client: TestClient, default_computers: list[int | None]):
+    """Test retrieving the computer of a single node."""
+    computer = orm.load_computer(default_computers[0])
+    node = orm.Int(value=5, computer=computer).store()
+    response = client.get(f'/nodes/{node.uuid}/computer')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['pk'] == node.computer.pk
+
+
+def test_get_node_no_computer(client: TestClient):
+    """Test retrieving the computer of a node with null computer raises an exception."""
+    node = orm.Int(value=5).store()
+    response = client.get(f'/nodes/{node.uuid}/computer')
+    assert response.status_code == 404
+    assert response.json()['detail'] == f'Computer related to Node<{node.uuid}> not found.'
+
+
+def test_get_node_groups(client: TestClient, default_groups: list[str]):
+    """Test retrieving groups of a single node."""
+    node = orm.Int(value=10).store()
+    for group_id in default_groups:
+        group = orm.load_group(group_id)
+        group.add_nodes([node])
+    response = client.get(f'/nodes/{node.uuid}/groups')
+    assert response.status_code == 200
+    data = response.json()['data']
+    returned_group_ids = {item['uuid'] for item in data}
+    assert returned_group_ids == set(default_groups)
+
+
 def test_get_node_attributes(client: TestClient, default_nodes: list[str | None]):
     """Test retrieving attributes of a single node."""
     for node_id in default_nodes:

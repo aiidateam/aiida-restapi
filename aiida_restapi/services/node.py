@@ -35,6 +35,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
     LIKE_OPERATOR_CHARACTER = '%'
     DEFAULT_NAMESPACE_LABEL = '~no-entry-point~'
 
+    with_key = 'node'
+
     def get_projections(self, node_type: str | None = None) -> list[str]:
         """Get projectable properties for the AiiDA entity.
 
