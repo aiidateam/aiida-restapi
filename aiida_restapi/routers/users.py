@@ -131,7 +131,7 @@ async def create_user(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA user."""
-    result = service.add_one(user_model)
+    result = service.add(user_model)
     return JsonApi.resource(
         request,
         result,

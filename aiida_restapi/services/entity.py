@@ -15,7 +15,7 @@ from aiida_restapi.common.types import EntityModelType, EntityType
 
 
 class EntityService(t.Generic[EntityType, EntityModelType]):
-    """Utility class for AiiDA REST API operations.
+    """Service for managing AiiDA entities.
 
     This class provides methods to retrieve AiiDA entities with optional filtering, sorting, and pagination.
 
@@ -64,6 +64,20 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
+    def get_one(self, identifier: str | int) -> dict[str, t.Any]:
+        """Get an AiiDA entity by id.
+
+        :param identifier: The id of the entity to retrieve.
+        :type identifier: str | int
+        :return: The AiiDA entity.
+        :rtype: dict[str, t.Any]
+        """
+        result = self.entity_class.collection.query(
+            filters={self.entity_class.identity_field: identifier},
+            project=self.project,
+        ).dict()
+        return next(iter(result[0].values()))
+
     def get_many(self, query_params: QueryBuilderParams) -> PaginatedResults[dict[str, t.Any]]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
@@ -89,20 +103,6 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
             page_size=query_params.page_size,
             data=[next(iter(result.values())) for result in results],
         )
-
-    def get_one(self, identifier: str | int) -> dict[str, t.Any]:
-        """Get an AiiDA entity by id.
-
-        :param identifier: The id of the entity to retrieve.
-        :type identifier: str | int
-        :return: The AiiDA entity.
-        :rtype: dict[str, t.Any]
-        """
-        result = self.entity_class.collection.query(
-            filters={self.entity_class.identity_field: identifier},
-            project=self.project,
-        ).dict()
-        return next(iter(result[0].values()))
 
     def get_related_one(
         self,
@@ -223,7 +223,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
         return result[0]
 
-    def add_one(self, model: EntityModelType) -> dict[str, t.Any]:
+    def add(self, model: EntityModelType) -> dict[str, t.Any]:
         """Create new AiiDA entity from its model.
 
         :param model: The Pydantic model of the entity to create.
@@ -232,6 +232,20 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :rtype: dict[str, t.Any]
         """
         entity = self.entity_class.from_model(model).store()
+        return entity.serialize(minimal=True)
+
+    def update(self, identifier: str | int, model: EntityModelType) -> dict[str, t.Any]:
+        """Update an existing AiiDA entity.
+
+        :param identifier: The id of the entity to update.
+        :type identifier: str | int
+        :param model: The Pydantic model of the entity to update.
+        :type model: EntityModelType
+        :return: The updated and stored AiiDA `Entity` instance.
+        :rtype: dict[str, t.Any]
+        """
+        entity = self.entity_class.collection.get(**{self.entity_class.identity_field: identifier})
+        self._apply_update(entity, model)
         return entity.serialize(minimal=True)
 
     def _get_projections(self, orm_class: type[orm.Entity] | None = None) -> list[str]:
@@ -253,3 +267,13 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
                 'may_be_large',
             )
         ]
+
+    def _apply_update(self, entity: orm.Entity, model: EntityModelType) -> None:
+        """Apply changes to stored entity from a model payload.
+
+        :param entity: The AiiDA entity to update.
+        :type entity: orm.Entity
+        :param model: The Pydantic model of the entity to update.
+        :type model: EntityModelType
+        """
+        raise NotImplementedError

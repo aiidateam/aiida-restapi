@@ -229,7 +229,7 @@ async def create_group(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA group."""
-    result = service.add_one(group_model)
+    result = service.add(group_model)
     return JsonApi.resource(
         request,
         result,

@@ -568,7 +568,7 @@ async def create_node(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from an attributes-based payload."""
-    result = service.add_one(model)
+    result = service.add(model)
     return JsonApi.resource(
         request,
         result,
@@ -597,7 +597,7 @@ async def create_node_constructor(
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from a constructor-based payload."""
-    result = service.add_one(model)
+    result = service.add(model)
     return JsonApi.resource(
         request,
         result,
@@ -656,7 +656,42 @@ async def create_node_with_files(
 
     model = Model(**payload)
 
-    result = service.add_one(model, files=files_dict)
+    result = service.add(model, files=files_dict)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )
+
+
+@write_router.patch(
+    '/{uuid}',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        404: {'model': errors.NonExistentError},
+        409: {'model': errors.MultipleObjectsError},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
+    },
+)
+@with_dbenv()
+async def update_node(
+    request: Request,
+    uuid: str,
+    model: orm.Node.MutableNodeFields,
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> dict[str, t.Any]:
+    """Update the mutable fields of an existing AiiDA node.
+
+    Updatable fields: 'label', 'description', 'extras'
+    """
+    result = service.update(uuid, model)
     return JsonApi.resource(
         request,
         result,

@@ -759,6 +759,29 @@ def test_create_bool_with_extra(client: TestClient):
     assert extras['extra_two'] == 'value_2'
 
 
+@pytest.mark.usefixtures('authenticate')
+def test_update_node(client: TestClient, default_nodes: list[str | None]):
+    """Test updating an existing node."""
+    node_id = default_nodes[0]
+    response = client.patch(
+        f'/nodes/{node_id}',
+        json={
+            'label': 'updated_label',
+            'description': 'updated_description',
+            'extras': {'new_extra': 'new_value'},
+        },
+    )
+    assert response.status_code == 200, response.content
+    data = response.json()['data']
+    assert data['attributes']['label'] == 'updated_label'
+    assert data['attributes']['description'] == 'updated_description'
+
+    check_extras = client.get(f'/nodes/{node_id}/extras')
+    assert check_extras.status_code == 200, check_extras.content
+    extras = check_extras.json()['data']['attributes']
+    assert extras['new_extra'] == 'new_value'
+
+
 @pytest.mark.anyio
 async def test_get_download_node(async_client: AsyncClient, array_data_node: orm.ArrayData):
     """Test download node /nodes/{nodes_id}/download.
