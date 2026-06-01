@@ -159,7 +159,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
-        :rtype: PaginatedResults[dict[str, t.Any]]
+        :rtype: PaginatedResults
         """
         qb = (
             orm.QueryBuilder(
@@ -186,7 +186,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         qb.order_by([order_by])
 
         try:
-            total = qb.count()
+            node = self.entity_class.collection.get(uuid=uuid)
+            total = len(getattr(node.base.links, f'get_{direction}')().all())
             results = qb.all()
         except Exception as exception:
             raise QueryBuilderException(str(exception)) from exception
@@ -212,7 +213,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         return PaginatedResults(
             total=total,
             page=query_params.page,
-            page_size=query_params.page_size,
+            page_size=len(data),
             data=data,
         )
 
