@@ -84,7 +84,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :param query_params: The query parameters for filtering, sorting, and pagination.
         :type query_params: QueryBuilderParams
         :return: The paginated results, including total count, current page, page size, and list of serialized entities.
-        :rtype: PaginatedResults[dict[str, t.Any]
+        :rtype: PaginatedResults
         """
         try:
             total = self.entity_class.collection.count(filters=query_params.filters)
@@ -100,7 +100,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         return PaginatedResults(
             total=total,
             page=query_params.page,
-            page_size=query_params.page_size,
+            page_size=len(results),
             data=[next(iter(result.values())) for result in results],
         )
 
@@ -160,7 +160,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :param query_params: The query parameters, including filters, order_by, page_size, and page.
         :type query_params: QueryParams
         :return: The paginated results of related foreign entities.
-        :rtype: PaginatedResults[dict[str, t.Any]]
+        :rtype: PaginatedResults
         """
         qb = (
             orm.QueryBuilder(
@@ -194,7 +194,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         return PaginatedResults(
             total=total,
             page=query_params.page,
-            page_size=query_params.page_size,
+            page_size=len(results),
             data=[next(iter(result.values())) for result in results],
         )
 

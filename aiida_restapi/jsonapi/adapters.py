@@ -215,17 +215,22 @@ class JsonApiAdapter:
             resources.append(resource)
             included.extend(included_items)
 
-        pagination = {
+        meta = {
             'total': results.total,
-            'page': query_params.page,
-            'page_size': query_params.page_size,
+            'page': results.page,
+            'page_size': results.page_size,
         } | (meta or {})
 
-        toplevel_links = cls._build_toplevel_links(request, **pagination)
+        toplevel_links = cls._build_toplevel_links(
+            request,
+            total=results.total,
+            page=query_params.page,
+            page_size=query_params.page_size,
+        )
 
         return {
             'links': toplevel_links,
-            'meta': pagination,
+            'meta': meta,
             'included': included or None,
             'data': resources,
         }
