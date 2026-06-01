@@ -11,14 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams, query_params
-from aiida_restapi.repository.entity import EntityRepository
+from aiida_restapi.services.entity import EntityService
 
 from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/groups')
 write_router = APIRouter(prefix='/groups')
 
-repository = EntityRepository[orm.Group, orm.Group.Model](orm.Group)
+service = EntityService[orm.Group, orm.Group.Model](orm.Group)
 
 
 @read_router.get(
@@ -39,7 +39,7 @@ async def get_groups_schema(
         500 for any other failures.
     """
     try:
-        return repository.get_entity_schema(which=which)
+        return service.get_schema(which=which)
     except ValueError as exception:
         raise HTTPException(status_code=422, detail=str(exception)) from exception
     except Exception as exception:
@@ -47,15 +47,15 @@ async def get_groups_schema(
 
 
 @read_router.get(
-    '/projectable_properties',
+    '/projections',
     response_model=list[str],
 )
-async def get_group_projectable_properties() -> list[str]:
-    """Get projectable properties for AiiDA groups.
+async def get_group_projections() -> list[str]:
+    """Get queryable projections for AiiDA groups.
 
-    :return: The list of projectable properties for AiiDA groups.
+    :return: The list of queryable projections for AiiDA groups.
     """
-    return repository.get_projectable_properties()
+    return service.get_projections()
 
 
 @read_router.get(
@@ -73,7 +73,7 @@ async def get_groups(
     :param queries: The query parameters, including filters, order_by, page_size, and page.
     :return: The paginated results, including total count, current page, page size, and list of group models.
     """
-    return repository.get_entities(queries)
+    return service.get_many(queries)
 
 
 @read_router.get(
@@ -92,7 +92,7 @@ async def get_group(uuid: str) -> orm.Group.Model:
         500 for any other server error.
     """
     try:
-        return repository.get_entity_by_id(uuid)
+        return service.get_one(uuid)
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -113,7 +113,7 @@ async def get_group_extras(uuid: str) -> dict[str, t.Any]:
         500 for other failures during retrieval.
     """
     try:
-        return repository.get_entity_extras(uuid)
+        return service.get_field(uuid, 'extras')
     except NotExistent as exception:
         raise HTTPException(status_code=404, detail=str(exception)) from exception
     except Exception as exception:
@@ -139,6 +139,6 @@ async def create_group(
     :raises HTTPException: 500 for any failures during group creation.
     """
     try:
-        return repository.create_entity(group_model)
+        return service.add_one(group_model)
     except Exception as exception:
         raise HTTPException(status_code=500, detail=str(exception)) from exception
