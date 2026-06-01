@@ -69,21 +69,21 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
         :param identifier: The id of the entity to retrieve.
         :type identifier: str | int
-        :return: The AiiDA entity.
+        :return: The serialized AiiDA entity.
         :rtype: dict[str, t.Any]
         """
-        result = self.entity_class.collection.query(
-            filters={self.entity_class.identity_field: identifier},
-            project=self.project,
-        ).dict()
-        return next(iter(result[0].values()))
+        try:
+            entity = self.entity_class.collection.get(**{self.entity_class.identity_field: identifier})
+        except NotExistent as exception:
+            raise NotExistent(f'{self.entity_class.__name__}<{identifier}> does not exist.') from exception
+        return entity.serialize(minimal=True)
 
     def get_many(self, query_params: QueryBuilderParams) -> PaginatedResults[dict[str, t.Any]]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
         :param query_params: The query parameters for filtering, sorting, and pagination.
         :type query_params: QueryBuilderParams
-        :return: The paginated results, including total count, current page, page size, and list of entity models.
+        :return: The paginated results, including total count, current page, page size, and list of serialized entities.
         :rtype: PaginatedResults[dict[str, t.Any]
         """
         try:
