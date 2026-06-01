@@ -26,7 +26,7 @@ class TokenData(BaseModel):
     email: str
 
 
-class UserInDB(orm.User.Model):
+class UserInDB(orm.User.ReadModel):
     hashed_password: str
     disabled: t.Optional[bool] = None
 
@@ -86,7 +86,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
-async def get_current_user(token: t.Annotated[str, Depends(oauth2_scheme)]) -> orm.User.Model:
+async def get_current_user(token: t.Annotated[str, Depends(oauth2_scheme)]) -> orm.User.ReadModel:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail='Could not validate credentials',
@@ -136,10 +136,10 @@ async def login_for_access_token(
 
 @read_router.get(
     '/me/',
-    response_model=orm.User.Model,
+    response_model=orm.User.ReadModel,
 )
 async def read_users_me(
-    current_user: t.Annotated[orm.User.Model, Depends(get_current_active_user)],
-) -> orm.User.Model:
+    current_user: t.Annotated[orm.User.ReadModel, Depends(get_current_active_user)],
+) -> orm.User.ReadModel:
     """Get the current authenticated user."""
     return current_user

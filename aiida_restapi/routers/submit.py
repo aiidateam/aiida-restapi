@@ -9,9 +9,11 @@ from aiida import engine, orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common import exceptions
 from aiida.plugins.entry_point import load_entry_point_from_string
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
-from aiida_restapi.jsonapi.models import errors
+from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
+from aiida_restapi.jsonapi.models import aiida, errors
+from aiida_restapi.jsonapi.responses import JsonApiResponse
 
 from .auth import UserInDB, get_current_active_user
 
@@ -59,7 +61,7 @@ class ProcessSubmitModel(pdt.BaseModel):
 
     @pdt.field_validator('inputs')
     @classmethod
-    def validate_inputs(cls, inputs: dict[str, t.Any]) -> dict[str, t.Any]:
+    def process_inputs(cls, inputs: dict[str, t.Any]) -> dict[str, t.Any]:
         """Process the inputs dictionary.
 
         :param inputs: The inputs to validate.
@@ -72,7 +74,8 @@ class ProcessSubmitModel(pdt.BaseModel):
 
 @write_router.post(
     '',
-    response_model=orm.Node.Model,
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError},
@@ -81,6 +84,7 @@ class ProcessSubmitModel(pdt.BaseModel):
 )
 @with_dbenv()
 async def submit_process(
+    request: Request,
     process: ProcessSubmitModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
@@ -93,4 +97,10 @@ async def submit_process(
         process_node = engine.submit(entry_point_process, **process.inputs)
     except Exception as exception:
         raise exceptions.InputValidationError(str(exception)) from exception
-    return process_node.serialize(minimal=True)
+    serialized = process_node.serialize(minimal=True)
+    return JsonApi.resource(
+        request,
+        serialized,
+        resource_identity='uuid',
+        resource_type='nodes',
+    )

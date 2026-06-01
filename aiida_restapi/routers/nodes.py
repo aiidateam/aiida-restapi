@@ -9,11 +9,15 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Depends, Form, Query, Request, UploadFile
+from aiida.common import exceptions as aiida_exceptions
+from fastapi import APIRouter, Body, Depends, Form, Query, Request, Response, UploadFile
+from fastapi import exceptions as fastapi_exceptions
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
+from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common import query
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
@@ -28,15 +32,14 @@ from aiida_restapi.jsonapi.models.aiida import (
 )
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.jsonapi.responses import JsonApiResponse
+from aiida_restapi.jsonapi.utils import jsonapi_error
 from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeService
-
-from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
 
-service = NodeService[orm.Node, orm.Node.Model](orm.Node)
+service = NodeService[orm.Node, orm.Node.ReadModel](orm.Node)
 
 model_registry = NodeModelRegistry()
 
@@ -49,11 +52,32 @@ else:
     NodeModelUnion = model_registry.ModelUnion
 
 
+async def unsupported_model_error_handler(
+    request: Request,
+    exception: fastapi_exceptions.RequestValidationError,
+) -> Response:
+    """Return concise validation errors for selected request-validation cases."""
+    if request.method == 'POST' and request.url.path.endswith('/nodes'):
+        body = getattr(exception, 'body', None)
+        if isinstance(body, dict):
+            try:
+                model_registry.get_post_model_from_payload(body)
+            except aiida_exceptions.UnsupportedSchemaError as unsupported:
+                return jsonapi_error(request, unsupported, 422)
+            except Exception:
+                pass
+
+    return await request_validation_exception_handler(request, exception)
+
+
 @read_router.get(
     '/schema',
     response_model=dict[str, t.Any],
     responses={
-        422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
+        422: {
+            'model': t.Union[errors.InvalidNodeTypeError, errors.SchemaNotSupported],
+            'description': 'Invalid Node Type | Schema Not Supported',
+        },
     },
 )
 async def get_nodes_schema(
@@ -65,15 +89,17 @@ async def get_nodes_schema(
         ),
     ] = None,
     which: t.Annotated[
-        t.Literal['get', 'post'],
+        t.Literal['read', 'write', 'constructor'],
         Query(description='Type of schema to retrieve'),
-    ] = 'get',
+    ] = 'read',
 ) -> dict[str, t.Any]:
-    """Get JSON schema for the base AiiDA node 'get' model."""
+    """Get JSON schema for the base AiiDA node 'read' model."""
     if not node_type:
-        return orm.Node.Model.model_json_schema()
-    model = model_registry.get_model(node_type, which)
-    return model.model_json_schema()
+        return orm.Node.ReadModel.model_json_schema()
+    Model = model_registry.get_model(node_type, which)
+    if not Model:
+        raise restapi_exceptions.SchemaNotSupported(f"'{node_type}' does not support {which} schema")
+    return Model.model_json_schema()
 
 
 @read_router.get(
@@ -163,9 +189,7 @@ async def get_node_types() -> list:
             'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
-        for node_type in sorted(
-            model_registry.get_node_types(), key=lambda node_type: model_registry.get_node_class_name(node_type)
-        )
+        for node_type in sorted(model_registry.get_node_types(), key=model_registry.get_node_class_name)
     ]
 
 
@@ -527,8 +551,8 @@ async def download_node(
 @with_dbenv()
 async def create_node(
     request: Request,
-    model: NodeModelUnion,
-    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    model: t.Annotated[NodeModelUnion, Body(...)],
+    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node."""
     result = service.add_one(model)
@@ -557,25 +581,38 @@ async def create_node(
 @with_dbenv()
 async def create_node_with_files(
     request: Request,
-    params: t.Annotated[str, Form()],
+    params: t.Annotated[
+        str,
+        Form(
+            description='JSON string correpsonding to the same payload as the POST /nodes endpoint for the '
+            'given `node_type`'
+        ),
+    ],
     files: list[UploadFile],
-    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
-    parameters = t.cast(dict, json.loads(params))
+    payload = t.cast(dict, json.loads(params))
 
-    if not (node_type := parameters.get('node_type')):
-        raise ValidationException("The 'node_type' field is missing in the parameters.")
+    if 'args' in payload:
+        raise ValidationException("File upload endpoint does not support constructor 'args'.")
 
-    model_cls = model_registry.get_model(node_type, which='post')
-    model = model_cls(**parameters)
+    node_type = payload.get('node_type')
+    if not isinstance(node_type, str):
+        raise ValidationException("The 'node_type' field is missing in the payload.")
+
+    Model = t.cast(type[orm.Node.WriteModel], model_registry.get_model(node_type, 'write'))
 
     files_dict: dict[str, UploadFile] = {}
-
     for upload in files:
         if (target := upload.filename) in files_dict:
             raise ValidationException(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
+
+    if 'attributes' not in payload:
+        payload['attributes'] = {}
+
+    model = Model(**payload)
 
     result = service.add_one(model, files=files_dict)
     return JsonApi.resource(
