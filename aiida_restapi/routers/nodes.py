@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import typing as t
+from urllib.parse import quote
 
 import pydantic as pdt
 from aiida import orm
@@ -440,6 +441,15 @@ async def get_node_repo_file_metadata(
     )
 
 
+def stream_bytes(content: bytes) -> t.Generator[bytes, None, None]:
+    with io.BytesIO(content) as handler:
+        yield from handler
+
+
+def get_file_download_headers(filename: str) -> dict[str, str]:
+    return {'Content-Disposition': f"attachment; filename={filename!r}; filename*=UTF-8''{quote(filename)}"}
+
+
 @read_router.get(
     '/{uuid}/repo/contents',
     response_class=StreamingResponse,
@@ -458,35 +468,14 @@ async def get_node_repo_file_contents(
     ] = None,
 ) -> StreamingResponse:
     """Get the repository contents of a node."""
-    from urllib.parse import quote
-
     node = orm.load_node(uuid)
     repo = node.base.repository
-
-    if filename:
-        file_content = repo.get_object_content(filename, mode='rb')
-
-        def file_stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(file_content) as handler:
-                yield from handler
-
-        download_name = filename.split('/')[-1] or 'download'
-        quoted = quote(download_name)
-        headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
-
-        return StreamingResponse(file_stream(), media_type='application/octet-stream', headers=headers)
-
-    zip_bytes = repo.get_zipped_objects()
-
-    def zip_stream() -> t.Generator[bytes, None, None]:
-        with io.BytesIO(zip_bytes) as handler:
-            yield from handler
-
-    download_name = f'node_{uuid}_repo.zip'
-    quoted = quote(download_name)
-    headers = {'Content-Disposition': f"attachment; filename={download_name!r}; filename*=UTF-8''{quoted}"}
-
-    return StreamingResponse(zip_stream(), media_type='application/zip', headers=headers)
+    repo_filename = filename.strip('/')[-1] if filename else f'{uuid}.zip'
+    return StreamingResponse(
+        stream_bytes(repo.get_object_content(filename, mode='rb') if filename else repo.get_zipped_objects()),
+        media_type=f'application/{"zip" if not filename else "octet-stream"}',
+        headers=get_file_download_headers(repo_filename),
+    )
 
 
 @read_router.get(
@@ -495,7 +484,7 @@ async def get_node_repo_file_contents(
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
         409: {'model': errors.MultipleObjectsError, 'description': 'Multiple Resources Found'},
-        422: {'model': errors.InvalidInputError, 'description': 'Validation Error'},
+        422: {'model': errors.RequestValidationError | errors.InvalidInputError, 'description': 'Validation Error'},
         451: {'model': errors.InvalidLicenseError, 'description': 'Invalid License'},
     },
 )
@@ -506,31 +495,56 @@ async def download_node(
         str | None,
         Query(description='Format to download the node in'),
     ] = None,
+    options: t.Annotated[
+        str | None,
+        Query(description='Additional options for archive downloads, provided as a JSON string'),
+    ] = None,
 ) -> StreamingResponse:
-    """Download AiiDA node by uuid in a given download format provided as a query parameter."""
-    node = orm.load_node(uuid)
+    """Download AiiDA node by uuid in a given download format (e.g., JSON, archive).
+
+    The available download formats can be queried using the /nodes/download_formats/ endpoint.
+    If downloading as an archive, additional options can be provided as a JSON object via the
+    `options` query parameter.
+    """
 
     if format is None:
         raise ValidationException(
             'Please specify the download format. '
             'The available download formats can be '
-            'queried using the /nodes/download_formats/ endpoint.',
+            'queried using the /nodes/download_formats endpoint.',
         )
 
-    if format in node.get_export_formats():
-        # byteobj, dict with {filename: filecontent}
+    node = orm.load_node(uuid)
+
+    if format == 'archive':
+        from aiida.tools.archive import create_archive
+
+        filename = f'{uuid}.aiida'
+
+        if options:
+            try:
+                options_dict: dict[str, t.Any] = json.loads(options)
+            except json.JSONDecodeError as exc:
+                raise ValidationException(f"Invalid JSON in 'options': {exc.msg}") from exc
+        else:
+            options_dict = {}
+
+        archive_path = create_archive(entities=[node], filename=filename, **(options_dict))
+        exported_bytes = archive_path.read_bytes()
+        archive_path.unlink()
+    elif format in node.get_export_formats():
+        filename = f'{uuid}.{format}'
         exported_bytes, _ = node._exportcontent(format)
+    else:
+        raise ValidationException(
+            f'The format {format} is not supported. '
+            'The available download formats can be queried using the /nodes/download_formats/ endpoint.'
+        )
 
-        def stream() -> t.Generator[bytes, None, None]:
-            with io.BytesIO(exported_bytes) as handler:
-                yield from handler
-
-        return StreamingResponse(stream(), media_type=f'application/{format}')
-
-    raise ValidationException(
-        'The format {} is not supported. '
-        'The available download formats can be '
-        'queried using the /nodes/download_formats/ endpoint.'.format(format),
+    return StreamingResponse(
+        stream_bytes(exported_bytes),
+        media_type=f'application/{"zip" if format == "archive" else format}',
+        headers=get_file_download_headers(filename),
     )
 
 
