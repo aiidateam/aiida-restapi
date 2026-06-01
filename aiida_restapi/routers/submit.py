@@ -84,7 +84,7 @@ class ProcessSubmitModel(pdt.BaseModel):
 async def submit_process(
     process: ProcessSubmitModel,
     current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
-) -> orm.Node.Model:
+) -> dict[str, t.Any]:
     """Submit new AiiDA process."""
     try:
         entry_point_process = load_entry_point_from_string(process.entry_point)
@@ -94,4 +94,4 @@ async def submit_process(
         process_node = engine.submit(entry_point_process, **process.inputs)
     except Exception as exception:
         raise exceptions.InputValidationError(str(exception)) from exception
-    return t.cast(orm.Node.Model, process_node.to_model())
+    return process_node.serialize(minimal=True)
