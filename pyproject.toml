@@ -18,13 +18,16 @@ classifiers = [
 dependencies = [
   'aiida-core @ git+https://github.com/aiidateam/aiida-core.git',
   'fastapi~=0.115.5',
-  'uvicorn[standard]~=0.32.1',
+  'uvicorn[standard]>=0.32.1',
   'pydantic~=2.0',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
   'python-dateutil~=2.0',
   'lark~=0.11.0',
   'python-multipart~=0.0.20',
+  'python-jose',
+  'argon2-cffi',
+  'bcrypt',
 ]
 dynamic = ['description', 'version']
 keywords = ['aiida', 'workflows']
@@ -34,7 +37,6 @@ readme = 'README.md'
 requires-python = '>=3.10'
 
 [project.optional-dependencies]
-auth = ['python-jose', 'python-multipart', 'argon2-cffi', 'bcrypt']
 docs = [
   'sphinx',
   'myst-parser[linkify]>=0.13.7',
@@ -49,7 +51,7 @@ testing = [
   'pgtest~=1.3.1',
   'wheel~=0.31',
   'coverage',
-  'pytest~=6.2',
+  'pytest~=7.0',
   'pytest-regressions',
   'pytest-cov',
   'requests',
