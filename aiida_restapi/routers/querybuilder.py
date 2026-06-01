@@ -7,8 +7,10 @@ import typing as t
 import pydantic as pdt
 from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
+from aiida_restapi.common import errors
+from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
 
 read_router = APIRouter(prefix='/querybuilder')
@@ -114,6 +116,9 @@ class QueryBuilderDict(pdt.BaseModel):
     response_model=PaginatedResults,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
+    responses={
+        422: {'model': t.Union[errors.RequestValidationError, errors.QueryBuilderError]},
+    },
 )
 @with_dbenv()
 async def query_builder(
@@ -154,5 +159,5 @@ async def query_builder(
                 results=qb.all(flat=flat),
             )
 
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exception:
+        raise QueryBuilderException(str(exception)) from exception

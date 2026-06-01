@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing as t
 
 import pydantic as pdt
+from aiida.common.exceptions import MissingEntryPointError
 from aiida.orm import Node
 from aiida.plugins import get_entry_points
 from importlib_metadata import EntryPoint
@@ -153,7 +154,7 @@ class NodeModelRegistry:
         :return: The corresponding Pydantic model class.
         """
         if (Model := self._models.get(node_type)) is None:
-            raise KeyError(f'Unknown node type: {node_type}')
+            raise MissingEntryPointError(f'Unknown node type: {node_type}')
         if which not in Model:
             raise KeyError(f'Unknown model type: {which}')
         return Model[which]
