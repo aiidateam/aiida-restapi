@@ -21,20 +21,14 @@ from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common import query
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
-from aiida_restapi.jsonapi.models import errors
-from aiida_restapi.jsonapi.models.aiida import (
-    ComputerResourceDocument,
-    GroupCollectionDocument,
-    LinkCollectionDocument,
-    NodeCollectionDocument,
-    NodeResourceDocument,
-    UserResourceDocument,
-)
+from aiida_restapi.jsonapi.models import aiida, errors
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.jsonapi.responses import JsonApiResponse
 from aiida_restapi.jsonapi.utils import jsonapi_error
 from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
 from aiida_restapi.services.node import NodeService
+
+from .auth import UserInDB, get_current_active_user
 
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
@@ -46,10 +40,12 @@ model_registry = NodeModelRegistry()
 
 if t.TYPE_CHECKING:
     # Dummy type for static analysis
-    NodeModelUnion: TypeAlias = pdt.BaseModel
+    NodeAttributesModelUnion: TypeAlias = pdt.BaseModel
+    NodeConstructorModelUnion: TypeAlias = pdt.BaseModel
 else:
-    # The real discriminated union built at runtime
-    NodeModelUnion = model_registry.ModelUnion
+    # The real discriminated unions built at runtime
+    NodeAttributesModelUnion = model_registry.WriteModelUnion
+    NodeConstructorModelUnion = model_registry.ConstructorModelUnion
 
 
 async def unsupported_model_error_handler(
@@ -57,14 +53,17 @@ async def unsupported_model_error_handler(
     exception: fastapi_exceptions.RequestValidationError,
 ) -> Response:
     """Return concise validation errors for selected request-validation cases."""
-    if request.method == 'POST' and request.url.path.endswith('/nodes'):
+    if request.method == 'POST' and (
+        request.url.path.endswith('/nodes') or request.url.path.endswith('/nodes/constructor')
+    ):
         body = getattr(exception, 'body', None)
         if isinstance(body, dict):
             try:
-                model_registry.get_post_model_from_payload(body)
+                which = 'constructor' if request.url.path.endswith('/nodes/constructor') else None
+                model_registry.get_post_model_from_payload(body, which)  # type: ignore[arg-type]
             except aiida_exceptions.UnsupportedSchemaError as unsupported:
                 return jsonapi_error(request, unsupported, 422)
-            except Exception:
+            except ValueError:
                 pass
 
     return await request_validation_exception_handler(request, exception)
@@ -146,7 +145,7 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
 @read_router.get(
     '',
     response_class=JsonApiResponse,
-    response_model=NodeCollectionDocument,
+    response_model=aiida.NodeCollectionDocument,
     response_model_exclude_none=True,
     responses={
         422: {
@@ -196,7 +195,7 @@ async def get_node_types() -> list:
 @read_router.get(
     '/{uuid}',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -227,7 +226,7 @@ async def get_node(
 @read_router.get(
     '/{uuid}/user',
     response_class=JsonApiResponse,
-    response_model=UserResourceDocument,
+    response_model=aiida.UserResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -250,7 +249,7 @@ async def get_node_user(request: Request, uuid: str) -> dict[str, t.Any]:
 @read_router.get(
     '/{uuid}/computer',
     response_class=JsonApiResponse,
-    response_model=ComputerResourceDocument,
+    response_model=aiida.ComputerResourceDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -273,7 +272,7 @@ async def get_node_computer(request: Request, uuid: str) -> dict[str, t.Any]:
 @read_router.get(
     '/{uuid}/groups',
     response_class=JsonApiResponse,
-    response_model=GroupCollectionDocument,
+    response_model=aiida.GroupCollectionDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -377,7 +376,7 @@ async def get_node_extras(
 @read_router.get(
     '/{uuid}/links',
     response_class=JsonApiResponse,
-    response_model=LinkCollectionDocument,
+    response_model=aiida.LinkCollectionDocument,
     response_model_exclude_none=True,
     responses={
         404: {'model': errors.NonExistentError, 'description': 'Resource Not Found'},
@@ -538,7 +537,7 @@ async def download_node(
 @write_router.post(
     '',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         403: {'model': errors.StoringNotAllowedError},
@@ -551,10 +550,39 @@ async def download_node(
 @with_dbenv()
 async def create_node(
     request: Request,
-    model: t.Annotated[NodeModelUnion, Body(...)],
-    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    model: t.Annotated[NodeAttributesModelUnion, Body(discriminator='node_type')],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
-    """Create new AiiDA node."""
+    """Create a new AiiDA node from an attributes-based payload."""
+    result = service.add_one(model)
+    return JsonApi.resource(
+        request,
+        result,
+        resource_identity=orm.Node.identity_field,
+        resource_type='nodes',
+    )
+
+
+@write_router.post(
+    '/constructor',
+    response_class=JsonApiResponse,
+    response_model=aiida.NodeResourceDocument,
+    response_model_exclude_none=True,
+    responses={
+        403: {'model': errors.StoringNotAllowedError},
+        422: {
+            'model': t.Union[errors.RequestValidationError, errors.InvalidInputError, errors.InvalidNodeTypeError],
+            'description': 'Validation Error | Invalid Input Error | Invalid Node Type',
+        },
+    },
+)
+@with_dbenv()
+async def create_node_constructor(
+    request: Request,
+    model: t.Annotated[NodeConstructorModelUnion, Body(discriminator='node_type')],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+) -> dict[str, t.Any]:
+    """Create a new AiiDA node from a constructor-based payload."""
     result = service.add_one(model)
     return JsonApi.resource(
         request,
@@ -567,7 +595,7 @@ async def create_node(
 @write_router.post(
     '/file-upload',
     response_class=JsonApiResponse,
-    response_model=NodeResourceDocument,
+    response_model=aiida.NodeResourceDocument,
     response_model_exclude_none=True,
     responses={
         400: {'model': errors.JsonDecodingError, 'description': 'JSON Decoding Error'},
@@ -589,7 +617,7 @@ async def create_node_with_files(
         ),
     ],
     files: list[UploadFile],
-    # current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
+    current_user: t.Annotated[UserInDB, Depends(get_current_active_user)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
     payload = t.cast(dict, json.loads(params))

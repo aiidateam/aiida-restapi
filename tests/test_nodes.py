@@ -204,7 +204,7 @@ def test_get_node_types(client: TestClient):
     assert response.status_code == 200
     result = response.json()
     entry_points = get_entry_points('aiida.data') + get_entry_points('aiida.node')
-    assert len(result) == len(entry_points)
+    assert len(result) == len(entry_points) - 1  # `data` entrypoint is excluded
     first = result[0]
     assert NodeType.model_validate(first)
 
@@ -360,7 +360,7 @@ def test_create_dict(client: TestClient):
 def test_create_dict_constructor_args(client: TestClient):
     """Test creating a new dict using constructor args payload discrimination."""
     response = client.post(
-        '/nodes',
+        '/nodes/constructor',
         json={
             'node_type': 'data.core.dict.Dict.',
             'label': 'test_dict_constructor',
@@ -394,7 +394,7 @@ def test_create_node_reject_both_attributes_and_args(client: TestClient):
 def test_create_node_constructor_not_supported(client: TestClient):
     """Test constructor payload for unsupported type returns concise validation error."""
     response = client.post(
-        '/nodes',
+        '/nodes/constructor',
         json={
             'node_type': 'data.core.int.Int.',
             'args': {'value': 42},
