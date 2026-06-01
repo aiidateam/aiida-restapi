@@ -1,5 +1,7 @@
 """Test the /users endpoint"""
 
+from __future__ import annotations
+
 import pytest
 from aiida import orm
 from fastapi.testclient import TestClient
@@ -25,7 +27,7 @@ def test_get_users(client: TestClient):
     assert len(response.json()['results']) == 2 + 1
 
 
-def test_get_user(client: TestClient, default_users):
+def test_get_user(client: TestClient, default_users: list[int | None]):
     """Test retrieving a single user."""
     for user_id in default_users:
         response = client.get(f'/users/{user_id}')

@@ -57,7 +57,7 @@ def test_querybuilder_numeric_flat(client: TestClient):
     assert data['results'] == [1, 1.1]
 
 
-def test_querybuilder_integer_in_group(client: TestClient, default_nodes, default_groups):
+def test_querybuilder_integer_in_group(client: TestClient, default_nodes: list[str], default_groups: list[str]):
     """Test a QueryBuilder request filtering integers by group membership."""
     node = orm.load_node(default_nodes[0])
     group = orm.load_group(default_groups[0])
