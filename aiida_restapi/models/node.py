@@ -116,7 +116,19 @@ class RepoDirMetadata(pdt.BaseModel):
 MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
-class NodeLink(Node.Model):
+class NodeLink(pdt.BaseModel):
+    id: str = pdt.Field(
+        description='The unique identifier of the link.',
+        examples=['<source_uuid>:<target_uuid>'],
+    )
+    source: str = pdt.Field(
+        description='The UUID of the source node.',
+        examples=['<source_uuid>'],
+    )
+    target: str = pdt.Field(
+        description='The UUID of the target node.',
+        examples=['<target_uuid>'],
+    )
     link_label: str = pdt.Field(
         description='The label of the link to the node.',
         examples=['structure'],

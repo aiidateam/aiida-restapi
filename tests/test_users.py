@@ -49,6 +49,6 @@ async def test_create_user(async_client: AsyncClient):
     """Test creating a new user."""
     response = await async_client.post('/users', json={'first_name': 'New', 'email': 'aiida@localhost'})
     assert response.status_code == 200, response.content
-    response = await async_client.get('/users')
-    first_names = [user['first_name'] for user in response.json()['data']]
-    assert 'New' in first_names
+    attributes = response.json()['data']['attributes']
+    assert attributes['first_name'] == 'New'
+    assert attributes['email'] == 'aiida@localhost'

@@ -9,7 +9,7 @@ from aiida.engine.daemon.client import DaemonException, get_daemon_client
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from aiida_restapi.common import errors
+from aiida_restapi.jsonapi.models import errors
 
 from .auth import UserInDB, get_current_active_user
 
