@@ -216,11 +216,11 @@ def test_get_node(client: TestClient, default_nodes: list[str | None]):
     assert response.status_code == 200, response.content
     node = response.json()['data']
     attributes = node['attributes']
-    assert 'uuid' not in attributes  # top-level id
     assert 'user' not in attributes  # relationship
     assert set(attributes.keys()) == {
         'pk',
         'node_type',
+        'uuid',
         'label',
         'description',
         'ctime',

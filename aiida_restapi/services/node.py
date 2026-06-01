@@ -201,7 +201,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                 target_uuid = other_uuid
             data.append(
                 {
-                    'id': f'{source_uuid}:{target_uuid}',
+                    'link_id': f'{source_uuid}:{target_uuid}',
                     'source': source_uuid,
                     'target': target_uuid,
                     'link_label': link_label,
