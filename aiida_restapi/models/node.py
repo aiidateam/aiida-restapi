@@ -1,3 +1,5 @@
+"""Pydantic models for AiiDA REST API nodes."""
+
 from __future__ import annotations
 
 import typing as t
@@ -64,7 +66,8 @@ class NodeType(pdt.BaseModel):
 class RepoFileMetadata(pdt.BaseModel):
     """Pydantic model representing the metadata of a file in the AiiDA repository."""
 
-    type: t.Literal['FILE'] = pdt.Field(
+    file_type: t.Literal['FILE'] = pdt.Field(
+        alias='type',
         description='The type of the repository object.',
         examples=['FILE'],
     )
@@ -86,7 +89,8 @@ class RepoFileMetadata(pdt.BaseModel):
 class RepoDirMetadata(pdt.BaseModel):
     """Pydantic model representing the metadata of a directory in the AiiDA repository."""
 
-    type: t.Literal['DIRECTORY'] = pdt.Field(
+    file_type: t.Literal['DIRECTORY'] = pdt.Field(
+        alias='type',
         description='The type of the repository object.',
         examples=['DIRECTORY'],
     )
@@ -113,8 +117,14 @@ MetadataType = t.Union[RepoFileMetadata, RepoDirMetadata]
 
 
 class NodeLink(Node.Model):
-    link_label: str = pdt.Field(description='The label of the link to the node.')
-    link_type: str = pdt.Field(description='The type of the link to the node.')
+    link_label: str = pdt.Field(
+        description='The label of the link to the node.',
+        examples=['structure'],
+    )
+    link_type: str = pdt.Field(
+        description='The type of the link to the node.',
+        examples=['input_calc'],
+    )
 
 
 class NodeModelRegistry:
@@ -180,7 +190,7 @@ class NodeModelRegistry:
         """Build mapping of node type to node creation model."""
         self._models: dict[str, dict[str, type[Node.Model]]] = {}
         entry_point: EntryPoint
-        for entry_point in get_entry_points('aiida.data'):
+        for entry_point in get_entry_points('aiida.data') + get_entry_points('aiida.node'):
             try:
                 node_cls = t.cast(Node, entry_point.load())
             except Exception as exception:

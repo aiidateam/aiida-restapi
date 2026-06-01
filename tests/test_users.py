@@ -8,8 +8,17 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 
-def test_get_user_projectable_properties(client: TestClient):
-    """Test get projectable properties for users."""
+def test_get_user_schema(client: TestClient):
+    """Test retrieving the user schema."""
+    response = client.get('/users/schema')
+    assert response.status_code == 200
+    result = response.json()
+    assert 'properties' in result
+    assert sorted(result['properties'].keys()) == sorted(orm.User.fields.keys())
+
+
+def test_get_user_projections(client: TestClient):
+    """Test get projections for users."""
     response = client.get('/users/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.User.fields.keys())
@@ -24,7 +33,7 @@ def test_get_users(client: TestClient):
     """
     response = client.get('/users')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2 + 1
+    assert len(response.json()['data']) == 2 + 1
 
 
 def test_get_user(client: TestClient, default_users: list[int | None]):
@@ -41,5 +50,5 @@ async def test_create_user(async_client: AsyncClient):
     response = await async_client.post('/users', json={'first_name': 'New', 'email': 'aiida@localhost'})
     assert response.status_code == 200, response.content
     response = await async_client.get('/users')
-    first_names = [user['first_name'] for user in response.json()['results']]
+    first_names = [user['first_name'] for user in response.json()['data']]
     assert 'New' in first_names

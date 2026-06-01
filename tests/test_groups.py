@@ -7,8 +7,17 @@ from aiida import orm
 from fastapi.testclient import TestClient
 
 
-def test_get_group_projectable_properties(client: TestClient):
-    """Test get projectable properties for group."""
+def test_get_group_schema(client: TestClient):
+    """Test retrieving the group schema."""
+    response = client.get('/groups/schema')
+    assert response.status_code == 200
+    result = response.json()
+    assert 'properties' in result
+    assert sorted(result['properties'].keys()) == sorted(orm.Group.fields.keys())
+
+
+def test_get_group_projections(client: TestClient):
+    """Test get projections for group."""
     response = client.get('/groups/projections')
     assert response.status_code == 200
     assert response.json() == sorted(orm.Group.fields.keys())
@@ -19,7 +28,7 @@ def test_get_groups(client: TestClient):
     """Test listing existing groups."""
     response = client.get('/groups')
     assert response.status_code == 200
-    assert len(response.json()['results']) == 2
+    assert len(response.json()['data']) == 2
 
 
 def test_get_group(client: TestClient, default_groups: list[str]):
@@ -29,6 +38,15 @@ def test_get_group(client: TestClient, default_groups: list[str]):
         assert response.status_code == 200
 
 
+def test_get_group_extras(client: TestClient):
+    """Test retrieving extras of a single group."""
+    group = orm.Group(label='test_group_extras').store()
+    group.base.extras.set('extra_key', 'extra_value')
+    response = client.get(f'/groups/{group.uuid}/extras')
+    assert response.status_code == 200
+    assert response.json() == {'extra_key': 'extra_value'}
+
+
 @pytest.mark.usefixtures('authenticate')
 def test_create_group(client: TestClient):
     """Test creating a new group."""
@@ -36,5 +54,5 @@ def test_create_group(client: TestClient):
     assert response.status_code == 200, response.content
     assert response.json()['user']
     response = client.get('/groups')
-    first_names = [group['label'] for group in response.json()['results']]
+    first_names = [group['label'] for group in response.json()['data']]
     assert 'test_label_create' in first_names
