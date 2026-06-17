@@ -24,7 +24,7 @@ dependencies = [
   'graphene~=3.0',
   'python-dateutil~=2.0',
   'lark~=0.11.0',
-  'python-multipart~=0.0.20',
+  'python-multipart~=0.0.31',
 ]
 dynamic = ['description', 'version']
 keywords = ['aiida', 'workflows']
