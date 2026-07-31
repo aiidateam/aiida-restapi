@@ -47,6 +47,31 @@ By default, the API allows requests from localhost. You can configure the CORS p
 
 See the [examples](https://github.com/aiidateam/aiida-restapi/tree/master/examples) directory.
 
+### Collection queries
+
+Resource collections use JSON:API-style query parameters:
+
+```text
+GET /nodes?filter[node_type]=data.core.int.Int.&sort=-ctime&page[offset]=0&page[limit]=10
+```
+
+- `filter[field]=value` and `filter[field][==]=value` test equality
+- `filter[field][in]=["value1","value2"]` tests membership
+- `filter[field][<|<=|>|>=]=value` compares numeric values
+- `filter[field][like|ilike]=pattern` matches strings using SQL `%` and `_` wildcards
+- `filter[field][contains]=["value1","value2"]` tests array containment
+- `filter[field][of_length|shorter|longer|has_key]=value` filters arrays and dictionaries
+- `filter[field][!operator]=value` negates any supported leaf operator
+- `sort=field,-other` sorts ascending and descending, respectively
+- `page[offset]` and `page[limit]` control offset pagination
+- `include=relationship,other` includes related resources
+- Nested dictionary values use dot-separated fields, for example `filter[attributes.config.timeout][>=]=30`
+- `in` and `contains` operators, and their negated forms, require a non-empty JSON array
+- Values are decoded as JSON scalars when possible
+- Repeated constraints are combined with AND
+- Repeated `in` constraints are flattened
+- General boolean grouping (e.g., `OR`) is intentionally reserved for `POST /querybuilder`
+
 ## Development
 
 ```shell
