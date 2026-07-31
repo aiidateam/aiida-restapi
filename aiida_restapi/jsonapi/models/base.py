@@ -120,7 +120,7 @@ class BaseToplevelLinks(pdt.BaseModel):
             description='The link that generated the current response document. If a document has extensions '
             'or profiles applied to it, this link **SHOULD** be represented by a link object with the "type" '
             'target attribute specifying the JSON:API media type with all applicable parameters.',
-            examples=['../{type}?page=2'],
+            examples=['../{type}?page[offset]=10&page[limit]=10'],
         ),
     ] = None
 
@@ -144,28 +144,28 @@ class PaginationLinks(pdt.BaseModel):
         JsonLinkType | None,
         pdt.Field(
             description='The first page of data.',
-            examples=['../{type}?page=1'],
+            examples=['../{type}?page[offset]=0&page[limit]=10'],
         ),
     ] = None
     prev: t.Annotated[
         JsonLinkType | None,
         pdt.Field(
             description='The previous page of data.',
-            examples=['../{type}?page=1'],
+            examples=['../{type}?page[offset]=0&page[limit]=10'],
         ),
     ] = None
     next: t.Annotated[
         JsonLinkType | None,
         pdt.Field(
             description='The next page of data.',
-            examples=['../{type}?page=3'],
+            examples=['../{type}?page[offset]=20&page[limit]=10'],
         ),
     ] = None
     last: t.Annotated[
         JsonLinkType | None,
         pdt.Field(
             description='The last page of data.',
-            examples=['../{type}?page=10'],
+            examples=['../{type}?page[offset]=90&page[limit]=10'],
         ),
     ] = None
 
