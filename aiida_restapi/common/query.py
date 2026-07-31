@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
+import re
 import typing as t
 
 import pydantic as pdt
-from fastapi import Depends, Query
+from aiida.common.exceptions import InputValidationError
+from fastapi import Depends, Query, Request
 
 __all__ = [
     'CollectionQueryParams',
-    'QueryBuilderParams',
+    'QueryParams',
     'ResourceQueryParams',
     'collection_query_params',
+    'query_parameter_items',
     'querybuilder_params',
     'resource_query_params',
 ]
@@ -23,8 +26,12 @@ class Filtering(pdt.BaseModel):
         default_factory=dict,
         description='AiiDA QueryBuilder filters',
         examples=[
-            {'node_type': {'==': 'data.core.int.Int.'}},
-            {'attributes.value': {'>': 42}},
+            'filter[node_type]=data.core.int.Int.',
+            'filter[pk][in]=[1,10,100]',
+            'filter[attributes.value][<=]=42',
+            'filter[label][like]=%test%',
+            'filter[attributes.some_array][contains]=[1,True,"hello"]',
+            'filter[attributes.some_dict][has_key]=some_key',
         ],
     )
 
@@ -34,21 +41,17 @@ class Sorting(pdt.BaseModel):
         default=None,
         description='Fields to sort by',
         examples=[
-            {'attributes.value': 'desc'},
+            'ctime',
+            ['label', '-ctime'],
         ],
     )
 
 
 class Pagination(pdt.BaseModel):
-    page_size: pdt.PositiveInt = pdt.Field(
+    limit: pdt.PositiveInt = pdt.Field(
         default=10,
         description='Number of results per page',
         examples=[10],
-    )
-    page: pdt.PositiveInt = pdt.Field(
-        default=1,
-        description='Page number',
-        examples=[1],
     )
     offset: pdt.NonNegativeInt = pdt.Field(
         default=0,
@@ -68,11 +71,13 @@ class Include(pdt.BaseModel):
     )
 
 
-class QueryBuilderParams(Filtering, Sorting, Pagination):
+class QueryParams(Filtering, Sorting, Pagination):
     """QueryBuilder parameters: filters, sorting, pagination."""
 
+    query_items: list[tuple[str, str]] = pdt.Field(default_factory=list, exclude=True)
 
-class CollectionQueryParams(QueryBuilderParams, Include):
+
+class CollectionQueryParams(QueryParams, Include):
     """Query parameters for a collection resource: filters, sorting, pagination, include."""
 
 
@@ -84,61 +89,171 @@ def _parse_csv(raw: str) -> list[str]:
     return [item.strip() for item in raw.split(',') if item.strip()]
 
 
+def _parse_filter_value(raw: str) -> t.Any:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
+_FILTER_KEY = re.compile(r'filter\[([^][\s]+)\](?:\[([^][\s]+)\])?')
+_TRUNCATED_OPERATOR_KEY = re.compile(r'filter\[[^][\s]+\]\[!?[<>=]*')
+
+_GENERAL_OPS = {
+    '==',
+    '!==',
+    'in',
+}
+
+_NUMERIC_OPS = {
+    '<',
+    '<=',
+    '>',
+    '>=',
+}
+
+_STRING_OPS = {
+    'like',
+    'ilike',
+}
+
+_ARRAY_OPS = {
+    'contains',
+    'of_length',
+    'shorter',
+    'longer',
+}
+
+_DICT_OPS = {
+    'has_key',
+}
+
+_FILTER_OPERATORS = {
+    *_GENERAL_OPS,
+    *_NUMERIC_OPS,
+    *_STRING_OPS,
+    *_ARRAY_OPS,
+    *_DICT_OPS,
+}
+
+
+def query_parameter_items(request: Request) -> list[tuple[str, str]]:
+    """Return decoded query items, repairing comparison operators split at their equals sign."""
+    items: list[tuple[str, str]] = []
+    for key, value in request.query_params.multi_items():
+        normalized_key = key
+        normalized_value = value
+        if _TRUNCATED_OPERATOR_KEY.fullmatch(key):
+            operator_remainder, separator, operand = value.partition(']=')
+            if separator:
+                normalized_key = f'{key}={operator_remainder}]'
+                normalized_value = operand
+        items.append((normalized_key, normalized_value))
+    return items
+
+
+def _parse_filter_list(operator: str, raw: str) -> list[t.Any]:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exception:
+        raise InputValidationError(f'The `{operator}` filter requires a JSON list.') from exception
+    if not isinstance(value, list):
+        raise InputValidationError(f'The `{operator}` filter requires a JSON list.')
+    if not value:
+        raise InputValidationError(f'The `{operator}` filter requires at least one value.')
+    return value
+
+
+def _parse_filter_operator(operator: str | None) -> str:
+    if operator is None:
+        return '=='
+    positive_operator = operator[1:] if operator.startswith('!') else operator
+    if positive_operator in _FILTER_OPERATORS:
+        return operator
+    raise InputValidationError(f'Invalid filter operator: {operator!r}.')
+
+
+def _parse_filter_operand(operator: str, raw: str) -> t.Any:
+    positive_operator = operator.lstrip('!~')
+    if positive_operator in {'in', 'contains'}:
+        return _parse_filter_list(positive_operator, raw)
+    value = _parse_filter_value(raw)
+    if positive_operator in _NUMERIC_OPS and not isinstance(value, (int, float)):
+        raise InputValidationError(f'The `{positive_operator}` filter requires a numeric value.')
+    if positive_operator in _STRING_OPS and not isinstance(value, str):
+        raise InputValidationError(f'The `{positive_operator}` filter requires a string value.')
+    if positive_operator in _ARRAY_OPS and not isinstance(value, int):
+        raise InputValidationError(f'The `{positive_operator}` filter requires an integer value.')
+    return value
+
+
+def _parse_filters(query_items: list[tuple[str, str]]) -> dict[str, t.Any]:
+    expressions: dict[str, list[dict[str, t.Any]]] = {}
+    for key, raw in query_items:
+        if not key.startswith('filter'):
+            continue
+        match = _FILTER_KEY.fullmatch(key)
+        if match is None:
+            raise InputValidationError(f'Invalid filter parameter: {key!r}.')
+        field, raw_operator = match.groups()
+        operator = _parse_filter_operator(raw_operator)
+        operand = _parse_filter_operand(operator, raw)
+        expressions.setdefault(field, []).append({operator: operand})
+
+    filters: dict[str, t.Any] = {}
+    for field, field_expressions in expressions.items():
+        normalized_expressions = field_expressions
+        for membership_operator in ('in', '!in'):
+            membership = [
+                expression[membership_operator]
+                for expression in normalized_expressions
+                if membership_operator in expression
+            ]
+            if len(membership) > 1:
+                normalized_expressions = [
+                    expression for expression in normalized_expressions if membership_operator not in expression
+                ] + [{membership_operator: [item for values in membership for item in values]}]
+        filters[field] = (
+            normalized_expressions[0] if len(normalized_expressions) == 1 else {'and': normalized_expressions}
+        )
+
+    return filters
+
+
+def _parse_sort(raw: str | None) -> dict[str, t.Literal['asc', 'desc']]:
+    order_by: dict[str, t.Literal['asc', 'desc']] = {}
+    for field in _parse_csv(raw) if raw else []:
+        direction: t.Literal['asc', 'desc'] = 'desc' if field.startswith('-') else 'asc'
+        name = field[1:] if field.startswith(('-', '+')) else field
+        if not name or name.startswith(('-', '+')) or any(character.isspace() for character in name):
+            raise InputValidationError(f'Invalid sort field: {field!r}.')
+        order_by[name] = direction
+    return order_by
+
+
 def querybuilder_params(
-    filters: t.Annotated[
+    request: Request,
+    sort: t.Annotated[
         str | None,
-        Query(description='AiiDA QueryBuilder filters as JSON string or object'),
+        Query(description='Comma-separated fields to sort by; prefix descending fields with `-`'),
     ] = None,
-    order_by: t.Annotated[
-        str | None,
-        Query(description='Fields to sort by, as a comma-separated string, JSON array, or JSON object'),
-    ] = None,
-    page_size: t.Annotated[
+    limit: t.Annotated[
         int,
-        Query(ge=1, description='Number of results per page'),
+        Query(alias='page[limit]', ge=1, description='Number of results per page'),
     ] = 10,
-    page: t.Annotated[
-        int,
-        Query(ge=1, description='Page number'),
-    ] = 1,
     offset: t.Annotated[
         int,
-        Query(ge=0, description='Offset for results'),
+        Query(alias='page[offset]', ge=0, description='Number of results to skip'),
     ] = 0,
-) -> QueryBuilderParams:
-    """Dependency to parse QueryBuilder parameters.
-
-    :param filters: AiiDA QueryBuilder filters as JSON string.
-    :type filters: str | None
-    :param order_by: Comma-separated string of fields to sort by.
-    :type order_by: str | None
-    :param page_size: Number of results per page.
-    :type page_size: int
-    :param page: Page number.
-    :type page: int
-    :return: Structured query parameters.
-    :rtype: QueryBuilderParams
-    :raises HTTPException: If arguments cannot be parsed as JSON.
-    """
-    query_filters: dict[str, t.Any] = {}
-    if filters:
-        query_filters = json.loads(filters)
-        if not isinstance(query_filters, dict):
-            raise pdt.ValidationError('Filters must be a JSON object')
-
-    query_order_by: str | list[str] | dict[str, t.Any] | None = None
-    if order_by:
-        if order_by.lstrip().startswith(('{', '[', '"')):
-            query_order_by = json.loads(order_by)
-        else:
-            query_order_by = _parse_csv(order_by)
-
-    return QueryBuilderParams(
-        filters=query_filters,
-        order_by=query_order_by,
-        page_size=page_size,
-        page=page,
+) -> QueryParams:
+    """Parse JSON:API filtering, sorting, and pagination parameters."""
+    query_items = query_parameter_items(request)
+    return QueryParams(
+        filters=_parse_filters(query_items),
+        order_by=_parse_sort(sort),
+        limit=limit,
         offset=offset,
+        query_items=query_items,
     )
 
 
@@ -159,19 +274,23 @@ def include_params(
 
 
 def collection_query_params(
-    qb_params: t.Annotated[QueryBuilderParams, Depends(querybuilder_params)],
+    query_params: t.Annotated[QueryParams, Depends(querybuilder_params)],
     include: t.Annotated[Include, Depends(include_params)],
 ) -> CollectionQueryParams:
     """Dependency to parse collection query parameters.
 
-    :param qb_params: The query builder parameters.
-    :type qb_params: QueryBuilderParams
+    :param query_params: The query builder parameters.
+    :type query_params: QueryParams
     :param include: The include parameters.
     :type include: Include
     :return: The combined collection query parameters.
     :rtype: CollectionQueryParams
     """
-    return CollectionQueryParams(**qb_params.model_dump(), **include.model_dump())
+    return CollectionQueryParams(
+        **query_params.model_dump(),
+        **include.model_dump(),
+        query_items=query_params.query_items,
+    )
 
 
 def resource_query_params(

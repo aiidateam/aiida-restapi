@@ -51,7 +51,7 @@ class NodeType(pdt.BaseModel):
     )
     nodes: str = pdt.Field(
         description='The URL to access nodes of this type.',
-        examples=['../nodes?filters={"node_type":{"data.core.int.Int."}}'],
+        examples=['../nodes?filter[node_type]=data.core.int.Int.'],
     )
     projections: str = pdt.Field(
         description='The URL to access projectable properties of this node type.',
