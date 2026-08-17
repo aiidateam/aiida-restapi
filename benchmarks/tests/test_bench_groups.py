@@ -3,6 +3,8 @@
 import pytest
 from aiida import orm
 
+from benchmarks.tests.conftest import _bench
+
 
 def _first_group_uuid():
     row = orm.QueryBuilder().append(orm.Group, project=['uuid']).first()
@@ -11,17 +13,17 @@ def _first_group_uuid():
 
 @pytest.mark.benchmark
 def test_bench_groups_list(benchmark, client):
-    benchmark(client.get, '/groups')
+    _bench(benchmark, client, 'get', '/groups')
 
 
 @pytest.mark.benchmark
 def test_bench_groups_schema(benchmark, client):
-    benchmark(client.get, '/groups/schema')
+    _bench(benchmark, client, 'get', '/groups/schema')
 
 
 @pytest.mark.benchmark
 def test_bench_groups_projections(benchmark, client):
-    benchmark(client.get, '/groups/projections')
+    _bench(benchmark, client, 'get', '/groups/projections')
 
 
 @pytest.mark.benchmark
@@ -29,7 +31,7 @@ def test_bench_group_detail(benchmark, client):
     uuid = _first_group_uuid()
     if uuid is None:
         pytest.skip('no groups in profile')
-    benchmark(client.get, f'/groups/{uuid}')
+    _bench(benchmark, client, 'get', f'/groups/{uuid}')
 
 
 @pytest.mark.benchmark
@@ -37,7 +39,7 @@ def test_bench_group_user(benchmark, client):
     uuid = _first_group_uuid()
     if uuid is None:
         pytest.skip('no groups in profile')
-    benchmark(client.get, f'/groups/{uuid}/user')
+    _bench(benchmark, client, 'get', f'/groups/{uuid}/user')
 
 
 @pytest.mark.benchmark
@@ -45,4 +47,4 @@ def test_bench_group_nodes(benchmark, client):
     uuid = _first_group_uuid()
     if uuid is None:
         pytest.skip('no groups in profile')
-    benchmark(client.get, f'/groups/{uuid}/nodes')
+    _bench(benchmark, client, 'get', f'/groups/{uuid}/nodes')

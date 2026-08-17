@@ -3,6 +3,8 @@
 import pytest
 from aiida import orm
 
+from benchmarks.tests.conftest import _bench
+
 
 def _first_user_pk():
     pk = orm.QueryBuilder().append(orm.User, project=['pk']).first()
@@ -11,17 +13,17 @@ def _first_user_pk():
 
 @pytest.mark.benchmark
 def test_bench_users_list(benchmark, client):
-    benchmark(client.get, '/users')
+    _bench(benchmark, client, 'get', '/users')
 
 
 @pytest.mark.benchmark
 def test_bench_users_schema(benchmark, client):
-    benchmark(client.get, '/users/schema')
+    _bench(benchmark, client, 'get', '/users/schema')
 
 
 @pytest.mark.benchmark
 def test_bench_users_projections(benchmark, client):
-    benchmark(client.get, '/users/projections')
+    _bench(benchmark, client, 'get', '/users/projections')
 
 
 @pytest.mark.benchmark
@@ -29,4 +31,4 @@ def test_bench_user_detail(benchmark, client):
     pk = _first_user_pk()
     if pk is None:
         pytest.skip('no users in profile')
-    benchmark(client.get, f'/users/{pk}')
+    _bench(benchmark, client, 'get', f'/users/{pk}')

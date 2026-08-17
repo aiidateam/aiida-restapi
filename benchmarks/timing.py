@@ -56,6 +56,22 @@ class RequestTimer:
         lines.append(f'  {"TOTAL":.<30s} {total * 1000:8.3f} ms')
         return '\n'.join(lines)
 
+    def to_dict(self) -> dict:
+        """Return measurements as a plain dict (serialisable to JSON)."""
+        total = self.total
+        return {
+            'layers': {
+                label: {
+                    'seconds': elapsed,
+                    'ms': round(elapsed * 1000, 3),
+                    'pct': round(elapsed / total * 100, 1) if total > 0 else 0,
+                }
+                for label, elapsed in self._measurements.items()
+            },
+            'total_seconds': total,
+            'total_ms': round(total * 1000, 3),
+        }
+
     def clear(self):
         self._measurements.clear()
         self._stack.clear()

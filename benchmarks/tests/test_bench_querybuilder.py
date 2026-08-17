@@ -2,6 +2,8 @@
 
 import pytest
 
+from benchmarks.tests.conftest import _bench
+
 
 @pytest.mark.benchmark
 def test_bench_qb_count_nodes(benchmark, client):
@@ -10,7 +12,7 @@ def test_bench_qb_count_nodes(benchmark, client):
         'path': [{'node_type': 'data.core.int.Int.'}],
         'project': ['id'],
     }
-    benchmark(client.post, '/querybuilder', json=payload)
+    _bench(benchmark, client, 'post', '/querybuilder', json=payload)
 
 
 @pytest.mark.benchmark
@@ -21,7 +23,7 @@ def test_bench_qb_fetch_first_10(benchmark, client):
         'project': ['id', 'node_type', 'ctime'],
         'limit': 10,
     }
-    benchmark(client.post, '/querybuilder', json=payload)
+    _bench(benchmark, client, 'post', '/querybuilder', json=payload)
 
 
 @pytest.mark.benchmark
@@ -32,7 +34,7 @@ def test_bench_qb_filter_by_type(benchmark, client):
         'project': ['id', 'attributes'],
         'limit': 20,
     }
-    benchmark(client.post, '/querybuilder', json=payload)
+    _bench(benchmark, client, 'post', '/querybuilder', json=payload)
 
 
 @pytest.mark.benchmark
@@ -46,4 +48,4 @@ def test_bench_qb_with_joins(benchmark, client):
         'project': ['node[0].id', 'node[0].node_type', 'computer.label'],
         'limit': 10,
     }
-    benchmark(client.post, '/querybuilder', json=payload)
+    _bench(benchmark, client, 'post', '/querybuilder', json=payload)
