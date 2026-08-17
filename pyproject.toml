@@ -51,6 +51,7 @@ testing = [
   'pytest~=6.2',
   'pytest-regressions',
   'pytest-cov',
+  'pytest-benchmark',
   'requests',
   'httpx~=0.27.2',
   'numpy~=1.21',
@@ -105,6 +106,9 @@ filterwarnings = [
   'ignore::DeprecationWarning:yaml:',
 ]
 python_files = 'test_*.py example_*.py'
+markers = [
+  "benchmark: marks tests as benchmarks (deselect with '-m not benchmark')",
+]
 
 [tool.ruff]
 line-length = 120
@@ -116,6 +120,7 @@ quote-style = 'single'
 ignore = [
   'F403',  # Star imports unable to detect undefined names
   'F405',  # Import may be undefined or defined from star imports
+  'PLC0415',  # Import not at top-level (intentional for AiiDA lazy loading)
   'PLR0911',  # Too many return statements
   'PLR0912',  # Too many branches
   'PLR0913',  # Too many arguments in function definition
