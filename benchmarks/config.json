@@ -1,0 +1,7 @@
+{
+  "profile_name": "benchmark-restapi",
+  "archive_urls": [
+    "https://archive.materialscloud.org/records/1xf71-nf390/files/export_discovery_cof_Jul22.aiida?download=1"
+  ],
+  "downloads_dir": ".cache/archives"
+}
