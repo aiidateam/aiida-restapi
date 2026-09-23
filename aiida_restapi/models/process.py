@@ -11,6 +11,11 @@ class SubmittedProcess(pdt.BaseModel):
         description='The label of the process',
         examples=['My process', 'Test calculation'],
     )
+    description: str = pdt.Field(
+        '',
+        description='The description of the process',
+        examples=['This process calculates the sum of two numbers.'],
+    )
     entry_point: str = pdt.Field(
         description='The entry point of the process',
         examples=['core.arithmetic.add'],
