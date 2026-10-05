@@ -3,12 +3,12 @@
 import pytest
 from aiida import orm
 
-from benchmarks.tests.conftest import _bench
+from benchmarks.helpers import bench_request as _bench
+from benchmarks.helpers import first_pk
 
 
 def _first_computer_pk():
-    pk = orm.QueryBuilder().append(orm.Computer, project=['pk']).first()
-    return pk[0] if pk else None
+    return first_pk(orm.Computer)
 
 
 @pytest.mark.benchmark

@@ -2,7 +2,7 @@
 
 import pytest
 
-from benchmarks.tests.conftest import _bench
+from benchmarks.helpers import bench_request as _bench
 
 
 @pytest.mark.benchmark

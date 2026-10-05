@@ -22,7 +22,8 @@ from aiida_restapi.config import API_CONFIG
 from aiida_restapi.main import create_app
 from aiida_restapi.routers.auth import UserInDB, get_current_user
 
-pytest_plugins = ['aiida.tools.pytest_fixtures']
+# NOTE: `pytest_plugins = ['aiida.tools.pytest_fixtures']` lives in the
+# root-level conftest.py (defining it here breaks bare `pytest` runs).
 
 
 class PrefixMiddleware(BaseHTTPMiddleware):

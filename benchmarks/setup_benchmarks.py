@@ -65,21 +65,26 @@ def main() -> None:
         sys.exit('Multiple archives not supported for sqlite_zip storage (one zip = one profile).')
 
     archive_path = archive_paths[0]
+    if archive_path.stat().st_size == 0:
+        sys.exit(f'Downloaded archive is empty: {archive_path}')
 
-    # -- create profile backed by the archive --------------------------------
+    # -- create profile backed by the archive (idempotent) --------------------
     config = get_config()
 
-    print(f'==> Creating profile "{profile_name}" backed by {archive_path.name} ...')
-    create_profile(
-        config,
-        name=profile_name,
-        email='benchmark@localhost',
-        first_name='Benchmark',
-        last_name='User',
-        institution='Benchmark',
-        storage_backend='core.sqlite_zip',
-        storage_config={'filepath': str(archive_path)},
-    )
+    if profile_name in config.profile_names:
+        print(f'==> Profile "{profile_name}" already exists, reusing ...')
+    else:
+        print(f'==> Creating profile "{profile_name}" backed by {archive_path.name} ...')
+        create_profile(
+            config,
+            name=profile_name,
+            email='benchmark@localhost',
+            first_name='Benchmark',
+            last_name='User',
+            institution='Benchmark',
+            storage_backend='core.sqlite_zip',
+            storage_config={'filepath': str(archive_path)},
+        )
     print()
 
     # -- verify --------------------------------------------------------------
@@ -91,7 +96,7 @@ def main() -> None:
     qb.append(Node)
     total_nodes = qb.count()
     print(f'Done.  Profile "{profile_name}" ready with {total_nodes} nodes.')
-    print('Run benchmarks with:  pytest benchmarks/ --benchmark-enable')
+    print('Run benchmarks with:  pytest benchmarks/tests/ -m benchmark')
 
 
 if __name__ == '__main__':

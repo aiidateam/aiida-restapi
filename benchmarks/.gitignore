@@ -1,1 +1,6 @@
-.cache/*
+.cache/
+.storage/
+breakdown_report.json
+_breakdown_data.jsonl
+.benchmarks/
+__pycache__/

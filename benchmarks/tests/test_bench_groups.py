@@ -3,12 +3,12 @@
 import pytest
 from aiida import orm
 
-from benchmarks.tests.conftest import _bench
+from benchmarks.helpers import bench_request as _bench
+from benchmarks.helpers import first_uuid
 
 
 def _first_group_uuid():
-    row = orm.QueryBuilder().append(orm.Group, project=['uuid']).first()
-    return row[0] if row else None
+    return first_uuid(orm.Group)
 
 
 @pytest.mark.benchmark

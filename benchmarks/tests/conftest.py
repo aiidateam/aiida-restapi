@@ -17,7 +17,8 @@ from starlette.requests import Request
 from aiida_restapi.config import API_CONFIG
 from aiida_restapi.main import create_app
 
-pytest_plugins = ['aiida.tools.pytest_fixtures']
+# NOTE: `pytest_plugins = ['aiida.tools.pytest_fixtures']` lives in the
+# root-level conftest.py (defining it here breaks bare `pytest` runs).
 
 REPORT_PATH = Path(__file__).resolve().parent.parent / 'breakdown_report.json'
 _BREAKDOWN_PATH = Path(__file__).resolve().parent.parent / '_breakdown_data.jsonl'
@@ -26,6 +27,7 @@ _BREAKDOWN_PATH = Path(__file__).resolve().parent.parent / '_breakdown_data.json
 # ---------------------------------------------------------------------------
 # Middleware (mirrors tests/conftest.py)
 # ---------------------------------------------------------------------------
+
 
 class PrefixMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: FastAPI, prefix: str = ''):
@@ -41,6 +43,7 @@ class PrefixMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 # AiiDA profile -- load the pre-seeded benchmark profile
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope='session', autouse=True)
 def aiida_config():
@@ -68,6 +71,7 @@ def clear_database_auto():
 # FastAPI app & HTTP client
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope='session')
 def app():
     app = create_app()
@@ -81,32 +85,14 @@ def client(app):
 
 
 # ---------------------------------------------------------------------------
-# Benchmark helper -- measures response size alongside latency
-# ---------------------------------------------------------------------------
-
-def _bench(benchmark, client, method, url, **kwargs):
-    """Run *benchmark* while recording response size as extra_info.
-
-    Usage::
-
-        _bench(benchmark, client, 'get', '/nodes?page_size=50')
-        _bench(benchmark, client, 'post', '/querybuilder', json={...})
-    """
-    fn = getattr(client, method)
-    resp = fn(url, **kwargs)
-    benchmark.extra_info['response_bytes'] = len(resp.content)
-    benchmark.extra_info['status_code'] = resp.status_code
-    benchmark(fn, url, **kwargs)
-
-
-# ---------------------------------------------------------------------------
 # Write structured report after all tests finish
 # ---------------------------------------------------------------------------
 
+
 def pytest_sessionfinish(session, exitstatus):
     """Write benchmark results and breakdown data to ``breakdown_report.json``."""
-    benchmark_session = session.config._benchmarksession
-    if not benchmark_session:
+    benchmark_session = getattr(session.config, '_benchmarksession', None)
+    if not benchmark_session or not getattr(benchmark_session, 'benchmarks', None):
         return
 
     report = {
@@ -126,18 +112,22 @@ def pytest_sessionfinish(session, exitstatus):
             'ops_per_sec': round(1 / bench.stats.mean, 2) if bench.stats.mean > 0 else 0,
         }
         if hasattr(bench, 'extra_info'):
-            entry['response_bytes'] = bench.extra_info.get('response_bytes')
-            entry['status_code'] = bench.extra_info.get('status_code')
+            extra = bench.extra_info or {}
+            entry['response_bytes'] = extra.get('response_bytes')
+            entry['status_code'] = extra.get('status_code')
+        else:
+            entry['response_bytes'] = None
+            entry['status_code'] = None
         report['benchmarks'].append(entry)
 
     # Attach breakdown data collected by test_bench_breakdown
     breakdowns = []
     if _BREAKDOWN_PATH.exists():
         with open(_BREAKDOWN_PATH) as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    breakdowns.append(json.loads(line))
+            for raw_line in f:
+                stripped = raw_line.strip()
+                if stripped:
+                    breakdowns.append(json.loads(stripped))
     report['breakdowns'] = breakdowns
 
     REPORT_PATH.write_text(json.dumps(report, indent=2))

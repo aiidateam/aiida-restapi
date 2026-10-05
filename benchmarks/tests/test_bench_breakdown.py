@@ -5,7 +5,7 @@ the internal layers (DB query, JSON:API serialization) so you can see
 the percentage split.
 
 Run with:
-    pytest benchmarks/tests/test_bench_breakdown.py --benchmark-enable -v -s
+    pytest benchmarks/tests/test_bench_breakdown.py -v -s
 """
 
 import functools
@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.helpers import first_node_uuid
 from benchmarks.timing import RequestTimer
 
 _BREAKDOWN_PATH = Path(__file__).resolve().parent.parent / '_breakdown_data.jsonl'
@@ -22,40 +23,40 @@ _BREAKDOWN_PATH = Path(__file__).resolve().parent.parent / '_breakdown_data.json
 # Monkeypatch helpers
 # ---------------------------------------------------------------------------
 
-class _MethodWrapper:
-    """Descriptor that wraps a method and records timing, preserving binding."""
-
-    def __init__(self, original, timer, label):
-        self._original = original
-        self._timer = timer
-        self._label = label
-
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            raw = self._original
-
-            @functools.wraps(raw)
-            def bound_cls_wrapper(*args, **kwargs):
-                with self._timer.measure(self._label):
-                    return raw(objtype, *args, **kwargs)
-
-            return bound_cls_wrapper
-        bound = self._original.__get__(obj, objtype)
-
-        @functools.wraps(self._original)
-        def instance_wrapper(*args, **kwargs):
-            with self._timer.measure(self._label):
-                return bound(*args, **kwargs)
-
-        return instance_wrapper
+DB_METHODS = ('get_many', 'get_one', 'get_related_one', 'get_related_many', 'get_field')
+SERIALIZE_METHODS = ('collection', 'resource')
 
 
-def _get_unbound(cls, name):
-    """Get the raw function from a class, handling classmethods."""
-    attr = cls.__dict__[name]
-    if isinstance(attr, classmethod):
-        return attr.__func__
-    return attr
+def _wrap_descriptor(descriptor, timer, label):
+    """Wrap a class-dict descriptor so calls are timed under *label*."""
+    if isinstance(descriptor, classmethod):
+        original = descriptor.__func__
+
+        @functools.wraps(original)
+        @classmethod
+        def wrapper(cls, *args, **kwargs):
+            with timer.measure(label):
+                return original(cls, *args, **kwargs)
+
+        return wrapper
+    if isinstance(descriptor, staticmethod):
+        original = descriptor.__func__
+
+        @functools.wraps(original)
+        @staticmethod
+        def wrapper(*args, **kwargs):
+            with timer.measure(label):
+                return original(*args, **kwargs)
+
+        return wrapper
+    original = descriptor
+
+    @functools.wraps(original)
+    def wrapper(self, *args, **kwargs):
+        with timer.measure(label):
+            return original(self, *args, **kwargs)
+
+    return wrapper
 
 
 @pytest.fixture()
@@ -67,54 +68,68 @@ def timed_layers(monkeypatch):
 
     timer = RequestTimer()
 
-    for method_name in ('get_many', 'get_one', 'get_related_one', 'get_related_many', 'get_field'):
-        original = getattr(EntityService, method_name)
+    for method_name in DB_METHODS:
         monkeypatch.setattr(
             EntityService,
             method_name,
-            _MethodWrapper(original, timer, 'db_query'),
+            _wrap_descriptor(
+                EntityService.__dict__[method_name],
+                timer,
+                f'db:{method_name}',
+            ),
         )
 
-    for method_name in ('collection', 'resource'):
-        raw_fn = _get_unbound(JsonApiAdapter, method_name)
+    for method_name in SERIALIZE_METHODS:
         monkeypatch.setattr(
             JsonApiAdapter,
             method_name,
-            _MethodWrapper(raw_fn, timer, 'jsonapi_serialize'),
+            _wrap_descriptor(
+                JsonApiAdapter.__dict__[method_name],
+                timer,
+                f'serialize:{method_name}',
+            ),
         )
 
-    original = getattr(JsonApiResponse, 'render')
     monkeypatch.setattr(
         JsonApiResponse,
         'render',
-        _MethodWrapper(original, timer, 'response_render'),
+        _wrap_descriptor(
+            JsonApiResponse.__dict__['render'],
+            timer,
+            'response:render',
+        ),
     )
 
     yield timer
 
 
-def _run_with_breakdown(client, method, url, timer, rounds=20, endpoint=None):
-    """Run *url* for *rounds* iterations, accumulating timing in *timer*."""
+def _run_with_breakdown(client, method, url, timer, rounds=20, endpoint=None, **kwargs):
+    """Run *url* for *rounds* timed requests, accumulating timing in *timer*.
+
+    Returns per-request aggregates (means over *rounds*). Extra ``kwargs``
+    (e.g. ``json=...`` for POST) are forwarded to every request so the timed
+    run measures the same call the benchmark measured.
+    """
     method_fn = getattr(client, method)
 
     for _ in range(3):
-        method_fn(url)
+        method_fn(url, **kwargs)
 
     timer.clear()
     for _ in range(rounds):
-        method_fn(url)
+        method_fn(url, **kwargs)
 
-    resp = method_fn(url)
-    size = len(resp.content)
+    resp = method_fn(url, **kwargs)
+    assert resp.status_code < 500, f'{method.upper()} {url} -> {resp.status_code}'
 
     result = {
         'endpoint': endpoint or url,
         'method': method.upper(),
         'url': url,
-        'response_bytes': size,
+        'response_bytes': len(resp.content),
         'status_code': resp.status_code,
         'rounds': rounds,
-        **timer.to_dict(),
+        **timer.to_dict(rounds=rounds),
     }
     with open(_BREAKDOWN_PATH, 'a') as f:
         f.write(json.dumps(result) + '\n')
@@ -124,6 +139,7 @@ def _run_with_breakdown(client, method, url, timer, rounds=20, endpoint=None):
 # ---------------------------------------------------------------------------
 # Breakdown tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize(
@@ -137,57 +153,42 @@ def _run_with_breakdown(client, method, url, timer, rounds=20, endpoint=None):
 )
 def test_bench_breakdown_list(benchmark, client, timed_layers, endpoint):
     """Breakdown for collection/list endpoints."""
-    resp = client.get(endpoint)
-    benchmark.extra_info['response_bytes'] = len(resp.content)
+    from benchmarks.helpers import bench_request
 
-    def _request():
-        client.get(endpoint)
-
-    benchmark(_request)
+    bench_request(benchmark, client, 'get', endpoint)
 
     result = _run_with_breakdown(client, 'get', endpoint, timed_layers, rounds=20)
-    print(f'\n\n--- Breakdown for GET {endpoint} ---')
-    print(timed_layers.report())
+    print(f'\n\n--- Breakdown for GET {endpoint} (mean per request) ---')
+    print(timed_layers.report(rounds=20))
     print(f'  Response size: {result["response_bytes"]:,} bytes')
 
 
 @pytest.mark.benchmark
 def test_bench_breakdown_node_detail(benchmark, client, timed_layers):
     """Breakdown for single-node detail endpoint."""
-    from aiida import orm
+    from benchmarks.helpers import bench_request
 
-    row = orm.QueryBuilder().append(orm.Node, project=['uuid']).first()
-    if row is None:
+    uuid = first_node_uuid()
+    if uuid is None:
         pytest.skip('no nodes')
-    uuid = row[0]
-    resp = client.get(f'/nodes/{uuid}')
-    benchmark.extra_info['response_bytes'] = len(resp.content)
-
-    def _request():
-        client.get(f'/nodes/{uuid}')
-
-    benchmark(_request)
+    bench_request(benchmark, client, 'get', f'/nodes/{uuid}')
 
     result = _run_with_breakdown(client, 'get', f'/nodes/{uuid}', timed_layers, rounds=20)
-    print(f'\n\n--- Breakdown for GET /nodes/{uuid} ---')
-    print(timed_layers.report())
+    print(f'\n\n--- Breakdown for GET /nodes/{uuid} (mean per request) ---')
+    print(timed_layers.report(rounds=20))
     print(f'  Response size: {result["response_bytes"]:,} bytes')
 
 
 @pytest.mark.benchmark
 def test_bench_breakdown_nodes_statistics(benchmark, client, timed_layers):
     """Breakdown for the (known-slow) statistics endpoint."""
-    resp = client.get('/nodes/statistics')
-    benchmark.extra_info['response_bytes'] = len(resp.content)
+    from benchmarks.helpers import bench_request
 
-    def _request():
-        client.get('/nodes/statistics')
-
-    benchmark(_request)
+    bench_request(benchmark, client, 'get', '/nodes/statistics')
 
     result = _run_with_breakdown(client, 'get', '/nodes/statistics', timed_layers, rounds=5)
-    print('\n\n--- Breakdown for GET /nodes/statistics ---')
-    print(timed_layers.report())
+    print('\n\n--- Breakdown for GET /nodes/statistics (mean per request) ---')
+    print(timed_layers.report(rounds=5))
     print(f'  Response size: {result["response_bytes"]:,} bytes')
 
 
@@ -202,15 +203,11 @@ def test_bench_breakdown_nodes_statistics(benchmark, client, timed_layers):
 )
 def test_bench_breakdown_querybuilder(benchmark, client, timed_layers, payload):
     """Breakdown for raw QueryBuilder POST queries."""
-    resp = client.post('/querybuilder', json=payload)
-    benchmark.extra_info['response_bytes'] = len(resp.content)
+    from benchmarks.helpers import bench_request
 
-    def _request():
-        client.post('/querybuilder', json=payload)
+    bench_request(benchmark, client, 'post', '/querybuilder', json=payload)
 
-    benchmark(_request)
-
-    result = _run_with_breakdown(client, 'post', '/querybuilder', timed_layers, rounds=20)
-    print(f'\n\n--- Breakdown for POST /querybuilder ({payload}) ---')
-    print(timed_layers.report())
+    result = _run_with_breakdown(client, 'post', '/querybuilder', timed_layers, rounds=20, json=payload)
+    print(f'\n\n--- Breakdown for POST /querybuilder ({payload}) (mean per request) ---')
+    print(timed_layers.report(rounds=20))
     print(f'  Response size: {result["response_bytes"]:,} bytes')

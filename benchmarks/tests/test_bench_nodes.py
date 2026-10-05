@@ -1,21 +1,9 @@
 """Benchmarks for /nodes endpoints."""
 
 import pytest
-from aiida import orm
 
-from benchmarks.tests.conftest import _bench
-
-
-def _any_node_uuid():
-    """Return the UUID of any node in the profile, or None."""
-    node = orm.QueryBuilder().append(orm.Node, project=['uuid']).first()
-    return node[0] if node else None
-
-
-def _any_data_node_uuid():
-    node = orm.QueryBuilder().append(orm.Data, project=['uuid']).first()
-    return node[0] if node else None
-
+from benchmarks.helpers import bench_request as _bench
+from benchmarks.helpers import first_data_node_uuid, first_node_uuid
 
 # -- collection --------------------------------------------------------------
 
@@ -68,7 +56,7 @@ def test_bench_nodes_download_formats(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_detail(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}')
@@ -76,7 +64,7 @@ def test_bench_node_detail(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_user(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/user')
@@ -84,7 +72,7 @@ def test_bench_node_user(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_computer(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/computer')
@@ -92,7 +80,7 @@ def test_bench_node_computer(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_groups(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/groups')
@@ -100,7 +88,7 @@ def test_bench_node_groups(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_attributes(benchmark, client):
-    uuid = _any_data_node_uuid() or _any_node_uuid()
+    uuid = first_data_node_uuid() or first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/attributes')
@@ -108,7 +96,7 @@ def test_bench_node_attributes(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_extras(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/extras')
@@ -116,7 +104,7 @@ def test_bench_node_extras(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_links(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/links')
@@ -124,7 +112,7 @@ def test_bench_node_links(benchmark, client):
 
 @pytest.mark.benchmark
 def test_bench_node_repo_metadata(benchmark, client):
-    uuid = _any_node_uuid()
+    uuid = first_node_uuid()
     if uuid is None:
         pytest.skip('no nodes in profile')
     _bench(benchmark, client, 'get', f'/nodes/{uuid}/repo/metadata')
