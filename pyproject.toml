@@ -10,8 +10,6 @@ classifiers = [
   'Intended Audience :: Science/Research',
   'License :: OSI Approved :: MIT License',
   'Programming Language :: Python',
-  'Programming Language :: Python :: 3.9',
-  'Programming Language :: Python :: 3.10',
   'Programming Language :: Python :: 3.11',
   'Topic :: Scientific/Engineering',
 ]
@@ -32,7 +30,7 @@ keywords = ['aiida', 'workflows']
 license = {file = 'LICENSE.txt'}
 name = 'aiida-restapi'
 readme = 'README.md'
-requires-python = '>=3.9'
+requires-python = '>=3.11'
 
 [project.optional-dependencies]
 auth = ['python-jose', 'python-multipart', 'argon2-cffi', 'bcrypt']
