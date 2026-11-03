@@ -1,11 +1,79 @@
 """Test the /processes endpoint"""
 
 import io
+from unittest.mock import patch
 
 import pytest
 from aiida import orm
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+
+from aiida_restapi.models.process import SubmittedProcess
+from aiida_restapi.routers.submit import _process_inputs
+
+
+def test_submitted_process_keeps_uuid_inputs_unresolved():
+    inputs = {
+        'structure.uuid': 'structure-uuid',
+        'pseudos': {'Si.uuid': 'pseudo-uuid'},
+    }
+
+    with patch('aiida_restapi.routers.submit.orm.load_node') as load_node:
+        process = SubmittedProcess(
+            entry_point='aiida.workflows:aiidalab_qe.app',
+            inputs=inputs,
+        )
+
+    load_node.assert_not_called()
+    assert process.inputs == inputs
+
+
+def test_process_input_resolution_recurses_into_uuid_references():
+    structure = object()
+    pseudo = object()
+    inputs = {
+        'structure.uuid': 'structure-uuid',
+        'pseudos': {'Si.uuid': 'pseudo-uuid'},
+    }
+
+    with patch(
+        'aiida_restapi.routers.submit.orm.load_node',
+        side_effect=[structure, pseudo],
+    ) as load_node:
+        assert _process_inputs(inputs) == {
+            'structure': structure,
+            'pseudos': {'Si': pseudo},
+        }
+
+    assert load_node.call_count == 2
+
+
+@pytest.mark.anyio
+async def test_submit_resolves_uuid_inputs_in_route(async_client, default_test_add_process):
+    code_id, x_id, y_id = default_test_add_process
+    process_node = orm.load_node(x_id)
+
+    with patch(
+        'aiida_restapi.routers.submit.engine.submit',
+        return_value=process_node,
+    ) as submit:
+        response = await async_client.post(
+            '/submit',
+            json={
+                'entry_point': 'aiida.calculations:core.arithmetic.add',
+                'inputs': {
+                    'code.uuid': code_id,
+                    'x.uuid': x_id,
+                    'y.uuid': y_id,
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    submitted_inputs = submit.call_args.kwargs
+    assert submitted_inputs['code'].uuid == code_id
+    assert submitted_inputs['x'].uuid == x_id
+    assert submitted_inputs['y'].uuid == y_id
 
 
 @pytest.mark.anyio
