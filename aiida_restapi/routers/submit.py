@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
-from aiida import engine
+from aiida import engine, orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common import exceptions
 from aiida.plugins.entry_point import load_entry_point_from_string
@@ -16,6 +16,22 @@ from aiida_restapi.jsonapi.models import aiida, errors
 from aiida_restapi.models.process import SubmittedProcess
 
 write_router = APIRouter(prefix='/submit')
+
+
+def _process_inputs(inputs: dict[str, t.Any]) -> dict[str, t.Any]:
+    """Resolve nested ``*.uuid`` input references to stored AiiDA nodes."""
+    uuid_suffix = '.uuid'
+    resolved = {}
+
+    for key, value in inputs.items():
+        if isinstance(value, dict):
+            resolved[key] = _process_inputs(value)
+        elif key.endswith(uuid_suffix):
+            resolved[key[: -len(uuid_suffix)]] = orm.load_node(uuid=value)
+        else:
+            resolved[key] = value
+
+    return resolved
 
 
 @write_router.post(
@@ -38,8 +54,9 @@ async def submit_process(
         entry_point_process = load_entry_point_from_string(process.entry_point)
     except Exception as exception:
         raise exceptions.EntryPointError(str(exception)) from exception
+    inputs = _process_inputs(process.inputs)
     try:
-        process_node = engine.submit(entry_point_process, **process.inputs)
+        process_node = engine.submit(entry_point_process, **inputs)
     except Exception as exception:
         raise exceptions.InputValidationError(str(exception)) from exception
     serialized = process_node.serialize(minimal=True)
