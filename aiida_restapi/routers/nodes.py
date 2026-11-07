@@ -193,7 +193,7 @@ async def get_node_types() -> list:
         {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
-            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
+            'nodes': f'{api_prefix}/nodes?filter[node_type]={node_type}',
             'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
