@@ -3,7 +3,7 @@ build-backend = 'flit_core.buildapi'
 requires = ['flit_core>=3.4,<4']
 
 [project]
-authors = [{name = 'The AiiDA Team', email = 'developers@aiida.net'}]
+authors = [{ name = 'The AiiDA Team', email = 'developers@aiida.net' }]
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Framework :: AiiDA',
@@ -16,19 +16,18 @@ classifiers = [
   'Topic :: Scientific/Engineering',
 ]
 dependencies = [
-  'aiida-core @ git+https://github.com/aiidateam/aiida-core.git',
+  'aiida-core~=2.9.4',
   'fastapi~=0.115.5',
   'uvicorn[standard]>=0.32.1',
-  'pydantic~=2.0',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
   'python-dateutil~=2.0',
-  'lark~=0.11.0',
+  'lark~=1.3.0',
   'python-multipart~=0.0.31',
 ]
 dynamic = ['description', 'version']
 keywords = ['aiida', 'workflows']
-license = {file = 'LICENSE.txt'}
+license = { file = 'LICENSE.txt' }
 name = 'aiida-restapi'
 readme = 'README.md'
 requires-python = '>=3.10'
@@ -44,12 +43,12 @@ docs = [
 ]
 pre-commit = ['pre-commit~=2.12']
 testing = [
-  'pgtest~=1.3.1',
+  'pgtest~=1.3,>=1.3.1',
   'wheel~=0.31',
   'coverage',
-  'pytest~=7.0',
-  'pytest-regressions',
-  'pytest-cov',
+  'pytest~=9.0',
+  'pytest-regressions~=2.2',
+  'pytest-cov~=7.0',
   'requests',
   'httpx~=0.27.2',
   'numpy~=1.21',
