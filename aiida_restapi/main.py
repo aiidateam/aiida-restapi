@@ -14,7 +14,7 @@ from fastapi.responses import RedirectResponse
 from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common.responses import JsonApiResponse
 from aiida_restapi.common.types import RequestValidationErrorHandler
-from aiida_restapi.config import API_CONFIG, CORS_ALLOW_ORIGIN_REGEX, CORS_ORIGIN_URLS
+from aiida_restapi.config import API_CONFIG, load_config
 from aiida_restapi.graphql import main
 from aiida_restapi.jsonapi.errors import jsonapi_error
 from aiida_restapi.routers import computers, daemon, groups, nodes, querybuilder, server, submit, tests, users
@@ -29,14 +29,15 @@ def create_app() -> FastAPI:
 
     root_path = os.getenv('AIIDA_RESTAPI_ROOT_PATH', '')
     read_only = os.getenv('AIIDA_RESTAPI_READ_ONLY') == '1'
+    config = load_config()
 
     app = FastAPI()
     app.state.api_path = f'{root_path}{API_CONFIG["PREFIX"]}'
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=CORS_ALLOW_ORIGIN_REGEX,
-        allow_origins=CORS_ORIGIN_URLS,
+        allow_origin_regex=config.cors.allow_origin_regex,
+        allow_origins=config.cors.allow_origins,
         allow_credentials=True,
         allow_methods=['*'],
         allow_headers=['*'],
