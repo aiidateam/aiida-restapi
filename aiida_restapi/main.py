@@ -82,6 +82,7 @@ def create_app() -> FastAPI:
             aiida_exceptions.ValidationError: 422,
             pdt.ValidationError: 422,
             fastapi_exceptions.ValidationException: 422,
+            restapi_exceptions.InvalidRequestError: 422,
             aiida_exceptions.InvalidOperation: 422,
             aiida_exceptions.EntryPointError: 422,
             aiida_exceptions.MissingEntryPointError: 422,
