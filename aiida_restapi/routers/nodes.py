@@ -13,7 +13,6 @@ from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common import exceptions as aiida_exceptions
 from fastapi import APIRouter, Body, Depends, Form, Query, Request, UploadFile
 from fastapi import exceptions as fastapi_exceptions
-from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
@@ -525,10 +524,10 @@ async def download_node(
     """
 
     if format is None:
-        raise ValidationException(
+        raise restapi_exceptions.InvalidRequestError(
             'Please specify the download format. '
             'The available download formats can be '
-            'queried using the /nodes/download_formats endpoint.',
+            'queried using the /nodes/download_formats endpoint.'
         )
 
     node = service.load_one(identifier)
@@ -542,7 +541,7 @@ async def download_node(
             try:
                 options_dict: dict[str, t.Any] = json.loads(options)
             except json.JSONDecodeError as exc:
-                raise ValidationException(f"Invalid JSON in 'options': {exc.msg}") from exc
+                raise restapi_exceptions.InvalidRequestError(f"Invalid JSON in 'options': {exc.msg}") from exc
         else:
             options_dict = {}
 
@@ -553,7 +552,7 @@ async def download_node(
         filename = f'{node.uuid}.{format}'
         exported_bytes, _ = node._exportcontent(format)
     else:
-        raise ValidationException(
+        raise restapi_exceptions.InvalidRequestError(
             f'The format {format} is not supported. '
             'The available download formats can be queried using the /nodes/download_formats/ endpoint.'
         )
@@ -651,18 +650,18 @@ async def create_node_with_files(
     payload = t.cast(dict, json.loads(params))
 
     if 'args' in payload:
-        raise ValidationException("File upload endpoint does not support constructor 'args'.")
+        raise restapi_exceptions.InvalidRequestError("File upload endpoint does not support constructor 'args'.")
 
     node_type = payload.get('node_type')
     if not isinstance(node_type, str):
-        raise ValidationException("The 'node_type' field is missing in the payload.")
+        raise restapi_exceptions.InvalidRequestError("The 'node_type' field is missing in the payload.")
 
     Model = t.cast(type[orm.Node.WriteModel], model_registry.get_model(node_type, 'write'))
 
     files_dict: dict[str, UploadFile] = {}
     for upload in files:
         if (target := upload.filename) in files_dict:
-            raise ValidationException(f"Duplicate target path '{target}' in upload")
+            raise restapi_exceptions.InvalidRequestError(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
 
     if 'attributes' not in payload:

@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
   'aiida-core~=2.9.4',
-  'fastapi~=0.115.5',
+  'fastapi~=0.162.2',
   'uvicorn[standard]>=0.32.1',
   'starlette-graphene3~=0.6.0',
   'graphene~=3.0',
@@ -51,7 +51,8 @@ testing = [
   'pytest-cov~=7.0',
   'requests',
   'httpx~=0.27.2',
-  'numpy~=1.21',
+  'httpx2>=2.0.0',
+  'numpy~=2.0',
   'anyio~=4.6.0',
   'beautifulsoup4~=4.12',
 ]
