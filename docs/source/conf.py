@@ -16,6 +16,11 @@ import time
 
 import aiida_restapi
 
+# We need to import the app before autodoc inspects individual modules containing Pydantic models.
+# Otherwise, Pydantic's lazy schema rebuilding can fail on `__pydantic_extra__` when FastAPI is
+# imported afterward.
+import aiida_restapi.main
+
 extensions = [
     'myst_parser',
     'sphinx_external_toc',
