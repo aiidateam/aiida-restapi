@@ -6,11 +6,12 @@ import typing as t
 from urllib.parse import urlencode
 
 from aiida import orm
+from aiida.orm.implementation import StorageBackend
 from starlette.requests import Request
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import CollectionQueryParams
-from aiida_restapi.config import API_CONFIG
+from aiida_restapi.profiles import get_profile_api_path
 
 from . import hooks
 from .utils import IncludedItemParamsCache
@@ -53,6 +54,7 @@ class JsonApiAdapter:
         resource_type: str,
         include: list[str] | None = None,
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document for a single resource derived from an AiiDA object.
 
@@ -77,6 +79,7 @@ class JsonApiAdapter:
             resource_identity,
             resource_type,
             include,
+            backend=backend,
         )
 
         return {
@@ -99,6 +102,7 @@ class JsonApiAdapter:
         child_type: str,
         include: list[str] | None = None,
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document for a child resource derived from an AiiDA object's child quantity.
 
@@ -138,6 +142,7 @@ class JsonApiAdapter:
                 ) in hook.include(
                     foreign_fields={hook.TYPE_MAP[parent_type]: pid},
                     include=include,
+                    backend=backend,
                 )
             ]
             if include
@@ -171,6 +176,7 @@ class JsonApiAdapter:
         resource_type: str,
         query_params: CollectionQueryParams = CollectionQueryParams(),
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document with a collection of resources derived from AiiDA objects.
 
@@ -203,6 +209,7 @@ class JsonApiAdapter:
                 resource_type,
                 query_params.include,
                 included_cache,
+                backend=backend,
             )
             resources.append(resource)
             included.extend(included_items)
@@ -237,6 +244,8 @@ class JsonApiAdapter:
         resource_type: str,
         include: list[str] | None = None,
         cache: IncludedItemParamsCache | None = None,
+        *,
+        backend: StorageBackend,
     ) -> tuple[dict[str, t.Any], list[dict[str, t.Any]]]:
         """Build a JSON:API resource and its included related resources.
 
@@ -282,6 +291,7 @@ class JsonApiAdapter:
                     foreign_fields=foreign_fields,
                     include=include,
                     cache=cache,
+                    backend=backend,
                 )
             ]
             if include
@@ -376,7 +386,7 @@ class JsonApiAdapter:
         :return: The JSON:API resource object.
         :rtype: dict[str, t.Any]
         """
-        root = f'{request.scope["root_path"]}{API_CONFIG["PREFIX"]}/{parent_type}'
+        root = f'{get_profile_api_path(request)}/{parent_type}'
 
         pid = str(pid)  # ensure pid is a string for URL construction
 

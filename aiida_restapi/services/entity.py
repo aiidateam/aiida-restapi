@@ -8,11 +8,15 @@ from uuid import UUID
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida.common.pydantic import get_metadata
+from aiida.manage.configuration import profile_context
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import EntityIdentifier, EntityModelType, EntityType
+
+if t.TYPE_CHECKING:
+    from aiida.orm.implementation import StorageBackend
 
 
 class EntityService(t.Generic[EntityType, EntityModelType]):
@@ -65,7 +69,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         return self.entity_class.fields.keys()
 
-    def get_one(self, identifier: EntityIdentifier) -> dict[str, t.Any]:
+    def get_one(self, identifier: EntityIdentifier, backend: StorageBackend) -> dict[str, t.Any]:
         """Get an AiiDA entity by id.
 
         :param identifier: The identifier of the entity to retrieve.
@@ -74,12 +78,12 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :rtype: dict[str, t.Any]
         """
         try:
-            entity = self.entity_class.collection.get(**self._lookup_kwargs(identifier))
+            entity = self.entity_class.get_collection(backend).get(**self._lookup_kwargs(identifier))
         except NotExistent as exception:
             raise NotExistent(f'{self.entity_class.__name__}<{identifier}> does not exist.') from exception
         return entity.serialize(minimal=True)
 
-    def load_one(self, identifier: EntityIdentifier) -> EntityType:
+    def load_one(self, identifier: EntityIdentifier, backend: StorageBackend) -> EntityType:
         """Load an entity using strict UUID-or-PK resolution.
 
         :param identifier: The identifier of the entity to load.
@@ -87,19 +91,26 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The loaded AiiDA entity.
         :rtype: EntityType
         """
-        return self.entity_class.collection.get(**self._lookup_kwargs(identifier))
+        return self.entity_class.get_collection(backend).get(**self._lookup_kwargs(identifier))
 
-    def get_many(self, query_params: QueryParams) -> PaginatedResults[dict[str, t.Any]]:
+    def get_many(
+        self,
+        query_params: QueryParams,
+        backend: StorageBackend,
+    ) -> PaginatedResults[dict[str, t.Any]]:
         """Get AiiDA entities with optional filtering, sorting, and/or pagination.
 
         :param query_params: The query parameters for filtering, sorting, and pagination.
         :type query_params: QueryParams
+        :param backend: The storage backend to query, or the current profile's backend.
+        :type backend: StorageBackend | None
         :return: The paginated results, including total count, current page, page size, and list of serialized entities.
         :rtype: PaginatedResults
         """
+        collection = self.entity_class.get_collection(backend)
         try:
-            total = self.entity_class.collection.count(filters=query_params.filters)
-            results = self.entity_class.collection.query(
+            total = collection.count(filters=query_params.filters)
+            results = collection.query(
                 filters=query_params.filters,
                 order_by=query_params.order_by,
                 limit=query_params.limit,
@@ -119,6 +130,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         self,
         identifier: EntityIdentifier,
         related_type: type[orm.Entity],
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Get a related foreign entity of an entity.
 
@@ -130,7 +142,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :rtype: dict[str, t.Any]
         """
         qb = (
-            orm.QueryBuilder()
+            orm.QueryBuilder(backend=backend)
             .append(
                 self.entity_class,
                 filters=self._lookup_kwargs(identifier),
@@ -161,6 +173,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         identifier: EntityIdentifier,
         related_type: type[orm.Entity],
         query_params: QueryParams,
+        backend: StorageBackend,
     ) -> PaginatedResults[dict[str, t.Any]]:
         """Get related foreign entities of an entity.
 
@@ -175,6 +188,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         """
         qb = (
             orm.QueryBuilder(
+                backend=backend,
                 limit=query_params.limit,
                 offset=query_params.offset,
             )
@@ -209,7 +223,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
             data=[next(iter(result.values())) for result in results],
         )
 
-    def get_field(self, identifier: EntityIdentifier, field: str) -> t.Any:
+    def get_field(self, identifier: EntityIdentifier, field: str, backend: StorageBackend) -> t.Any:
         """Get a specific field of an entity.
 
         :param identifier: The identifier of the entity to retrieve the extras for.
@@ -219,7 +233,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The value of the specified field.
         :rtype: t.Any
         """
-        qb = self.entity_class.collection.query(
+        qb = self.entity_class.get_collection(backend).query(
             filters=self._lookup_kwargs(identifier),
             project=[field],
         )
@@ -234,7 +248,7 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
 
         return result[0]
 
-    def add(self, model: EntityModelType) -> dict[str, t.Any]:
+    def add(self, model: EntityModelType, backend: StorageBackend) -> dict[str, t.Any]:
         """Create new AiiDA entity from its model.
 
         :param model: The Pydantic model of the entity to create.
@@ -242,10 +256,16 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The created and stored AiiDA `Entity` instance.
         :rtype: dict[str, t.Any]
         """
-        entity = self.entity_class.from_model(model).store()
+        with profile_context(backend.profile, allow_switch=True):
+            entity = self.entity_class.from_model(model).store()
         return entity.serialize(minimal=True)
 
-    def update(self, identifier: EntityIdentifier, model: EntityModelType) -> dict[str, t.Any]:
+    def update(
+        self,
+        identifier: EntityIdentifier,
+        model: EntityModelType,
+        backend: StorageBackend,
+    ) -> dict[str, t.Any]:
         """Update an existing AiiDA entity.
 
         :param identifier: The identifier of the entity to update.
@@ -255,9 +275,10 @@ class EntityService(t.Generic[EntityType, EntityModelType]):
         :return: The updated and stored AiiDA `Entity` instance.
         :rtype: dict[str, t.Any]
         """
-        entity = self.entity_class.collection.get(**self._lookup_kwargs(identifier))
-        self._apply_update(entity, model)
-        return entity.serialize(minimal=True)
+        entity = self.entity_class.get_collection(backend).get(**self._lookup_kwargs(identifier))
+        with profile_context(backend.profile, allow_switch=True):
+            self._apply_update(entity, model)
+            return entity.serialize(minimal=True)
 
     def _lookup_kwargs(self, identifier: EntityIdentifier) -> dict[str, str | int]:
         """Return lookup kwargs for a PK or UUID identifier.

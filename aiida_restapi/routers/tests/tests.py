@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from aiida_restapi.config import API_CONFIG
+from aiida_restapi.profiles import get_profile_api_path
 from aiida_restapi.routers.nodes import model_registry
 
 read_router = APIRouter(prefix='/tests')
@@ -31,7 +31,7 @@ async def test_nodes_mutate(request: Request) -> HTMLResponse:
             'request': request,
             'css': css.read_text(),
             'js': js.read_text(),
-            'api_prefix': API_CONFIG['PREFIX'],
+            'api_prefix': get_profile_api_path(request),
             'options': node_types,
         },
     )
@@ -47,6 +47,6 @@ async def test_querybuilder(request: Request) -> HTMLResponse:
             'request': request,
             'css': css.read_text(),
             'js': js.read_text(),
-            'api_prefix': API_CONFIG['PREFIX'],
+            'api_prefix': get_profile_api_path(request),
         },
     )

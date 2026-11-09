@@ -61,7 +61,6 @@ async def get_server_endpoints_table(request: Request) -> HTMLResponse:
         methods = endpoint['methods']
         description = endpoint['description']
         disable_url = endpoint['disable_url']
-
         path_row = path if disable_url else f'<a href="{path}">{path}</a>'
 
         rows.append(f"""
@@ -158,11 +157,6 @@ def _get_endpoints(request: Request) -> list[dict]:
             if method not in HTTP_METHODS:
                 continue
 
-            parameters = operation.get('parameters', [])
-            request_body = operation.get('requestBody', {})
-            required_input = any(parameter.get('required', False) for parameter in parameters) or request_body.get(
-                'required', False
-            )
             description = (operation.get('description') or operation.get('summary') or '').split('\n')[0].strip()
             endpoints.append(
                 {
@@ -170,7 +164,7 @@ def _get_endpoints(request: Request) -> list[dict]:
                     'group': _get_route_group(path),
                     'methods': {method.upper()},
                     'description': description,
-                    'disable_url': required_input or method == 'post' or '{' in path,
+                    'disable_url': method == 'post',
                 }
             )
 

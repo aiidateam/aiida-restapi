@@ -1,4 +1,4 @@
-"""Configuration of API"""
+"""REST API configuration."""
 
 import os
 from pathlib import Path
@@ -40,6 +40,21 @@ class LocalApiConfig(pdt.BaseModel):
         default_factory=CorsConfig,
         description='CORS configuration for the API',
     )
+    allowed_profiles: list[str] = pdt.Field(
+        default_factory=list,
+        description='List of allowed profiles for the API',
+    )
+
+    @pdt.field_validator('allowed_profiles')
+    @classmethod
+    def validate_allowed_profiles(cls, profiles: list[str]) -> list[str]:
+        """Normalize and validate profile names."""
+        normalized = [profile.strip() for profile in profiles]
+        if any(not profile for profile in normalized):
+            raise ValueError('allowed profile names cannot be empty')
+        if len(normalized) != len(set(normalized)):
+            raise ValueError('allowed profile names must be unique')
+        return normalized
 
 
 def load_local_config(path: str | Path | None = None) -> LocalApiConfig:

@@ -1,12 +1,14 @@
 """Declaration of FastAPI application."""
 
 import os
+from collections.abc import AsyncGenerator
+from contextlib import AsyncExitStack, asynccontextmanager
 from json import JSONDecodeError
 
 import pydantic as pdt
 from aiida.common import exceptions as aiida_exceptions
 from aiida.engine.daemon.client import DaemonException
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi import exceptions as fastapi_exceptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -17,7 +19,8 @@ from aiida_restapi.common.types import RequestValidationErrorHandler
 from aiida_restapi.config import API_CONFIG, load_local_config
 from aiida_restapi.graphql import main
 from aiida_restapi.jsonapi.errors import jsonapi_error
-from aiida_restapi.routers import computers, daemon, groups, nodes, querybuilder, server, submit, tests, users
+from aiida_restapi.profiles import ProfileBackendRegistry, get_profile_backend
+from aiida_restapi.routers import computers, daemon, groups, nodes, profiles, querybuilder, server, submit, tests, users
 
 
 def create_app() -> FastAPI:
@@ -31,7 +34,13 @@ def create_app() -> FastAPI:
     read_only = os.getenv('AIIDA_RESTAPI_READ_ONLY') == '1'
     local_config = load_local_config()
 
-    app = FastAPI()
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        async with AsyncExitStack() as cleanup:
+            app.state.profile_backends = ProfileBackendRegistry(local_config.allowed_profiles, cleanup)
+            yield
+
+    app = FastAPI(lifespan=lifespan)
     app.state.api_path = f'{root_path}{API_CONFIG["PREFIX"]}'
 
     app.add_middleware(
@@ -55,14 +64,26 @@ def create_app() -> FastAPI:
         lambda _: RedirectResponse(url=api_router.url_path_for('endpoints')),
     )
 
-    request_validation_error_handlers: list[RequestValidationErrorHandler] = []
-    for module in (server, users, computers, groups, nodes, querybuilder, submit, daemon, tests):
-        if hasattr(module, 'handle_request_validation_errors'):
-            request_validation_error_handlers.append(module.handle_request_validation_errors)
+    for module in (server, profiles, daemon):
         if read_router := getattr(module, 'read_router', None):
             api_router.include_router(read_router)
         if not read_only and (write_router := getattr(module, 'write_router', None)):
             api_router.include_router(write_router)
+
+    for module in (users, computers, groups, nodes):
+        if metadata_router := getattr(module, 'metadata_router', None):
+            api_router.include_router(metadata_router)
+
+    profile_router = APIRouter(
+        prefix='/profiles/{profile}',
+        dependencies=[Depends(get_profile_backend)],
+    )
+    for module in (users, computers, groups, nodes, querybuilder, submit, tests):
+        if read_router := getattr(module, 'read_router', None):
+            profile_router.include_router(read_router)
+        if not read_only and (write_router := getattr(module, 'write_router', None)):
+            profile_router.include_router(write_router)
+    api_router.include_router(profile_router)
 
     api_router.add_route(
         f'{API_CONFIG["PREFIX"]}/graphql',
@@ -99,6 +120,11 @@ def create_app() -> FastAPI:
             Exception: 500,
         }.items()
     }
+
+    request_validation_error_handlers: list[RequestValidationErrorHandler] = []
+    for module in (server, profiles, users, computers, groups, nodes, querybuilder, submit, daemon, tests):
+        if hasattr(module, 'handle_request_validation_errors'):
+            request_validation_error_handlers.append(module.handle_request_validation_errors)
 
     async def handle_request_validation_error(
         request: Request,

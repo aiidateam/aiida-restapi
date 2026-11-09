@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
-from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.orm.implementation import StorageBackend
 from fastapi import APIRouter, Depends, Query, Request
 
 from aiida_restapi.common import query
@@ -15,16 +15,18 @@ from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
 from aiida_restapi.jsonapi.models import errors
 from aiida_restapi.jsonapi.models.aiida import ComputerCollectionDocument, ComputerResourceDocument
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
+from aiida_restapi.profiles import get_profile_backend
 from aiida_restapi.services.entity import EntityService
 
+metadata_router = APIRouter()
 read_router = APIRouter(prefix='/computers')
 write_router = APIRouter(prefix='/computers')
 
 service = EntityService[orm.Computer, orm.Computer.ReadModel](orm.Computer)
 
 
-@read_router.get(
-    '/schema',
+@metadata_router.get(
+    '/schemas/computers',
     response_class=JsonSchemaResponse,
     response_model=dict[str, t.Any],
     responses={
@@ -41,8 +43,8 @@ async def get_computers_schema(
     return service.get_schema(which=which)
 
 
-@read_router.get(
-    '/projections',
+@metadata_router.get(
+    '/projections/computers',
     response_model=list[str],
 )
 async def get_computer_projections() -> list[str]:
@@ -62,22 +64,23 @@ async def get_computer_projections() -> list[str]:
         },
     },
 )
-@with_dbenv()
 async def get_computers(
     request: Request,
     query_params: t.Annotated[
         query.CollectionQueryParams,
         Depends(query.collection_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get AiiDA computers with optional filtering, sorting, and/or pagination."""
-    results = service.get_many(query_params)
+    results = service.get_many(query_params, backend)
     return JsonApi.collection(
         request,
         results,
         resource_identity=orm.Computer.identity_field,
         resource_type='computers',
         query_params=query_params,
+        backend=backend,
     )
 
 
@@ -92,7 +95,6 @@ async def get_computers(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_computer(
     request: Request,
     identifier: EntityIdentifier,
@@ -100,15 +102,17 @@ async def get_computer(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get AiiDA computer."""
-    result = service.get_one(identifier)
+    result = service.get_one(identifier, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Computer.identity_field,
         resource_type='computers',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -126,7 +130,6 @@ async def get_computer(
         },
     },
 )
-@with_dbenv()
 async def get_computer_metadata(
     request: Request,
     identifier: EntityIdentifier,
@@ -134,10 +137,11 @@ async def get_computer_metadata(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get metadata of an AiiDA computer."""
-    computer = service.load_one(identifier)
-    metadata = service.get_field(identifier, 'metadata')
+    computer = service.load_one(identifier, backend)
+    metadata = service.get_field(identifier, 'metadata', backend)
     return JsonApi.child_resource(
         request,
         metadata,
@@ -145,6 +149,7 @@ async def get_computer_metadata(
         parent_type='computers',
         child_type='metadata',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -161,16 +166,17 @@ async def get_computer_metadata(
         },
     },
 )
-@with_dbenv()
 async def create_computer(
     request: Request,
     computer_model: orm.Computer.WriteModel,
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA computer."""
-    result = service.add(computer_model)
+    result = service.add(computer_model, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Computer.identity_field,
         resource_type='computers',
+        backend=backend,
     )
