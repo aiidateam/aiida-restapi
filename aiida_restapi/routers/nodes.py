@@ -5,15 +5,14 @@ from __future__ import annotations
 import io
 import json
 import typing as t
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import pydantic as pdt
 from aiida import orm
-from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common import exceptions as aiida_exceptions
+from aiida.orm.implementation import StorageBackend
 from fastapi import APIRouter, Body, Depends, Form, Query, Request, UploadFile
 from fastapi import exceptions as fastapi_exceptions
-from fastapi.exceptions import ValidationException
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
@@ -21,14 +20,15 @@ from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common import query
 from aiida_restapi.common.responses import JsonApiResponse, JsonSchemaResponse
 from aiida_restapi.common.types import EntityIdentifier
-from aiida_restapi.config import API_CONFIG
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
 from aiida_restapi.jsonapi.errors import jsonapi_error
 from aiida_restapi.jsonapi.models import aiida, errors
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.models.node import NodeModelRegistry, NodeStatistics, NodeType
+from aiida_restapi.profiles import get_profile_api_path, get_profile_backend
 from aiida_restapi.services.node import NodeService
 
+metadata_router = APIRouter()
 read_router = APIRouter(prefix='/nodes')
 write_router = APIRouter(prefix='/nodes')
 
@@ -73,8 +73,8 @@ def handle_request_validation_errors(
     return None
 
 
-@read_router.get(
-    '/schema',
+@metadata_router.get(
+    '/schemas/nodes',
     response_class=JsonSchemaResponse,
     response_model=dict[str, t.Any],
     responses={
@@ -107,14 +107,13 @@ async def get_nodes_schema(
     return Model.model_json_schema()
 
 
-@read_router.get(
-    '/projections',
+@metadata_router.get(
+    '/projections/nodes',
     response_model=list[str],
     responses={
         422: {'model': errors.InvalidNodeTypeError, 'description': 'Invalid Node Type'},
     },
 )
-@with_dbenv()
 async def get_node_projections(
     node_type: t.Annotated[
         str | None,
@@ -135,17 +134,15 @@ async def get_node_projections(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
-async def get_nodes_statistics(user: int | None = None) -> dict[str, t.Any]:
+async def get_nodes_statistics(
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
+    user: int | None = None,
+) -> dict[str, t.Any]:
     """Get node statistics."""
-
-    from aiida.manage import get_manager
-
-    backend = get_manager().get_profile_storage()
     return backend.query().get_creation_statistics(user_pk=user)
 
 
-@read_router.get('/download_formats')
+@metadata_router.get('/node-download-formats')
 async def get_nodes_download_formats() -> dict[str, t.Any]:
     """Get download formats for AiiDA nodes."""
     return service.get_download_formats()
@@ -163,40 +160,47 @@ async def get_nodes_download_formats() -> dict[str, t.Any]:
         },
     },
 )
-@with_dbenv()
 async def get_nodes(
     request: Request,
     query_params: t.Annotated[
         query.CollectionQueryParams,
         Depends(query.collection_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get AiiDA nodes with optional filtering, sorting, and/or pagination."""
-    results = service.get_many(query_params)
+    results = service.get_many(query_params, backend)
     return JsonApi.collection(
         request,
         results,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
         query_params=query_params,
+        backend=backend,
     )
 
 
-@read_router.get(
-    '/types',
+@metadata_router.get(
+    '/node-types',
     response_model=list[NodeType],
 )
-async def get_node_types() -> list:
+async def get_node_types(request: Request) -> list:
     """Get all node types in machine-actionable format."""
-    api_prefix = API_CONFIG['PREFIX']
-    return [
-        {
+    api_prefix = request.app.state.api_path
+
+    def format_node_type(node_type: str) -> dict[str, str]:
+        type_query = urlencode({'type': node_type})
+        node_filter = urlencode({'filter[node_type]': node_type}, safe='[]')
+        return {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
-            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
-            'projections': f'{api_prefix}/nodes/projections?type={node_type}',
-            'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
+            'nodes': f'{api_prefix}/profiles/{{profile}}/nodes?{node_filter}',
+            'projections': f'{api_prefix}/projections/nodes?{type_query}',
+            'node_schema': f'{api_prefix}/schemas/nodes?{type_query}',
         }
+
+    return [
+        format_node_type(node_type)
         for node_type in sorted(model_registry.get_node_types(), key=model_registry.get_node_class_name)
     ]
 
@@ -212,7 +216,6 @@ async def get_node_types() -> list:
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node(
     request: Request,
     identifier: EntityIdentifier,
@@ -220,15 +223,17 @@ async def get_node(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get AiiDA node."""
-    result = service.get_one(identifier)
+    result = service.get_one(identifier, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -243,18 +248,19 @@ async def get_node(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node_user(
     request: Request,
     identifier: EntityIdentifier,
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the user associated with a node."""
-    user = service.get_related_one(identifier, orm.User)
+    user = service.get_related_one(identifier, orm.User, backend)
     return JsonApi.resource(
         request,
         user,
         resource_identity=orm.User.identity_field,
         resource_type='users',
+        backend=backend,
     )
 
 
@@ -269,18 +275,19 @@ async def get_node_user(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node_computer(
     request: Request,
     identifier: EntityIdentifier,
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the computer associated with a node."""
-    computer = service.get_related_one(identifier, orm.Computer)
+    computer = service.get_related_one(identifier, orm.Computer, backend)
     return JsonApi.resource(
         request,
         computer,
         resource_identity=orm.Computer.identity_field,
         resource_type='computers',
+        backend=backend,
     )
 
 
@@ -298,7 +305,6 @@ async def get_node_computer(
         },
     },
 )
-@with_dbenv()
 async def get_node_groups(
     request: Request,
     identifier: EntityIdentifier,
@@ -306,15 +312,17 @@ async def get_node_groups(
         query.CollectionQueryParams,
         Depends(query.collection_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the groups of a node."""
-    groups = service.get_related_many(identifier, orm.Group, query_params)
+    groups = service.get_related_many(identifier, orm.Group, query_params, backend)
     return JsonApi.collection(
         request,
         groups,
         resource_identity=orm.Group.identity_field,
         resource_type='groups',
         query_params=query_params,
+        backend=backend,
     )
 
 
@@ -332,7 +340,6 @@ async def get_node_groups(
         },
     },
 )
-@with_dbenv()
 async def get_node_attributes(
     request: Request,
     identifier: EntityIdentifier,
@@ -340,10 +347,11 @@ async def get_node_attributes(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the attributes of a node."""
-    node = service.load_one(identifier)
-    attributes = service.get_field(identifier, 'attributes')
+    node = service.load_one(identifier, backend)
+    attributes = service.get_field(identifier, 'attributes', backend)
     return JsonApi.child_resource(
         request,
         attributes,
@@ -351,6 +359,7 @@ async def get_node_attributes(
         parent_type='nodes',
         child_type='attributes',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -368,7 +377,6 @@ async def get_node_attributes(
         },
     },
 )
-@with_dbenv()
 async def get_node_extras(
     request: Request,
     identifier: EntityIdentifier,
@@ -376,10 +384,11 @@ async def get_node_extras(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the extras of a node."""
-    node = service.load_one(identifier)
-    extras = service.get_field(identifier, 'extras')
+    node = service.load_one(identifier, backend)
+    extras = service.get_field(identifier, 'extras', backend)
     return JsonApi.child_resource(
         request,
         extras,
@@ -387,6 +396,7 @@ async def get_node_extras(
         parent_type='nodes',
         child_type='extras',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -401,7 +411,6 @@ async def get_node_extras(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node_links(
     request: Request,
     identifier: EntityIdentifier,
@@ -413,15 +422,17 @@ async def get_node_links(
         query.CollectionQueryParams,
         Depends(query.collection_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the incoming/outgoing links of a node."""
-    links = service.get_links(identifier, direction, query_params)
+    links = service.get_links(identifier, direction, backend, query_params)
     return JsonApi.collection(
         request,
         links,
         resource_identity='link_id',
         resource_type='links',
         query_params=query_params,
+        backend=backend,
     )
 
 
@@ -436,7 +447,6 @@ async def get_node_links(
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node_repo_file_metadata(
     request: Request,
     identifier: EntityIdentifier,
@@ -444,10 +454,11 @@ async def get_node_repo_file_metadata(
         query.ResourceQueryParams,
         Depends(query.resource_query_params),
     ],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Get the repository file metadata of a node."""
-    node = service.load_one(identifier)
-    metadata = service.get_repository_metadata(identifier)
+    node = service.load_one(identifier, backend)
+    metadata = service.get_repository_metadata(identifier, backend, get_profile_api_path(request))
     return JsonApi.child_resource(
         request,
         metadata,
@@ -455,6 +466,7 @@ async def get_node_repo_file_metadata(
         parent_type='nodes',
         child_type='repo-metadata',
         include=query_params.include,
+        backend=backend,
     )
 
 
@@ -476,8 +488,8 @@ def get_file_download_headers(filename: str) -> dict[str, str]:
         422: {'model': errors.RequestValidationError, 'description': 'Validation Error'},
     },
 )
-@with_dbenv()
 async def get_node_repo_file_contents(
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
     identifier: EntityIdentifier,
     filename: t.Annotated[
         str | None,
@@ -485,7 +497,7 @@ async def get_node_repo_file_contents(
     ] = None,
 ) -> StreamingResponse:
     """Get the repository contents of a node."""
-    node = service.load_one(identifier)
+    node = service.load_one(identifier, backend)
     repo = node.base.repository
     repo_filename = filename.strip('/')[-1] if filename else f'{node.uuid}.zip'
     return StreamingResponse(
@@ -505,8 +517,8 @@ async def get_node_repo_file_contents(
         451: {'model': errors.InvalidLicenseError, 'description': 'Invalid License'},
     },
 )
-@with_dbenv()
 async def download_node(
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
     identifier: EntityIdentifier,
     format: t.Annotated[
         str | None,
@@ -519,19 +531,19 @@ async def download_node(
 ) -> StreamingResponse:
     """Download AiiDA node by identifier (UUID or PK) in a given format (e.g., JSON, archive).
 
-    The available download formats can be queried using the /nodes/download_formats/ endpoint.
+    The available download formats can be queried using the /node-download-formats endpoint.
     If downloading as an archive, additional options can be provided as a JSON object via the
     `options` query parameter.
     """
 
     if format is None:
-        raise ValidationException(
+        raise restapi_exceptions.InvalidRequestError(
             'Please specify the download format. '
             'The available download formats can be '
-            'queried using the /nodes/download_formats endpoint.',
+            'queried using the /node-download-formats endpoint.',
         )
 
-    node = service.load_one(identifier)
+    node = service.load_one(identifier, backend)
 
     if format == 'archive':
         from aiida.tools.archive import create_archive
@@ -542,7 +554,7 @@ async def download_node(
             try:
                 options_dict: dict[str, t.Any] = json.loads(options)
             except json.JSONDecodeError as exc:
-                raise ValidationException(f"Invalid JSON in 'options': {exc.msg}") from exc
+                raise restapi_exceptions.InvalidRequestError(f"Invalid JSON in 'options': {exc.msg}") from exc
         else:
             options_dict = {}
 
@@ -553,9 +565,9 @@ async def download_node(
         filename = f'{node.uuid}.{format}'
         exported_bytes, _ = node._exportcontent(format)
     else:
-        raise ValidationException(
+        raise restapi_exceptions.InvalidRequestError(
             f'The format {format} is not supported. '
-            'The available download formats can be queried using the /nodes/download_formats/ endpoint.'
+            'The available download formats can be queried using the /node-download-formats endpoint.'
         )
 
     return StreamingResponse(
@@ -578,18 +590,19 @@ async def download_node(
         },
     },
 )
-@with_dbenv()
 async def create_node(
     request: Request,
     model: t.Annotated[NodeAttributesModelUnion, Body(discriminator='node_type')],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from an attributes-based payload."""
-    result = service.add(model)
+    result = service.add(model, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
+        backend=backend,
     )
 
 
@@ -606,18 +619,19 @@ async def create_node(
         },
     },
 )
-@with_dbenv()
 async def create_node_constructor(
     request: Request,
     model: t.Annotated[NodeConstructorModelUnion, Body(discriminator='node_type')],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Create a new AiiDA node from a constructor-based payload."""
-    result = service.add(model)
+    result = service.add(model, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
+        backend=backend,
     )
 
 
@@ -635,7 +649,6 @@ async def create_node_constructor(
         },
     },
 )
-@with_dbenv()
 async def create_node_with_files(
     request: Request,
     params: t.Annotated[
@@ -646,23 +659,24 @@ async def create_node_with_files(
         ),
     ],
     files: list[UploadFile],
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Create new AiiDA node with files."""
     payload = t.cast(dict, json.loads(params))
 
     if 'args' in payload:
-        raise ValidationException("File upload endpoint does not support constructor 'args'.")
+        raise restapi_exceptions.InvalidRequestError("File upload endpoint does not support constructor 'args'.")
 
     node_type = payload.get('node_type')
     if not isinstance(node_type, str):
-        raise ValidationException("The 'node_type' field is missing in the payload.")
+        raise restapi_exceptions.InvalidRequestError("The 'node_type' field is missing in the payload.")
 
     Model = t.cast(type[orm.Node.WriteModel], model_registry.get_model(node_type, 'write'))
 
     files_dict: dict[str, UploadFile] = {}
     for upload in files:
         if (target := upload.filename) in files_dict:
-            raise ValidationException(f"Duplicate target path '{target}' in upload")
+            raise restapi_exceptions.InvalidRequestError(f"Duplicate target path '{target}' in upload")
         files_dict[target] = upload
 
     if 'attributes' not in payload:
@@ -670,12 +684,13 @@ async def create_node_with_files(
 
     model = Model(**payload)
 
-    result = service.add(model, files=files_dict)
+    result = service.add(model, backend, files=files_dict)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
+        backend=backend,
     )
 
 
@@ -694,20 +709,21 @@ async def create_node_with_files(
         },
     },
 )
-@with_dbenv()
 async def update_node(
     request: Request,
     identifier: EntityIdentifier,
     model: orm.Node.MutableNodeFields,
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
 ) -> dict[str, t.Any]:
     """Update the mutable fields of an existing AiiDA node.
 
     Updatable fields: 'label', 'description', 'extras'
     """
-    result = service.update(identifier, model)
+    result = service.update(identifier, model, backend)
     return JsonApi.resource(
         request,
         result,
         resource_identity=orm.Node.identity_field,
         resource_type='nodes',
+        backend=backend,
     )

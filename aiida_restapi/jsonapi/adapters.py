@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import typing as t
-from copy import deepcopy
+from urllib.parse import urlencode
 
 from aiida import orm
+from aiida.orm.implementation import StorageBackend
 from starlette.requests import Request
 
 from aiida_restapi.common.pagination import PaginatedResults
 from aiida_restapi.common.query import CollectionQueryParams
-from aiida_restapi.config import API_CONFIG
+from aiida_restapi.profiles import get_profile_api_path
 
 from . import hooks
 from .utils import IncludedItemParamsCache
@@ -53,6 +54,7 @@ class JsonApiAdapter:
         resource_type: str,
         include: list[str] | None = None,
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document for a single resource derived from an AiiDA object.
 
@@ -77,6 +79,7 @@ class JsonApiAdapter:
             resource_identity,
             resource_type,
             include,
+            backend=backend,
         )
 
         return {
@@ -99,6 +102,7 @@ class JsonApiAdapter:
         child_type: str,
         include: list[str] | None = None,
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document for a child resource derived from an AiiDA object's child quantity.
 
@@ -138,6 +142,7 @@ class JsonApiAdapter:
                 ) in hook.include(
                     foreign_fields={hook.TYPE_MAP[parent_type]: pid},
                     include=include,
+                    backend=backend,
                 )
             ]
             if include
@@ -171,6 +176,7 @@ class JsonApiAdapter:
         resource_type: str,
         query_params: CollectionQueryParams = CollectionQueryParams(),
         meta: dict[str, t.Any] | None = None,
+        backend: StorageBackend,
     ) -> dict[str, t.Any]:
         """Return a JSON:API document with a collection of resources derived from AiiDA objects.
 
@@ -203,21 +209,23 @@ class JsonApiAdapter:
                 resource_type,
                 query_params.include,
                 included_cache,
+                backend=backend,
             )
             resources.append(resource)
             included.extend(included_items)
 
         meta = {
             'total': results.total,
-            'page': results.page,
-            'page_size': results.page_size,
+            'offset': results.offset,
+            'limit': results.limit,
         } | (meta or {})
 
         toplevel_links = cls._build_toplevel_links(
             request,
             results.total,
-            query_params.page,
-            query_params.page_size,
+            query_params.offset,
+            query_params.limit,
+            query_params.query_items,
         )
 
         return {
@@ -236,6 +244,8 @@ class JsonApiAdapter:
         resource_type: str,
         include: list[str] | None = None,
         cache: IncludedItemParamsCache | None = None,
+        *,
+        backend: StorageBackend,
     ) -> tuple[dict[str, t.Any], list[dict[str, t.Any]]]:
         """Build a JSON:API resource and its included related resources.
 
@@ -281,6 +291,7 @@ class JsonApiAdapter:
                     foreign_fields=foreign_fields,
                     include=include,
                     cache=cache,
+                    backend=backend,
                 )
             ]
             if include
@@ -375,7 +386,7 @@ class JsonApiAdapter:
         :return: The JSON:API resource object.
         :rtype: dict[str, t.Any]
         """
-        root = f'{request.scope["root_path"]}{API_CONFIG["PREFIX"]}/{parent_type}'
+        root = f'{get_profile_api_path(request)}/{parent_type}'
 
         pid = str(pid)  # ensure pid is a string for URL construction
 
@@ -404,8 +415,9 @@ class JsonApiAdapter:
         cls,
         request: Request,
         total: int,
-        page: int,
-        page_size: int,
+        offset: int,
+        limit: int,
+        query_items: list[tuple[str, str]],
     ) -> dict[str, str]:
         """Return dict suitable for JSON:API top-level links (self/next/prev/first/last).
 
@@ -413,54 +425,59 @@ class JsonApiAdapter:
         :type request: Request
         :param total: The total number of items.
         :type total: int
-        :param page: The current page.
-        :type page: int
-        :param page_size: The page size.
-        :type page_size: int
+        :param offset: The number of results skipped.
+        :type offset: int
+        :param limit: The maximum number of results returned.
+        :type limit: int
+        :param query_items: The query parameters to include in the links.
+        :type query_items: list[tuple[str, str]]
         :return: The top-level links.
         :rtype: dict[str, str]
         """
-        current = cls._build_link(request, page=page, page_size=page_size)
+        links = {
+            'self': cls._build_link(request, query_items, offset=offset, limit=limit),
+            'first': cls._build_link(request, query_items, offset=0, limit=limit),
+            'last': cls._build_link(request, query_items, offset=max(0, ((total - 1) // limit) * limit), limit=limit),
+        }
 
-        links: dict[str, str] = {'self': str(current)}
-
-        if page > 1:
-            links['prev'] = cls._build_link(request, page=page - 1, page_size=page_size)
-            links['first'] = cls._build_link(request, page=1, page_size=page_size)
-
-        last_page = (total + page_size - 1) // page_size if page_size > 0 else 1
-        if last_page >= 1:
-            links['last'] = cls._build_link(request, page=last_page, page_size=page_size)
-
-        if page < last_page:
-            links['next'] = cls._build_link(request, page=page + 1, page_size=page_size)
+        if offset > 0:
+            links['prev'] = cls._build_link(request, query_items, offset=max(0, offset - limit), limit=limit)
+        if offset + limit < total:
+            links['next'] = cls._build_link(request, query_items, offset=offset + limit, limit=limit)
 
         return links
 
     @staticmethod
-    def _build_link(request: Request, page: int | None = None, page_size: int | None = None) -> str:
+    def _build_link(
+        request: Request,
+        query_items: list[tuple[str, str]] | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> str:
         """Return a relative URL with updated query parameters.
 
         :param request: The incoming request.
         :type request: Request
-        :param page: The current page.
-        :type page: int | None
-        :param page_size: The page size.
-        :type page_size: int | None
+        :param query_items: The query parameters to include in the link.
+        :type query_items: list[tuple[str, str]] | None
+        :param offset: The number of results skipped.
+        :type offset: int | None
+        :param limit: The maximum number of results returned.
+        :type limit: int | None
         :return: The updated URL relative to the base URL.
         :rtype: str
         """
-        q = deepcopy(dict(request.query_params))
+        source_query_items = request.query_params.multi_items() if query_items is None else query_items
+        query = [(key, value) for key, value in source_query_items if key not in {'page[offset]', 'page[limit]'}]
+        if offset is not None:
+            query.append(('page[offset]', str(offset)))
+        if limit is not None:
+            query.append(('page[limit]', str(limit)))
 
-        if page is not None:
-            q['page'] = str(page)
-        if page_size is not None:
-            q['page_size'] = str(page_size)
-
-        url = request.url.replace_query_params(**q)
-
-        link = url.path
-        if url.query:
-            link += f'?{url.query}'
+        link = request.url.path
+        safe_key_chars = r'[]<>=!'
+        safe_value_chars = r'%[]{}:!,?@&=+$-_.~*\'()"'
+        if query:
+            link += f'?{urlencode(query, safe=safe_key_chars + safe_value_chars)}'
 
         return link

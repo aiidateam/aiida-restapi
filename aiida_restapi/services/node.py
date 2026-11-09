@@ -9,6 +9,7 @@ from aiida import orm
 from aiida.common import EntryPointError, exceptions
 from aiida.common.escaping import escape_for_sql_like
 from aiida.common.lang import type_check
+from aiida.manage.configuration import profile_context
 from aiida.orm.utils import load_node_class
 from aiida.plugins.entry_point import (
     get_entry_point_names,
@@ -20,13 +21,13 @@ from aiida.repository import File
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryBuilderParams
+from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
-from aiida_restapi.config import API_CONFIG
 
 from .entity import EntityService
 
 if t.TYPE_CHECKING:
+    from aiida.orm.implementation import StorageBackend
     from fastapi import UploadFile
 
 
@@ -86,7 +87,12 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         return all_formats
 
-    def get_repository_metadata(self, identifier: int | UUID) -> dict[str, dict]:
+    def get_repository_metadata(
+        self,
+        identifier: int | UUID,
+        backend: StorageBackend,
+        api_path: str,
+    ) -> dict[str, dict]:
         """Get the repository metadata of a node.
 
         :param identifier: The identifier of the node to retrieve metadata for.
@@ -94,7 +100,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :return: A dictionary with the repository file metadata.
         :rtype: dict[str, dict]
         """
-        node = self.entity_class.collection.get(**self._lookup_kwargs(identifier))
+        node = self.load_one(identifier, backend)
         node_identifier = node.uuid
         total_size = 0
 
@@ -128,7 +134,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                         'binary': binary,
                         'size': size,
                         'hash': node.base.repository.get_object(obj_name).serialize()['k'],
-                        'download': f'{API_CONFIG["PREFIX"]}/nodes/{node_identifier}/repo/contents?filename={obj_name}',
+                        'download': f'{api_path}/nodes/{node_identifier}/repo/contents?filename={obj_name}',
                     }
                     total_size += size
 
@@ -141,7 +147,7 @@ class NodeService(EntityService[NodeType, NodeModelType]):
                 'type': 'FILE',
                 'binary': True,
                 'size': total_size,
-                'download': f'{API_CONFIG["PREFIX"]}/nodes/{node_identifier}/repo/contents',
+                'download': f'{api_path}/nodes/{node_identifier}/repo/contents',
             }
 
         return metadata
@@ -150,26 +156,28 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         self,
         identifier: int | UUID,
         direction: t.Literal['incoming', 'outgoing'],
-        query_params: QueryBuilderParams = QueryBuilderParams(),
+        backend: StorageBackend,
+        query_params: QueryParams = QueryParams(),
     ) -> PaginatedResults[dict[str, t.Any]]:
         """Get the incoming links of a node.
 
         :param identifier: The identifier of the node to retrieve links for.
         :type identifier: int | UUID
         :param query_params: The query parameters for filtering, sorting, and pagination.
-        :type query_params: QueryBuilderParams
+        :type query_params: QueryParams
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
         :rtype: PaginatedResults
         """
-        node = self.entity_class.collection.get(**self._lookup_kwargs(identifier))
+        node = self.load_one(identifier, backend)
         node_uuid = node.uuid
 
         qb = (
             orm.QueryBuilder(
-                limit=query_params.page_size,
-                offset=query_params.page_size * (query_params.page - 1),
+                backend=backend,
+                limit=query_params.limit,
+                offset=query_params.offset,
             )
             .append(
                 orm.Node,
@@ -216,14 +224,15 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         return PaginatedResults(
             total=total,
-            page=query_params.page,
-            page_size=len(data),
+            offset=query_params.offset,
+            limit=query_params.limit,
             data=data,
         )
 
     def add(
         self,
         model: NodeModelType,
+        backend: StorageBackend,
         files: dict[str, UploadFile] | None = None,
     ) -> dict[str, t.Any]:
         """Create new AiiDA node from its model.
@@ -236,9 +245,12 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         :rtype: dict[str, t.Any]
         """
         node_cls = self._load_entry_point_from_node_type(model.node_type)
-        files_dict = {key: lambda upload=upload: upload.file for key, upload in (files or {}).items()}
-        node = t.cast(NodeType, node_cls.from_model(model, files=files_dict))
-        node.store()
+        file_callables = {key: lambda upload=upload: upload.file for key, upload in (files or {}).items()}
+
+        with profile_context(backend.profile, allow_switch=True):
+            node = node_cls.from_model(model, files=file_callables)
+            node.store()
+
         return node.serialize(minimal=True)
 
     def _apply_update(self, entity: orm.Node, model: orm.Node.MutableNodeFields) -> None:

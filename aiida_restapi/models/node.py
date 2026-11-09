@@ -50,16 +50,16 @@ class NodeType(pdt.BaseModel):
         examples=['data.core.int.Int.'],
     )
     nodes: str = pdt.Field(
-        description='The URL to access nodes of this type.',
-        examples=['../nodes?filters={"node_type":{"data.core.int.Int."}}'],
+        description='The URL template to access nodes of this type; replace `{profile}` with a profile name.',
+        examples=['../profiles/{profile}/nodes?filter[node_type]=data.core.int.Int.'],
     )
     projections: str = pdt.Field(
         description='The URL to access projectable properties of this node type.',
-        examples=['../nodes/projections?type=data.core.int.Int.'],
+        examples=['../projections/nodes?type=data.core.int.Int.'],
     )
     node_schema: str = pdt.Field(
         description='The URL to access the schema of this node type.',
-        examples=['../nodes/schema?type=data.core.int.Int.'],
+        examples=['../schemas/nodes?type=data.core.int.Int.'],
     )
 
 
@@ -86,7 +86,7 @@ class RepoFileMetadata(pdt.BaseModel):
     )
     download: str = pdt.Field(
         description='The URL to download the file.',
-        examples=['../nodes/{uuid}/repo/contents?filename=path/to/file.txt'],
+        examples=['../profiles/{profile}/nodes/{uuid}/repo/contents?filename=path/to/file.txt'],
     )
 
 
@@ -106,7 +106,7 @@ class RepoDirMetadata(pdt.BaseModel):
                     'type': 'FILE',
                     'binary': False,
                     'size': 2048,
-                    'download': '../nodes/{uuid}/repo/contents?filename=path/to/file.txt',
+                    'download': '../profiles/{profile}/nodes/{uuid}/repo/contents?filename=path/to/file.txt',
                 },
                 'subdir': {
                     'type': 'DIRECTORY',
