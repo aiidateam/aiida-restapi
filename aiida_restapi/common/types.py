@@ -6,8 +6,10 @@ import typing as t
 from uuid import UUID
 
 from aiida import orm
-from fastapi import Request, Response
+from fastapi import Request
 from fastapi import exceptions as fastapi_exceptions
+
+from aiida_restapi.common.responses import JsonApiResponse
 
 EntityType = t.TypeVar('EntityType', bound='orm.Entity')
 EntityModelType = t.TypeVar('EntityModelType', bound='orm.OrmModel')
@@ -22,5 +24,5 @@ RequestValidationErrorHandler = t.Callable[
         Request,
         fastapi_exceptions.RequestValidationError,
     ],
-    Response | None,
+    JsonApiResponse | None,
 ]
