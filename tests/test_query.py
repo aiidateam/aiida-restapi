@@ -57,6 +57,22 @@ def test_filter_typed_values_and_dot_path():
     }
 
 
+@pytest.mark.parametrize('operator', ['<', '<=', '>', '>='])
+@pytest.mark.parametrize('value', ['true', 'false'])
+def test_numeric_filter_rejects_booleans(operator: str, value: str):
+    """Test JSON booleans are not accepted as numeric filter operands."""
+    with pytest.raises(InputValidationError, match='requires a numeric value'):
+        parse([(f'filter[value][{operator}]', value)])
+
+
+@pytest.mark.parametrize('operator', ['of_length', 'shorter', 'longer'])
+@pytest.mark.parametrize('value', ['true', 'false'])
+def test_array_length_filter_rejects_booleans(operator: str, value: str):
+    """Test JSON booleans are not accepted as integer filter operands."""
+    with pytest.raises(InputValidationError, match='requires an integer value'):
+        parse([(f'filter[value][{operator}]', value)])
+
+
 def test_filter_in_json_list():
     """Test membership filters accept JSON lists."""
     assert parse([('filter[value][in]', '[1, 2, 3]')]).filters == {'value': {'in': [1, 2, 3]}}

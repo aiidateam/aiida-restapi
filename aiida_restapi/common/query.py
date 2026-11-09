@@ -178,11 +178,11 @@ def _parse_filter_operand(operator: str, raw: str) -> t.Any:
     if positive_operator in {'in', 'contains'}:
         return _parse_filter_list(positive_operator, raw)
     value = _parse_filter_value(raw)
-    if positive_operator in _NUMERIC_OPS and not isinstance(value, (int, float)):
+    if positive_operator in _NUMERIC_OPS and (isinstance(value, bool) or not isinstance(value, (int, float))):
         raise InputValidationError(f'The `{positive_operator}` filter requires a numeric value.')
     if positive_operator in _STRING_OPS and not isinstance(value, str):
         raise InputValidationError(f'The `{positive_operator}` filter requires a string value.')
-    if positive_operator in _ARRAY_OPS and not isinstance(value, int):
+    if positive_operator in _ARRAY_OPS and (isinstance(value, bool) or not isinstance(value, int)):
         raise InputValidationError(f'The `{positive_operator}` filter requires an integer value.')
     return value
 
