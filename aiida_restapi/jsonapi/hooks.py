@@ -4,7 +4,10 @@ import typing as t
 
 from aiida import orm
 from aiida.common.exceptions import NotExistent
+from aiida.orm.implementation import StorageBackend
 from fastapi import Request
+
+from aiida_restapi.profiles import get_profile_api_path
 
 from .utils import IncludedItemParamsCache
 
@@ -101,6 +104,7 @@ class BaseHook:
         foreign_fields: dict[str, t.Any],
         include: list[str],
         cache: IncludedItemParamsCache | None = None,
+        backend: StorageBackend | None = None,
     ) -> list[IncludedItemParams]:
         included: list[IncludedItemParams] = []
 
@@ -113,6 +117,7 @@ class BaseHook:
                 identifier,
                 *cls.INCLUDED_TYPE_MAP[item],
                 cache=cache,
+                backend=backend,
             ):
                 included.append(included_item)
 
@@ -125,6 +130,7 @@ class BaseHook:
         resource_type: str,
         orm_class: type[orm.Entity],
         cache: IncludedItemParamsCache | None = None,
+        backend: StorageBackend | None = None,
     ) -> IncludedItemParams | None:
         """Build an included item parameters tuple.
 
@@ -150,7 +156,8 @@ class BaseHook:
         if bucket is not None and cache_key in bucket:
             return None
 
-        node: orm.Entity = orm_class.collection.get(**{orm_class.identity_field: resource_id})
+        collection = orm_class.collection if backend is None else orm_class.get_collection(backend)
+        node: orm.Entity = collection.get(**{orm_class.identity_field: resource_id})
         node_dict = node.serialize(minimal=True)
         identifier, attributes, foreign_fields = cls.split_resource(
             node_dict,
@@ -175,7 +182,7 @@ class ResourceHook(BaseHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, str | dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         return {
             'self': f'{api_path}/{resource_type}/{url_id}',
         }
@@ -189,7 +196,7 @@ class ResourceHook(BaseHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         return {
             'collection': {
                 'links': {
@@ -229,7 +236,7 @@ class ComputerHook(EntityHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         extra = {
             'metadata': {
                 'links': {
@@ -262,7 +269,7 @@ class GroupHook(EntityHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         extra = {
             'user': {
                 'links': {
@@ -309,7 +316,7 @@ class NodeHook(EntityHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         extra = {
             'user': {
                 'links': {
@@ -398,7 +405,7 @@ class LinkHook(BaseHook):
         resource_type: str,
         url_id: str,
     ) -> dict[str, dict[str, t.Any]]:
-        api_path = request.app.state.api_path
+        api_path = get_profile_api_path(request)
         extra = {}
         if source := foreign_fields.get('source', None):
             extra['source'] = {

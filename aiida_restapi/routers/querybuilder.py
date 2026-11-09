@@ -5,8 +5,8 @@ from __future__ import annotations
 import typing as t
 
 from aiida import orm
-from aiida.cmdline.utils.decorators import with_dbenv
-from fastapi import APIRouter, Query, Request
+from aiida.orm.implementation import StorageBackend
+from fastapi import APIRouter, Depends, Query, Request
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.responses import JsonApiResponse
@@ -14,6 +14,7 @@ from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
 from aiida_restapi.jsonapi.models import errors
 from aiida_restapi.jsonapi.models.base import JsonApiResourceDocument
 from aiida_restapi.models.querybuilder import QueryBuilderDict
+from aiida_restapi.profiles import get_profile_backend
 
 read_router = APIRouter(prefix='/querybuilder')
 
@@ -30,10 +31,10 @@ read_router = APIRouter(prefix='/querybuilder')
         },
     },
 )
-@with_dbenv()
 async def query_builder(
     request: Request,
     query: QueryBuilderDict,
+    backend: t.Annotated[StorageBackend, Depends(get_profile_backend)],
     full: t.Annotated[
         bool,
         Query(description='Whether to return full results (minimal=False).'),
@@ -46,7 +47,7 @@ async def query_builder(
     offset = query_dict.get('offset', 0) or 0
 
     try:
-        qb = orm.QueryBuilder.from_dict(query_dict)
+        qb = orm.QueryBuilder(backend=backend, **query_dict)
         total = qb.count()
         qb.limit(limit)
         results = qb.dict()
@@ -66,6 +67,7 @@ async def query_builder(
         normalized_results,
         resource_identity='query_id',
         resource_type='qb-results',
+        backend=backend,
         meta={
             'total': total,
             'page': (offset // limit) + 1,
