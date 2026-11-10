@@ -16,8 +16,8 @@ from fastapi import exceptions as fastapi_exceptions
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
+from aiida_restapi import query
 from aiida_restapi.common import exceptions as restapi_exceptions
-from aiida_restapi.common import query
 from aiida_restapi.common.responses import JsonApiResponse, JsonSchemaResponse
 from aiida_restapi.common.types import EntityIdentifier
 from aiida_restapi.config import API_CONFIG
@@ -192,7 +192,7 @@ async def get_node_types() -> list:
         {
             'label': model_registry.get_node_class_name(node_type),
             'node_type': node_type,
-            'nodes': f'{api_prefix}/nodes?filters={{"node_type":"{node_type}"}}',
+            'nodes': f'{api_prefix}/nodes?filter[node_type]={node_type}',
             'projections': f'{api_prefix}/nodes/projections?type={node_type}',
             'node_schema': f'{api_prefix}/nodes/schema?type={node_type}',
         }
