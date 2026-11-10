@@ -139,6 +139,11 @@ def run_apidoc(_):
         '-o',
         apidoc_dir,
         package_dir,
+        # Document the query package's re-exported public API once, not again per implementation module.
+        *[
+            os.path.join(package_dir, 'query', module)
+            for module in ('dependencies.py', 'filters.py', 'models.py', 'sorting.py', 'utils.py')
+        ],
         '--private',
         '--force',
         '--no-toc',

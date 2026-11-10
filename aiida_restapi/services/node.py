@@ -19,10 +19,10 @@ from aiida.plugins.entry_point import (
 from aiida.repository import File
 
 from aiida_restapi.common.exceptions import QueryBuilderException
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams
+from aiida_restapi.common.results import PaginatedResults
 from aiida_restapi.common.types import NodeModelType, NodeType
 from aiida_restapi.config import API_CONFIG
+from aiida_restapi.query import QueryParams
 
 from .entity import EntityService
 

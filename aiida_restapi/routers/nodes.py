@@ -16,8 +16,8 @@ from fastapi import exceptions as fastapi_exceptions
 from fastapi.responses import StreamingResponse
 from typing_extensions import TypeAlias
 
+from aiida_restapi import query
 from aiida_restapi.common import exceptions as restapi_exceptions
-from aiida_restapi.common import query
 from aiida_restapi.common.responses import JsonApiResponse, JsonSchemaResponse
 from aiida_restapi.common.types import EntityIdentifier
 from aiida_restapi.config import API_CONFIG

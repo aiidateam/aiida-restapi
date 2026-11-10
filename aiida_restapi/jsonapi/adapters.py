@@ -8,9 +8,9 @@ from urllib.parse import urlencode
 from aiida import orm
 from starlette.requests import Request
 
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import CollectionQueryParams
+from aiida_restapi.common.results import PaginatedResults
 from aiida_restapi.config import API_CONFIG
+from aiida_restapi.query import CollectionQueryParams
 
 from . import hooks
 from .utils import IncludedItemParamsCache

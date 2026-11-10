@@ -6,7 +6,7 @@ import pytest
 from aiida.common.exceptions import InputValidationError
 from starlette.requests import Request
 
-from aiida_restapi.common.query import querybuilder_params
+from aiida_restapi.query import querybuilder_params
 
 
 def make_request(params: list[tuple[str, str]]) -> Request:
