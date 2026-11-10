@@ -10,9 +10,9 @@ from aiida.common.exceptions import NotExistent
 from aiida.common.pydantic import get_metadata
 
 from aiida_restapi.common.exceptions import QueryBuilderException
-from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryParams
+from aiida_restapi.common.results import PaginatedResults
 from aiida_restapi.common.types import EntityIdentifier, EntityModelType, EntityType
+from aiida_restapi.query import QueryParams
 
 
 class EntityService(t.Generic[EntityType, EntityModelType]):
