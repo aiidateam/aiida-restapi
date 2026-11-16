@@ -20,7 +20,7 @@ from aiida.repository import File
 
 from aiida_restapi.common.exceptions import QueryBuilderException
 from aiida_restapi.common.pagination import PaginatedResults
-from aiida_restapi.common.query import QueryBuilderParams
+from aiida_restapi.common.query import QueryParams
 from aiida_restapi.common.types import NodeModelType, NodeType
 from aiida_restapi.config import API_CONFIG
 
@@ -150,14 +150,14 @@ class NodeService(EntityService[NodeType, NodeModelType]):
         self,
         identifier: int | UUID,
         direction: t.Literal['incoming', 'outgoing'],
-        query_params: QueryBuilderParams = QueryBuilderParams(),
+        query_params: QueryParams = QueryParams(),
     ) -> PaginatedResults[dict[str, t.Any]]:
         """Get the incoming links of a node.
 
         :param identifier: The identifier of the node to retrieve links for.
         :type identifier: int | UUID
         :param query_params: The query parameters for filtering, sorting, and pagination.
-        :type query_params: QueryBuilderParams
+        :type query_params: QueryParams
         :param direction: Specify whether to retrieve incoming or outgoing links.
         :type direction: str
         :return: The paginated requested linked nodes.
@@ -168,8 +168,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         qb = (
             orm.QueryBuilder(
-                limit=query_params.page_size,
-                offset=query_params.page_size * (query_params.page - 1),
+                limit=query_params.limit,
+                offset=query_params.offset,
             )
             .append(
                 orm.Node,
@@ -216,8 +216,8 @@ class NodeService(EntityService[NodeType, NodeModelType]):
 
         return PaginatedResults(
             total=total,
-            page=query_params.page,
-            page_size=len(data),
+            offset=query_params.offset,
+            limit=query_params.limit,
             data=data,
         )
 

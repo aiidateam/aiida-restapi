@@ -141,8 +141,10 @@ def test_get_nodes(client: TestClient):
 @pytest.mark.usefixtures('default_nodes')
 def test_get_nodes_by_type(client: TestClient):
     """Test listing existing nodes by type."""
-    filters = {'node_type': {'in': ['data.core.int.Int.', 'data.core.float.Float.']}}
-    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+    response = client.get(
+        '/nodes',
+        params={'filter[node_type][in]': '["data.core.int.Int.", "data.core.float.Float."]'},
+    )
     assert response.status_code == 200
     data = response.json()['data']
     assert len(data) == 2
@@ -153,8 +155,7 @@ def test_get_nodes_by_type(client: TestClient):
 @pytest.mark.usefixtures('default_nodes')
 def test_get_nodes_with_filters(client: TestClient):
     """Test listing existing nodes with filters."""
-    filters = {'attributes.value': 1.1}
-    response = client.get(f'/nodes?filters={json.dumps(filters)}')
+    response = client.get('/nodes', params={'filter[attributes.value]': '1.1'})
     assert response.status_code == 200
     data = response.json()['data']
     assert len(data) == 1
@@ -169,8 +170,7 @@ def test_get_nodes_with_filters(client: TestClient):
 @pytest.mark.usefixtures('default_nodes')
 def test_get_nodes_in_order(client: TestClient):
     """Test listing existing nodes in order."""
-    order_by = {'ctime': 'desc'}
-    response = client.get(f'/nodes?order_by={json.dumps(order_by)}')
+    response = client.get('/nodes?sort=-ctime')
     assert response.status_code == 200
     data = response.json()['data']
     assert len(data) == 4
@@ -181,17 +181,30 @@ def test_get_nodes_in_order(client: TestClient):
 @pytest.mark.usefixtures('default_nodes')
 def test_get_nodes_pagination(client: TestClient):
     """Test listing existing nodes with pagination."""
-    response = client.get('/nodes?page_size=2&page=1')
+    response = client.get('/nodes?page[limit]=2&page[offset]=0')
     assert response.status_code == 200
-    data = response.json()['data']
+    document = response.json()
+    data = document['data']
     assert len(data) == 2
     assert all(result['attributes']['pk'] in (1, 2) for result in data)
+    assert document['meta'] == {'total': 4, 'offset': 0, 'limit': 2}
+    assert 'page[offset]=2&page[limit]=2' in document['links']['next']
 
-    check = client.get('/nodes?page_size=2&page=2')
+    check = client.get('/nodes?page[limit]=2&page[offset]=2')
     assert check.status_code == 200
-    data = check.json()['data']
+    document = check.json()
+    data = document['data']
     assert len(data) == 2
     assert all(result['attributes']['pk'] in (3, 4) for result in data)
+    assert document['meta'] == {'total': 4, 'offset': 2, 'limit': 2}
+    assert 'next' not in document['links']
+
+
+def test_get_nodes_rejects_invalid_filter(client: TestClient):
+    """Test malformed filter parameters return a JSON:API error document."""
+    response = client.get('/nodes', params={'filter[label][unknown]': 'value'})
+    assert response.status_code == 422
+    assert response.json()['errors'][0]['status'] == '422'
 
 
 def test_get_node_types(client: TestClient):

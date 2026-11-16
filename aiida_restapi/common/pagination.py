@@ -11,6 +11,6 @@ ResultType = t.TypeVar('ResultType')
 
 class PaginatedResults(pdt.BaseModel, t.Generic[ResultType]):
     total: int
-    page: int
-    page_size: int
+    offset: int
+    limit: int
     data: list[ResultType]
