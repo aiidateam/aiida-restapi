@@ -16,7 +16,8 @@ class Filtering(pdt.BaseModel):
         examples=[
             'filter[node_type]=data.core.int.Int.',
             'filter[pk][in]=[1,10,100]',
-            'filter[attributes.value][<=]=42',
+            'filter[attributes.value][le]=42',
+            'filter[pk][~ge]=42',
             'filter[label][like]=%test%',
             'filter[attributes.some_array][contains]=[1,True,"hello"]',
             'filter[attributes.some_dict][has_key]=some_key',
@@ -33,19 +34,6 @@ class Sorting(pdt.BaseModel):
         examples=[
             'ctime',
             ['label', '-ctime'],
-        ],
-    )
-
-
-class Include(pdt.BaseModel):
-    """Parsed JSON:API include paths."""
-
-    include: list[str] = pdt.Field(
-        default_factory=list,
-        description='Related resource types to include',
-        examples=[
-            'nodes',
-            'users,computers',
         ],
     )
 
@@ -69,6 +57,19 @@ class QueryParams(Filtering, Sorting, Pagination):
     """Filtering, sorting, and pagination parameters for a collection query."""
 
     query_items: list[tuple[str, str]] = pdt.Field(default_factory=list, exclude=True)
+
+
+class Include(pdt.BaseModel):
+    """Parsed JSON:API include paths."""
+
+    include: list[str] = pdt.Field(
+        default_factory=list,
+        description='Related resource types to include',
+        examples=[
+            'nodes',
+            'users,computers',
+        ],
+    )
 
 
 class CollectionQueryParams(QueryParams, Include):
