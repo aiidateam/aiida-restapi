@@ -8,7 +8,7 @@ from aiida import orm
 from aiida.cmdline.utils.decorators import with_dbenv
 from fastapi import APIRouter, Depends, Query, Request
 
-from aiida_restapi.common import query
+from aiida_restapi import query
 from aiida_restapi.common.responses import JsonApiResponse, JsonSchemaResponse
 from aiida_restapi.common.types import EntityIdentifier
 from aiida_restapi.jsonapi.adapters import JsonApiAdapter as JsonApi
