@@ -23,12 +23,11 @@ def parse(params: list[tuple[str, str]]):
     'parameter,operator',
     [
         ('filter[value]', '=='),
-        ('filter[value][==]', '=='),
-        ('filter[value][!==]', '!=='),
-        ('filter[value][<]', '<'),
-        ('filter[value][<=]', '<='),
-        ('filter[value][>]', '>'),
-        ('filter[value][>=]', '>='),
+        ('filter[value][eq]', '=='),
+        ('filter[value][lt]', '<'),
+        ('filter[value][le]', '<='),
+        ('filter[value][gt]', '>'),
+        ('filter[value][ge]', '>='),
         ('filter[value][like]', 'like'),
         ('filter[value][ilike]', 'ilike'),
         ('filter[value][of_length]', 'of_length'),
@@ -48,7 +47,7 @@ def test_filter_typed_values_and_dot_path():
     result = parse(
         [
             ('filter[attributes.config.enabled]', 'true'),
-            ('filter[attributes.config.timeout][>=]', '30'),
+            ('filter[attributes.config.timeout][ge]', '30'),
         ]
     )
     assert result.filters == {
@@ -57,7 +56,7 @@ def test_filter_typed_values_and_dot_path():
     }
 
 
-@pytest.mark.parametrize('operator', ['<', '<=', '>', '>='])
+@pytest.mark.parametrize('operator', ['lt', 'le', 'gt', 'ge'])
 @pytest.mark.parametrize('value', ['true', 'false'])
 def test_numeric_filter_rejects_booleans(operator: str, value: str):
     """Test JSON booleans are not accepted as numeric filter operands."""
@@ -84,7 +83,7 @@ def test_filter_contains_json_list():
     assert parse([('filter[value][contains]', '["one", 2, true]')]).filters == {'value': {'contains': ['one', 2, True]}}
 
 
-@pytest.mark.parametrize('operator', ['in', '!in', 'contains', '!contains'])
+@pytest.mark.parametrize('operator', ['in', '~in', 'contains', '~contains'])
 @pytest.mark.parametrize('value', ['', 'one,two', '"one"', '1', '{}'])
 def test_filter_list_requires_json_list(operator: str, value: str):
     """Test list operators reject malformed JSON and non-list values."""
@@ -92,7 +91,7 @@ def test_filter_list_requires_json_list(operator: str, value: str):
         parse([(f'filter[value][{operator}]', value)])
 
 
-@pytest.mark.parametrize('operator', ['in', '!in', 'contains', '!contains'])
+@pytest.mark.parametrize('operator', ['in', '~in', 'contains', '~contains'])
 def test_filter_list_requires_values(operator: str):
     """Test list operators reject an empty JSON list."""
     with pytest.raises(InputValidationError, match='requires at least one value'):
@@ -103,6 +102,12 @@ def test_filter_repeated_in():
     """Test repeated membership filters are flattened."""
     result = parse([('filter[value][in]', '["one", "two"]'), ('filter[value][in]', '["three"]')])
     assert result.filters == {'value': {'in': ['one', 'two', 'three']}}
+
+
+def test_filter_repeated_negated_in():
+    """Test repeated negated membership filters are flattened."""
+    result = parse([('filter[value][~in]', '["one", "two"]'), ('filter[value][~in]', '["three"]')])
+    assert result.filters == {'value': {'~in': ['one', 'two', 'three']}}
 
 
 def test_filter_contains_and_repeated_constraints():
@@ -122,21 +127,52 @@ def test_filter_negation():
     """Test leaf negation."""
     result = parse(
         [
-            ('filter[label][!like]', 'test%'),
-            ('filter[pk][!==]', '2'),
+            ('filter[label][~like]', 'test%'),
+            ('filter[pk][~eq]', '2'),
+            ('filter[pk][~ge]', '3'),
         ]
     )
-    assert result.filters == {'label': {'!like': 'test%'}, 'pk': {'!==': 2}}
+    assert result.filters == {'label': {'~like': 'test%'}, 'pk': {'and': [{'~==': 2}, {'~>=': 3}]}}
 
 
 @pytest.mark.parametrize(
     'parameter',
-    ['filter', 'filter[]', 'filter[value][unknown]', 'filter[value][!]'],
+    [
+        'filter',
+        'filter[value',
+        'filter[value][eq',
+        'filter[value][eq][other]',
+    ],
 )
-def test_invalid_filter_parameter(parameter: str):
-    """Test malformed filters and unknown operators are rejected."""
-    with pytest.raises(InputValidationError):
+def test_invalid_filter_parameter_structure(parameter: str):
+    """Test malformed filter parameter structure is rejected."""
+    with pytest.raises(InputValidationError, match='Invalid filter parameter'):
         parse([(parameter, 'value')])
+
+
+@pytest.mark.parametrize('field', ['', 'bad field', 'bad..field', '3field'])
+def test_invalid_filter_field(field: str):
+    """Test invalid dot-separated filter field paths are rejected."""
+    with pytest.raises(InputValidationError, match='Invalid filter field'):
+        parse([(f'filter[{field}]', 'value')])
+
+
+@pytest.mark.parametrize(
+    'operator',
+    [
+        'filter[value][unknown]',
+        'filter[value][]',
+        'filter[value][!]',
+        'filter[value][==]',
+        'filter[value][!==]',
+        'filter[value][<=]',
+        'filter[value][!like]',
+    ],
+)
+def test_invalid_filter_operator(operator: str):
+    """Test unsupported filter operators are rejected."""
+    with pytest.raises(InputValidationError, match='Invalid filter operator'):
+        parse([(operator, 'value')])
 
 
 def test_sort():

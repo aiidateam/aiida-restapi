@@ -13,20 +13,22 @@ import typing as t
 from aiida.common.exceptions import InputValidationError
 from starlette.requests import Request
 
-_FILTER_KEY = re.compile(r'filter\[([^][\s]+)\](?:\[([^][\s]+)\])?')
-_TRUNCATED_OPERATOR_KEY = re.compile(r'filter\[[^][\s]+\]\[!?[<>=]*')
+# The following regular expression captures the field and optional operator, for example:
+# - filter[attributes.value]=42  -->  field: 'attributes.value'; operator: None
+# - filter[attributes.value][lt]=7  -->  field: 'attributes.value'; operator: 'lt'
+# - filter[node_type][like]=%example%  -->  field: 'node_type'; operator: 'like'
+_FILTER_KEY = re.compile(r'filter\[([^\[\]]*)\](?:\[([^\[\]]*)\])?')
 
 _GENERAL_OPS = {
-    '==',
-    '!==',
+    'eq',
     'in',
 }
 
 _NUMERIC_OPS = {
-    '<',
-    '<=',
-    '>',
-    '>=',
+    'lt',
+    'le',
+    'gt',
+    'ge',
 }
 
 _STRING_OPS = {
@@ -53,25 +55,23 @@ _FILTER_OPERATORS = {
     *_DICT_OPS,
 }
 
+_QUERYBUILDER_OPERATORS = {
+    'eq': '==',
+    'lt': '<',
+    'le': '<=',
+    'gt': '>',
+    'ge': '>=',
+}
+
 
 def get_query_parameter_items(request: Request) -> list[tuple[str, str]]:
-    """Return decoded query items, repairing comparison operators split at their equals sign.
+    """Return decoded query parameter items.
 
     :param request: The HTTP request to read query items from.
-    :return: Query key/value pairs with filter operators reconstructed.
+    :return: Decoded query key/value pairs.
     :rtype: list[tuple[str, str]]
     """
-    items: list[tuple[str, str]] = []
-    for key, value in request.query_params.multi_items():
-        normalized_key = key
-        normalized_value = value
-        if _TRUNCATED_OPERATOR_KEY.fullmatch(key):
-            operator_remainder, separator, operand = value.partition(']=')
-            if separator:
-                normalized_key = f'{key}={operator_remainder}]'
-                normalized_value = operand
-        items.append((normalized_key, normalized_value))
-    return items
+    return list(request.query_params.multi_items())
 
 
 def parse_filters(query_items: list[tuple[str, str]]) -> dict[str, t.Any]:
@@ -90,14 +90,19 @@ def parse_filters(query_items: list[tuple[str, str]]) -> dict[str, t.Any]:
         if match is None:
             raise InputValidationError(f'Invalid filter parameter: {key!r}.')
         field, raw_operator = match.groups()
+        _validate_filter_field(field)
         operator = _parse_filter_operator(raw_operator)
         operand = _parse_filter_operand(operator, raw)
-        expressions.setdefault(field, []).append({operator: operand})
+        positive_operator = operator[1:] if operator.startswith('~') else operator
+        querybuilder_operator = _QUERYBUILDER_OPERATORS.get(positive_operator, positive_operator)
+        if operator.startswith('~'):
+            querybuilder_operator = f'~{querybuilder_operator}'
+        expressions.setdefault(field, []).append({querybuilder_operator: operand})
 
     filters: dict[str, t.Any] = {}
     for field, field_expressions in expressions.items():
         normalized_expressions = field_expressions
-        for membership_operator in ('in', '!in'):
+        for membership_operator in ('in', '~in'):
             membership = [
                 expression[membership_operator]
                 for expression in normalized_expressions
@@ -112,6 +117,12 @@ def parse_filters(query_items: list[tuple[str, str]]) -> dict[str, t.Any]:
         )
 
     return filters
+
+
+def _validate_filter_field(field: str) -> None:
+    """Validate a dot-separated filter field path."""
+    if not field or not all(segment.isidentifier() for segment in field.split('.')):
+        raise InputValidationError(f'Invalid filter field: {field!r}. Expected dot-separated identifiers.')
 
 
 def _parse_filter_value(raw: str) -> t.Any:
@@ -156,8 +167,8 @@ def _parse_filter_operator(operator: str | None) -> str:
     :raises InputValidationError: If the operator is not supported.
     """
     if operator is None:
-        return '=='
-    positive_operator = operator[1:] if operator.startswith('!') else operator
+        return 'eq'
+    positive_operator = operator[1:] if operator.startswith('~') else operator
     if positive_operator in _FILTER_OPERATORS:
         return operator
     raise InputValidationError(f'Invalid filter operator: {operator!r}.')
@@ -172,7 +183,7 @@ def _parse_filter_operand(operator: str, raw: str) -> t.Any:
     :rtype: t.Any
     :raises InputValidationError: If the operand has an invalid type or shape.
     """
-    positive_operator = operator.lstrip('!~')
+    positive_operator = operator[1:] if operator.startswith('~') else operator
     if positive_operator in {'in', 'contains'}:
         return _parse_filter_list(positive_operator, raw)
     value = _parse_filter_value(raw)
