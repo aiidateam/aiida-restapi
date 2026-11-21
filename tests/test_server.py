@@ -16,7 +16,7 @@ def test_get_server_endpoints(client: TestClient):
     assert 'endpoints' in data
     assert isinstance(data['endpoints'], list)
     assert len(data['endpoints']) > 0
-    assert any(endpoint['path'] == f'{API_CONFIG["PREFIX"]}/graphql' for endpoint in data['endpoints'])
+    assert not any(endpoint['path'] == f'{API_CONFIG["PREFIX"]}/graphql' for endpoint in data['endpoints'])
     for endpoint in data['endpoints']:
         assert 'path' in endpoint
         assert 'group' in endpoint

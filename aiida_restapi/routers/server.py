@@ -198,18 +198,6 @@ def _get_endpoints(request: Request) -> list[dict]:
                 }
             )
 
-    graphql_path = f'{API_CONFIG["PREFIX"]}/graphql'
-    if graphql_path not in documented_paths:
-        endpoints.append(
-            {
-                'path': root_path + graphql_path,
-                'group': 'graphql',
-                'methods': {'POST'},
-                'description': 'GraphQL endpoint.',
-                'disable_hyperlink': True,
-            }
-        )
-
     return endpoints
 
 

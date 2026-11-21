@@ -1,5 +1,8 @@
 # GraphQL server (`/graphql`)
 
+> **Temporarily unavailable:** The GraphQL endpoint is not currently mounted by the REST API.
+> This documentation is retained for when the endpoint is revived.
+
 ## What is GraphQL?
 
 From [graphql.org](https://graphql.org/):
