@@ -96,6 +96,7 @@ warn_required_dynamic_aliases = true
 warn_untyped_fields = false
 
 [tool.pytest.ini_options]
+addopts = ['--ignore=tests/test_graphql']
 filterwarnings = [
   'ignore:Creating AiiDA configuration folder.*:UserWarning',
   'ignore::DeprecationWarning:pytest:',

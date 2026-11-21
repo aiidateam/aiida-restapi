@@ -15,7 +15,6 @@ from aiida_restapi.common import exceptions as restapi_exceptions
 from aiida_restapi.common.responses import JsonApiResponse
 from aiida_restapi.common.types import RequestValidationErrorHandler
 from aiida_restapi.config import API_CONFIG, load_config
-from aiida_restapi.graphql import main
 from aiida_restapi.jsonapi.errors import jsonapi_error
 from aiida_restapi.routers import computers, daemon, groups, nodes, querybuilder, server, submit, tests, users
 
@@ -63,12 +62,6 @@ def create_app() -> FastAPI:
             api_router.include_router(read_router)
         if not read_only and (write_router := getattr(module, 'write_router', None)):
             api_router.include_router(write_router)
-
-    api_router.add_route(
-        f'{API_CONFIG["PREFIX"]}/graphql',
-        main.app,
-        methods=['POST'],
-    )
 
     app.include_router(api_router)
 
